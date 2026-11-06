@@ -1,0 +1,39 @@
+{
+  "atualizadoEm": "2026-11-06T23:49:08.085Z",
+  "produtos": [
+    {
+      "id": "ml-airfryer-exemplo",
+      "nome": "Air fryer digital 4 litros, 1500W (EXEMPLO: troque pelo seu produto)",
+      "loja": "ml",
+      "categoria": "cozinha",
+      "preco": 349,
+      "precoAntigo": 499,
+      "nota": 4.8,
+      "imagem": "",
+      "link": "https://www.mercadolivre.com.br/"
+    },
+    {
+      "id": "ml-garrafa-exemplo",
+      "nome": "Garrafa térmica inox 1 litro (EXEMPLO)",
+      "loja": "ml",
+      "categoria": "cozinha",
+      "preco": 74.9,
+      "precoAntigo": 119.9,
+      "nota": 4.9,
+      "imagem": "",
+      "link": "https://www.mercadolivre.com.br/"
+    },
+    {
+      "id": "amazon-mouse-exemplo",
+      "nome": "Mouse sem fio silencioso (EXEMPLO)",
+      "loja": "amazon",
+      "asin": "B000000000",
+      "categoria": "tec",
+      "preco": 49.9,
+      "precoAntigo": 79.9,
+      "nota": 4.7,
+      "imagem": "",
+      "link": "https://www.amazon.com.br/gp/aws/cart/add.html?ASIN.1=B000000000&Quantity.1=1&AssociateTag=teste-20"
+    }
+  ]
+}
