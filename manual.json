@@ -22,15 +22,15 @@
     "link": "https://www.mercadolivre.com.br/"
   },
   {
-    "id": "amazon-mouse-exemplo",
-    "nome": "Mouse sem fio silencioso (EXEMPLO)",
+    "id": "amazon-B0H3Q1RHD7",
+    "nome": "Smart TV TCL 65T6C QLED 4K 65 Polegadas Dolby Vision, Wi-Fi e Bluetooth",
     "loja": "amazon",
-    "asin": "B000000000",
+    "asin": "B0H3Q1RHD7",
     "categoria": "tec",
-    "preco": 49.9,
-    "precoAntigo": 79.9,
-    "nota": 4.7,
-    "imagem": "",
-    "link": "https://www.amazon.com.br/"
+    "preco": 3254.07,
+    "precoAntigo": 3999,
+    "nota": 4.2,
+    "imagem": "https://m.media-amazon.com/images/I/81PghVbGE6L._AC_SL1500_.jpg",
+    "link": "https://www.amazon.com.br/dp/B0H3Q1RHD7?tag=citshop-20"
   }
 ]
