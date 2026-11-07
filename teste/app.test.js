@@ -123,4 +123,9 @@ test("admin suspende loja e ela sai da vitrine", async () => {
   assert.equal(r.status, 200);
   const v = await (await req("/api/vitrine")).json();
   assert.equal(v.produtos.some((p) => p.loja === "local"), false);
+
+  const foto = (await (await req("/api/admin/lojas", { cookie })).json())[0].produtos[0].foto;
+  assert.equal((await req(`/api/admin/lojas/${loja.id}`, { method: "DELETE", cookie })).status, 200);
+  assert.deepEqual(await (await req("/api/admin/lojas", { cookie })).json(), []);
+  assert.equal((await req(foto)).status, 404); // foto apagada do disco
 });

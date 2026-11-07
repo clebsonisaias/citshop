@@ -26,7 +26,8 @@
           <button class="btn sec" style="min-height:32px;padding:4px 8px;font-size:11px" data-bloq="${p.id}" data-v="${!p.bloqueado}">${p.bloqueado ? 'Mostrar' : 'Ocultar'}</button></div>`).join('') || '<small class="note">nenhum</small>'}</td>
       <td style="display:grid;gap:6px">
         <button class="btn sec" data-susp="${l.id}" data-v="${!l.suspensa}">${l.suspensa ? 'Reativar' : 'Suspender'}</button>
-        <button class="btn sec" data-senha="${l.id}">Senha provisória</button></td></tr>`).join('');
+        <button class="btn sec" data-senha="${l.id}">Senha provisória</button>
+        <button class="btn perigo" data-excluir="${l.id}">Excluir loja</button></td></tr>`).join('');
   }
   async function carregar() { lojas = await api('/api/admin/lojas'); render(); }
 
@@ -36,6 +37,11 @@
     try {
       if (b.dataset.susp) await api(`/api/admin/lojas/${b.dataset.susp}/suspensa`, 'POST', { suspensa: b.dataset.v === 'true' });
       if (b.dataset.bloq) await api(`/api/admin/produtos/${b.dataset.bloq}/bloqueado`, 'POST', { bloqueado: b.dataset.v === 'true' });
+      if (b.dataset.excluir) {
+        const loja = lojas.find((l) => l.id === b.dataset.excluir);
+        if (!confirm(`Excluir ${loja.nome} com todos os produtos e fotos? Isso não pode ser desfeito.`)) return;
+        await api(`/api/admin/lojas/${loja.id}`, 'DELETE');
+      }
       if (b.dataset.senha) {
         const loja = lojas.find((l) => l.id === b.dataset.senha);
         if (!confirm(`Gerar uma senha provisória para ${loja.nome}? A senha atual deixa de funcionar.`)) return;

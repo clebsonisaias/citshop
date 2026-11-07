@@ -324,6 +324,16 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     banco.salvar();
     res.json({ senha });
   });
+  // Exclusão a pedido da loja (prometida nos termos): some a loja, os produtos e as fotos.
+  app.delete("/api/admin/lojas/:id", exigirAdmin, lojaAdmin, a(async (req, res) => {
+    const dela = banco.produtos.filter((p) => p.lojaId === req.loja.id);
+    for (const p of dela) for (const u of p.fotos) await apagarFoto(u, uploadsDir);
+    banco.d.produtos = banco.produtos.filter((p) => p.lojaId !== req.loja.id);
+    banco.d.lojas = banco.lojas.filter((l) => l !== req.loja);
+    banco.salvar();
+    log.info?.(`[loja] excluída ${req.loja.slug}`);
+    res.json({ ok: true });
+  }));
   app.post("/api/admin/produtos/:id/bloqueado", exigirAdmin, (req, res) => {
     const p = banco.produto(req.params.id);
     if (!p) return erro(res, 404, "Produto não encontrado.");
