@@ -74,8 +74,42 @@
     $('assinar').textContent = `Assinar ${brl.format(s.preco)}/mês`;
     const f = $('fLoja');
     for (const k of ['nome', 'responsavel', 'whatsapp', 'cidade', 'categoria']) f[k].value = s.loja[k] ?? '';
+    $('vCor').value = s.loja.cor || '#036271';
+    $('vSobre').value = s.loja.sobre ?? '';
+    $('tirarLogo').hidden = !s.loja.logo;
+    amostra();
     renderLista();
   }
+
+  // ---------- aparência ----------
+  const amostra = () => {
+    $('amostra').outerHTML = window.CIT.cabecalhoLoja({ ...estado.loja, cor: $('vCor').value, sobre: $('vSobre').value }).replace('class="sellerhead', 'id="amostra" class="sellerhead');
+  };
+  $('vCor').addEventListener('input', amostra);
+  $('vSobre').addEventListener('input', amostra);
+  $('fVisual').addEventListener('submit', (e) => {
+    e.preventDefault();
+    enviando(e.submitter, async () => {
+      const { nome, responsavel, whatsapp, cidade, categoria } = estado.loja;
+      try {
+        mostrar(await api('/api/painel/loja', { metodo: 'PUT', json: { nome, responsavel, whatsapp, cidade, categoria, cor: $('vCor').value, sobre: $('vSobre').value } }));
+        mostrarMsg($('mVisual'), 'Aparência salva.', 'ok');
+      } catch (err) { mostrarMsg($('mVisual'), err.message); }
+    });
+  });
+  $('fLogo').addEventListener('change', async (e) => {
+    const arq = e.target.files[0];
+    e.target.value = '';
+    if (!arq) return;
+    const fd = new FormData();
+    fd.append('logo', arq);
+    try { mostrar(await api('/api/painel/logo', { metodo: 'POST', form: fd })); mostrarMsg($('mVisual'), 'Logo atualizado.', 'ok'); }
+    catch (err) { mostrarMsg($('mVisual'), err.message); }
+  });
+  $('tirarLogo').onclick = async () => {
+    try { mostrar(await api('/api/painel/logo', { metodo: 'DELETE' })); }
+    catch (err) { mostrarMsg($('mVisual'), err.message); }
+  };
 
   function renderLista() {
     const ps = estado.produtos;

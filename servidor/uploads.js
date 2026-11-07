@@ -16,24 +16,30 @@ const upload = multer({
   fileFilter: (_req, f, cb) => cb(null, /^image\/(jpeg|png|webp)$/.test(f.mimetype)),
 });
 
-/** Campo `fotos` (até 4). Erro do multer vira 400 com mensagem clara. */
-export function receberFotos(req, res, next) {
-  upload.array("fotos", MAX_FOTOS)(req, res, (err) => {
+/** Recebe o campo de imagens. Erro do multer vira 400 com mensagem clara. */
+function receber(campo, max) {
+  return (req, res, next) => upload.array(campo, max)(req, res, (err) => {
     if (!err) return next();
-    const msg = err.code === "LIMIT_FILE_SIZE" ? "Foto grande demais (máximo 8 MB)."
-      : err.code === "LIMIT_FILE_COUNT" || err.code === "LIMIT_UNEXPECTED_FILE" ? `Envie no máximo ${MAX_FOTOS} fotos.`
-      : "Não foi possível receber as fotos.";
+    const msg = err.code === "LIMIT_FILE_SIZE" ? "Imagem grande demais (máximo 8 MB)."
+      : err.code === "LIMIT_FILE_COUNT" || err.code === "LIMIT_UNEXPECTED_FILE" ? `Envie no máximo ${max} ${max > 1 ? "fotos" : "imagem"}.`
+      : "Não foi possível receber a imagem.";
     res.status(400).json({ erro: msg });
   });
 }
+export const receberFotos = receber("fotos", MAX_FOTOS);
+export const receberLogo = receber("logo", 1);
 
-export async function salvarFoto(buffer, dir) {
+/** Foto de produto: até 1200px sem cortar. Logo: quadrado de 400px, recortado no centro. */
+export async function salvarFoto(buffer, dir, { logo = false } = {}) {
   await mkdir(dir, { recursive: true });
   const nome = `${randomUUID()}.webp`;
+  const tamanho = logo
+    ? { width: 400, height: 400, fit: "cover" }
+    : { width: 1200, height: 1200, fit: "inside", withoutEnlargement: true };
   try {
     // limitInputPixels: um PNG pequeno pode descomprimir para gigabytes.
     await sharp(buffer, { limitInputPixels: 40_000_000 }).rotate()
-      .resize({ width: 1200, height: 1200, fit: "inside", withoutEnlargement: true })
+      .resize(tamanho)
       .webp({ quality: 82 }).toFile(join(dir, nome));
   } catch {
     throw Object.assign(new Error("Foto inválida ou formato não suportado. Use JPG, PNG ou WebP."), { status: 400 });

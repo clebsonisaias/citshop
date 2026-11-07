@@ -97,6 +97,7 @@
     $('rgrid').innerHTML = list.length ? list.map(card).join('') : '<p class="empty">Nenhum produto por aqui ainda. Tente outro departamento ou outra busca.</p>';
   }
   function goHome() {
+    document.title = 'CITshop · ofertas e lojas da sua cidade';
     $('resultsview').hidden = true;
     $('homeview').hidden = false;
     $('q').value = '';
@@ -108,8 +109,9 @@
     const l = LOJAS.find((x) => x.slug === slug);
     if (!l) return showResults('Loja não encontrada', []);
     const zap = `https://wa.me/${l.whatsapp}?text=${encodeURIComponent('Olá! Vi sua loja na CITshop.')}`;
-    showResults(l.nome, P.filter((x) => x.lojaSlug === slug),
-      `<div class="sellerhead"><span class="avatar">${esc(iniciais(l.nome))}</span><div class="info"><b>${esc(l.nome)}</b><br><small>${esc(l.categoria || 'Loja local')} · ${esc(l.cidade)}</small></div><a class="btn" href="${zap}" target="_blank" rel="noopener">Falar no WhatsApp</a></div>`);
+    showResults('Produtos da loja', P.filter((x) => x.lojaSlug === slug),
+      window.CIT.cabecalhoLoja(l, `<a class="btn" href="${zap}" target="_blank" rel="noopener">Falar no WhatsApp</a>`));
+    document.title = `${l.nome} · CITshop`;
     if (location.pathname !== `/loja/${slug}`) history.pushState(null, '', `/loja/${slug}`);
   }
 
@@ -156,8 +158,8 @@
   function fecharMega() { $('mega').hidden = true; $('allbtn').setAttribute('aria-expanded', 'false'); }
 
   function montarHome() {
-    $('sellers').innerHTML = LOJAS.slice(0, 12).map((l) => `<a class="seller" href="/loja/${esc(l.slug)}" data-seller="${esc(l.slug)}">
-        <div class="top"><span class="avatar">${esc(iniciais(l.nome))}</span><span><b>${esc(l.nome)}</b><small>${esc(l.categoria || 'Loja local')}</small></span></div>
+    $('sellers').innerHTML = LOJAS.slice(0, 12).map((l) => `<a class="seller" href="/loja/${esc(l.slug)}" data-seller="${esc(l.slug)}" style="border-top:4px solid ${esc(l.cor || '#036271')}">
+        <div class="top"><span class="avatar" style="background:${esc(l.cor || '#036271')};color:${window.CIT.textoSobre(l.cor || '#036271')}">${l.logo ? `<img src="${esc(l.logo)}" alt="">` : esc(iniciais(l.nome))}</span><span><b>${esc(l.nome)}</b><small>${esc(l.categoria || 'Loja local')}</small></span></div>
         <div class="meta"><span>${P.filter((x) => x.lojaSlug === l.slug).length} produtos</span><span>${esc(l.cidade)}</span></div></a>`).join('') +
       `<a class="seller cta" href="/painel"><div class="top"><span class="avatar">+</span><span><b>Sua loja aqui</b><small>30 dias grátis pra testar</small></span></div></a>`;
     for (const k of Object.keys(LISTS)) rail(`r-${k}`, LISTS[k].f());

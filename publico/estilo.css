@@ -152,6 +152,15 @@ section.block { padding-block: 18px; }
 .sellerhead { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
 .sellerhead .info { flex: 1; min-width: 180px; }
 .sellerhead small { color: var(--muted); }
+/* Página da loja com a cor e o logo dela; --loja-ink é preto ou branco, calculado pelo contraste */
+.sellerhead.loja-cor { background: var(--loja, #036271); color: var(--loja-ink, #FFFFFF); border-color: transparent; padding: 22px; }
+.sellerhead.loja-cor small, .sellerhead.loja-cor p { color: inherit; opacity: .88; }
+.sellerhead.loja-cor .info b { display: block; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+.sellerhead.loja-cor p { margin: 8px 0 0; max-width: 60ch; }
+.sellerhead.loja-cor .btn { background: var(--loja-ink); color: var(--loja); }
+.avatar { overflow: hidden; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
+.avatar.grande { width: 84px; height: 84px; border-radius: 18px; font-size: 26px; background: rgba(255,255,255,.18); color: inherit; border: 2px solid rgba(255,255,255,.35); }
 
 .modal { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 16px; background: rgba(3, 24, 28, .62); }
 .sheet { background: var(--surface); color: var(--ink); border-radius: 20px; width: min(860px, 100%); max-height: calc(100dvh - 32px); overflow: auto; display: grid; grid-template-columns: 1fr 1fr; }

@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import { randomBytes, randomUUID } from "node:crypto";
 import * as S from "./seguranca.js";
 import { Banco, DEPTS, DIAS_TESTE, lojaVisivel, ordenarVitrine, slugUnico, statusLoja } from "./dados.js";
-import { MAX_FOTOS, apagarFoto, receberFotos, salvarFoto } from "./uploads.js";
+import { MAX_FOTOS, apagarFoto, receberFotos, receberLogo, salvarFoto } from "./uploads.js";
 import { criarMercadoPago, statusDoMp, webhookValido } from "./mercadopago.js";
 
 export const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -97,10 +97,13 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   function afiliados() {
     try { return JSON.parse(readFileSync(join(dadosDir, "afiliados.json"), "utf8")); } catch { return { produtos: [] }; }
   }
-  const lojaPublica = (l) => ({ slug: l.slug, nome: l.nome, cidade: l.cidade, categoria: l.categoria, whatsapp: l.whatsapp, desde: l.criadaEm });
+  const lojaPublica = (l) => ({
+    slug: l.slug, nome: l.nome, cidade: l.cidade, categoria: l.categoria, whatsapp: l.whatsapp, desde: l.criadaEm,
+    logo: l.logo ?? null, cor: l.cor ?? null, sobre: l.sobre ?? "",
+  });
   const produtoLocal = (p, l) => ({
     id: `l-${p.id}`, nome: p.nome, descricao: p.descricao, dept: p.dept, loja: "local",
-    lojaSlug: l.slug, lojaNome: l.nome, cidade: l.cidade, whatsapp: l.whatsapp,
+    lojaSlug: l.slug, lojaNome: l.nome, lojaLogo: l.logo ?? null, cidade: l.cidade, whatsapp: l.whatsapp,
     preco: p.preco, precoAntigo: p.precoAntigo, fotos: p.fotos, nota: 0, vendidos: 0,
   });
   const produtoAfiliado = (x) => ({
@@ -199,10 +202,31 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     if (nome.length < 2) return erro(res, 400, "Informe o nome da loja.");
     if (!zap) return erro(res, 400, "Informe o WhatsApp com DDD.");
     if (!cidade) return erro(res, 400, "Informe a cidade.");
-    Object.assign(req.loja, { nome, whatsapp: zap, cidade, categoria: txt(b.categoria, 60), responsavel: txt(b.responsavel, 80) || req.loja.responsavel });
+    const cor = /^#[0-9a-f]{6}$/i.test(b.cor ?? "") ? b.cor.toUpperCase() : req.loja.cor ?? null;
+    Object.assign(req.loja, {
+      nome, whatsapp: zap, cidade, cor, categoria: txt(b.categoria, 60),
+      responsavel: txt(b.responsavel, 80) || req.loja.responsavel,
+      sobre: b.sobre === undefined ? req.loja.sobre : String(b.sobre).trim().slice(0, 300),
+    });
     banco.salvar();
     res.json(painelDe(req.loja));
   });
+
+  // Logo da loja: um quadrado de 400px; trocar apaga o anterior.
+  app.post("/api/painel/logo", exigirLoja, receberLogo, a(async (req, res) => {
+    if (!req.files?.length) return erro(res, 400, "Escolha uma imagem para o logo.");
+    const antigo = req.loja.logo;
+    req.loja.logo = await salvarFoto(req.files[0].buffer, uploadsDir, { logo: true });
+    banco.salvar();
+    if (antigo) await apagarFoto(antigo, uploadsDir);
+    res.json(painelDe(req.loja));
+  }));
+  app.delete("/api/painel/logo", exigirLoja, a(async (req, res) => {
+    if (req.loja.logo) await apagarFoto(req.loja.logo, uploadsDir);
+    req.loja.logo = null;
+    banco.salvar();
+    res.json(painelDe(req.loja));
+  }));
 
   app.post("/api/painel/senha", exigirLoja, (req, res) => {
     if (!S.conferirSenha(req.body?.atual, req.loja.senhaHash)) return erro(res, 400, "A senha atual não confere.");
@@ -328,6 +352,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   app.delete("/api/admin/lojas/:id", exigirAdmin, lojaAdmin, a(async (req, res) => {
     const dela = banco.produtos.filter((p) => p.lojaId === req.loja.id);
     for (const p of dela) for (const u of p.fotos) await apagarFoto(u, uploadsDir);
+    if (req.loja.logo) await apagarFoto(req.loja.logo, uploadsDir);
     banco.d.produtos = banco.produtos.filter((p) => p.lojaId !== req.loja.id);
     banco.d.lojas = banco.lojas.filter((l) => l !== req.loja);
     banco.salvar();

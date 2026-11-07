@@ -80,8 +80,20 @@ test("loja se cadastra, publica com foto, aparece antes dos afiliados, some ao v
   assert.match(produto.fotos[0], /^\/uploads\/.+\.webp$/);
   assert.equal((await req(produto.fotos[0])).headers.get("content-type"), "image/webp");
 
+  // Personalização: cor, texto e logo aparecem na vitrine; cor inválida é ignorada.
+  const visual = await req("/api/painel/loja", { method: "PUT", headers: { "Content-Type": "application/json" }, cookie,
+    body: JSON.stringify({ nome: "Moda Nossa", whatsapp: "84999990000", cidade: "Natal", cor: "#d23c8c", sobre: "Moda feminina em Natal." }) });
+  assert.equal((await visual.json()).loja.cor, "#D23C8C");
+  const fl = new FormData();
+  fl.append("logo", new Blob([png], { type: "image/png" }), "logo.png");
+  const comLogo = await (await req("/api/painel/logo", { method: "POST", body: fl, cookie })).json();
+  assert.equal((await sharp(Buffer.from(await (await req(comLogo.loja.logo)).arrayBuffer())).metadata()).width, 400);
+  await req("/api/painel/loja", { method: "PUT", headers: { "Content-Type": "application/json" }, cookie,
+    body: JSON.stringify({ nome: "Moda Nossa", whatsapp: "84999990000", cidade: "Natal", cor: "red;}" }) });
+
   let v = await (await req("/api/vitrine")).json();
   assert.deepEqual(v.produtos.map((p) => p.loja), ["local", "amazon"]);
+  assert.deepEqual([v.lojas[0].cor, v.lojas[0].sobre, v.lojas[0].logo], ["#D23C8C", "Moda feminina em Natal.", comLogo.loja.logo]);
   assert.equal(v.produtos[0].whatsapp, "5584999990000");
   assert.equal(v.lojas[0].slug, "moda-nossa");
 

@@ -67,6 +67,26 @@
     </div>
 
     <div class="box">
+      <h2>Aparência da loja</h2>
+      <p class="note" style="font-size:13px;margin:-4px 0 14px">É assim que o topo da sua página aparece pros clientes.</p>
+      <div class="sellerhead loja-cor" id="amostra"></div>
+      <form class="form" id="fVisual">
+        <div class="dois">
+          <div><b style="font-size:13px">Logo</b> <small class="note">quadrado fica melhor, JPG ou PNG</small>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+              <label class="btn sec" style="cursor:pointer">Escolher logo<input type="file" id="fLogo" accept="image/jpeg,image/png,image/webp" hidden></label>
+              <button type="button" class="btn perigo" id="tirarLogo" hidden>Remover logo</button>
+            </div>
+          </div>
+          <label>Cor da loja<input type="color" name="cor" id="vCor" value="#036271" style="padding:4px;height:48px"></label>
+        </div>
+        <label>Sobre a loja <small>aparece no topo da sua página, até 300 letras</small><textarea name="sobre" id="vSobre" maxlength="300" placeholder="Ex.: Moda feminina com entrega em Parnamirim e Natal. Atendemos de segunda a sábado."></textarea></label>
+        <div class="msg" id="mVisual" hidden role="status"></div>
+        <button class="btn">Salvar aparência</button>
+      </form>
+    </div>
+
+    <div class="box">
       <div class="head" style="margin-bottom:12px"><h2 style="margin:0">Meus produtos</h2><button class="btn" id="novo">+ Novo produto</button></div>
       <form class="form" id="fProd" hidden>
         <h2 id="fProdTit">Novo produto</h2>

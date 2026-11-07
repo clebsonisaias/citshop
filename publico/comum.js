@@ -30,5 +30,21 @@ window.CIT = (() => {
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
   const svg = (k) => `<svg class="ic" viewBox="0 0 64 64" aria-hidden="true">${ICON[k] ?? ICON.bag}</svg>`;
-  return { ICON, DEPTS, D, esc, brl, svg };
+  // Texto preto ou branco, o que tiver mais contraste com a cor escolhida pela loja (WCAG).
+  function textoSobre(hex) {
+    const lin = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+    const [r, g, b] = [1, 3, 5].map((i) => lin(parseInt(hex.slice(i, i + 2), 16) / 255));
+    const L = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    return (L + 0.05) / 0.05 > 1.05 / (L + 0.05) ? '#0B1F24' : '#FFFFFF';
+  }
+  const iniciais = (n) => String(n).split(/\s+/).map((w) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+  // Cabeçalho da página da loja, usado pela vitrine e pela amostra do painel.
+  function cabecalhoLoja(l, extra = '') {
+    const cor = l.cor || '#036271';
+    const avatar = l.logo ? `<img src="${esc(l.logo)}" alt="Logo ${esc(l.nome)}">` : esc(iniciais(l.nome));
+    return `<div class="sellerhead loja-cor" style="--loja:${cor};--loja-ink:${textoSobre(cor)}">
+      <span class="avatar grande">${avatar}</span>
+      <div class="info"><b>${esc(l.nome)}</b><small>${esc(l.categoria || 'Loja local')} · ${esc(l.cidade)}</small>${l.sobre ? `<p>${esc(l.sobre)}</p>` : ''}</div>${extra}</div>`;
+  }
+  return { ICON, DEPTS, D, esc, brl, svg, textoSobre, iniciais, cabecalhoLoja };
 })();
