@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CITshop · achados do dia</title>
 <meta name="description" content="Ofertas do Mercado Livre, Shopee e Amazon numa vitrine só, atualizadas todo dia.">
+<meta property="og:title" content="CITshop · achados do dia">
+<meta property="og:description" content="Ofertas do Mercado Livre, Shopee e Amazon numa vitrine só, atualizadas todo dia.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#036271">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 30'%3E%3Cpath fill='%23008B87' d='M13 0 26 7.5v15L13 30 0 22.5v-15z'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400..800&display=swap">
@@ -43,6 +48,12 @@ header { position: sticky; top: 0; z-index: 5; background: var(--surface); borde
 .fresh { font-family: var(--mono); font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
 .fresh b { width: 8px; height: 8px; border-radius: 50%; background: var(--good); }
 
+/* Faixa de campanha: fundo "Conexão profunda" nos dois temas */
+.promo { display: block; background: #036271; color: #FFFFFF; text-decoration: none; }
+.promo-in { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding-block: 12px; font-size: 14px; }
+.promo b { font-weight: 800; }
+.promo u { margin-left: auto; font-weight: 700; text-underline-offset: 3px; }
+.promo:hover u { text-decoration-thickness: 3px; }
 .hero { display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; align-items: center; padding-block: 48px 36px; }
 .hero h1 { font-weight: 850; font-stretch: 112%; font-size: clamp(34px, 5.4vw, 60px); line-height: 1.02; letter-spacing: -0.03em; }
 .hero h1 em { font-style: normal; color: var(--accent); }
@@ -130,6 +141,9 @@ footer p { margin: 0; max-width: 70ch; }
 </header>
 
 <main>
+  <a class="promo" href="https://www.amazon.com.br/blackfriday?&linkCode=ll2&tag=citshop-20&linkId=19fc97704e392c8b7ad573364830ea50&ref_=as_li_ss_tl" target="_blank" rel="sponsored nofollow noopener">
+    <span class="wrap promo-in"><b>Black Friday Amazon</b><span>Descontos em todas as categorias</span><u>Ver ofertas ↗</u></span>
+  </a>
   <section class="wrap hero">
     <div>
       <h1>Os achados do dia, <em>garimpados</em> pra você.</h1>

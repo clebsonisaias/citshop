@@ -1,27 +1,5 @@
 [
   {
-    "id": "ml-airfryer-exemplo",
-    "nome": "Air fryer digital 4 litros, 1500W (EXEMPLO: troque pelo seu produto)",
-    "loja": "ml",
-    "categoria": "cozinha",
-    "preco": 349,
-    "precoAntigo": 499,
-    "nota": 4.8,
-    "imagem": "",
-    "link": "https://www.mercadolivre.com.br/"
-  },
-  {
-    "id": "ml-garrafa-exemplo",
-    "nome": "Garrafa térmica inox 1 litro (EXEMPLO)",
-    "loja": "ml",
-    "categoria": "cozinha",
-    "preco": 74.9,
-    "precoAntigo": 119.9,
-    "nota": 4.9,
-    "imagem": "",
-    "link": "https://www.mercadolivre.com.br/"
-  },
-  {
     "id": "amazon-B0H3Q1RHD7",
     "nome": "Smart TV TCL 65T6C QLED 4K 65 Polegadas Dolby Vision, Wi-Fi e Bluetooth",
     "loja": "amazon",
