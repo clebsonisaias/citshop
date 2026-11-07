@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Painel da loja · CITshop</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#036271">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 30'%3E%3Cpath fill='%23008B87' d='M13 0 26 7.5v15L13 30 0 22.5v-15z'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400..800&display=swap">
+<link rel="stylesheet" href="/estilo.css">
+<script src="/comum.js" defer></script>
+<script src="/painel.js" defer></script>
+</head>
+<body>
+<header class="site"><div class="wrap bar" style="grid-template-columns:auto 1fr auto">
+  <a class="logo" href="/"><i></i>CIT<span>shop</span></a><span></span>
+  <button class="btn sec" id="sair" hidden style="color:#FFFFFF;border-color:rgba(255,255,255,.4)">Sair</button>
+</div></header>
+
+<main class="pg">
+  <!-- Entrar / cadastrar -->
+  <section id="vAuth" hidden>
+    <h1>Venda na CITshop</h1>
+    <p class="note" style="font-size:14px">Seus produtos na vitrine, na frente das grandes lojas. O cliente chama no seu WhatsApp. <b>30 dias grátis</b>, depois R$ 49,90 por mês.</p>
+    <div class="abas" role="group" aria-label="Acesso">
+      <button id="abaCad" aria-pressed="true">Criar minha loja</button>
+      <button id="abaEnt" aria-pressed="false">Já tenho conta</button>
+    </div>
+    <form class="box form" id="fCad">
+      <div class="dois">
+        <label>Nome da loja<input id="cNome" name="nome" required maxlength="60" autocomplete="organization"></label>
+        <label>Seu nome<input name="responsavel" required maxlength="80" autocomplete="name"></label>
+      </div>
+      <div class="dois">
+        <label>WhatsApp da loja <small>com DDD, é para onde os pedidos vão</small><input name="whatsapp" required inputmode="tel" autocomplete="tel" placeholder="(84) 9 9999-9999"></label>
+        <label>Cidade<input name="cidade" required maxlength="60" autocomplete="address-level2" placeholder="Parnamirim"></label>
+      </div>
+      <label>O que a loja vende <small>ex.: Moda feminina, Pet shop</small><input name="categoria" maxlength="60"></label>
+      <div class="dois">
+        <label>E-mail<input name="email" type="email" required autocomplete="email"></label>
+        <label>Senha <small>mínimo 8 caracteres</small><input name="senha" type="password" required minlength="8" autocomplete="new-password"></label>
+      </div>
+      <label class="check"><input type="checkbox" name="aceite" required> <span>Li e aceito os <a href="/termos" target="_blank">termos para lojas</a>.</span></label>
+      <div class="msg erro" id="eCad" hidden role="alert"></div>
+      <button class="btn">Criar loja e começar o teste grátis</button>
+    </form>
+    <form class="box form" id="fEnt" hidden>
+      <label>E-mail<input name="email" type="email" required autocomplete="email"></label>
+      <label>Senha<input name="senha" type="password" required autocomplete="current-password"></label>
+      <div class="msg erro" id="eEnt" hidden role="alert"></div>
+      <button class="btn">Entrar</button>
+      <p class="note">Esqueceu a senha? Fale com a CITshop pelo WhatsApp da CITmax que geramos uma senha provisória.</p>
+    </form>
+  </section>
+
+  <!-- Painel -->
+  <section id="vPainel" hidden>
+    <h1 id="pNome"></h1>
+    <p class="note" id="pLink"></p>
+
+    <div class="box status">
+      <div><span class="pill" id="pStatus"></span><p id="pStatusTxt" style="margin:8px 0 0"></p></div>
+      <button class="btn" id="assinar" hidden>Assinar R$ 49,90/mês</button>
+    </div>
+
+    <div class="box">
+      <div class="head" style="margin-bottom:12px"><h2 style="margin:0">Meus produtos</h2><button class="btn" id="novo">+ Novo produto</button></div>
+      <form class="form" id="fProd" hidden>
+        <h2 id="fProdTit">Novo produto</h2>
+        <label>Nome do produto<input name="nome" required maxlength="90" placeholder="Ex.: Vestido midi estampado"></label>
+        <div class="dois">
+          <label>Departamento<select name="dept" id="pDept" required></select></label>
+          <label>Preço (R$)<input name="preco" required inputmode="decimal" placeholder="89,90"></label>
+        </div>
+        <label>Preço antigo (R$) <small>opcional, para mostrar o desconto</small><input name="precoAntigo" inputmode="decimal" placeholder="129,90"></label>
+        <label>Descrição <small>tamanhos, cores, como entrega</small><textarea name="descricao" maxlength="1000"></textarea></label>
+        <div><b style="font-size:13px">Fotos</b> <small class="note">até 4, JPG ou PNG</small>
+          <div class="fotos" id="fotos" style="margin-top:8px"></div>
+          <input type="file" id="fArq" accept="image/jpeg,image/png,image/webp" multiple style="margin-top:8px">
+        </div>
+        <div class="msg erro" id="eProd" hidden role="alert"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="salvarProd">Salvar produto</button><button type="button" class="btn sec" id="cancProd">Cancelar</button></div>
+      </form>
+      <div class="lista" id="lista"></div>
+    </div>
+
+    <details class="box">
+      <summary style="font-weight:800;cursor:pointer;min-height:32px">Dados da loja</summary>
+      <form class="form" id="fLoja" style="margin-top:12px">
+        <div class="dois">
+          <label>Nome da loja<input name="nome" required maxlength="60"></label>
+          <label>Responsável<input name="responsavel" maxlength="80"></label>
+        </div>
+        <div class="dois">
+          <label>WhatsApp<input name="whatsapp" required inputmode="tel"></label>
+          <label>Cidade<input name="cidade" required maxlength="60"></label>
+        </div>
+        <label>O que a loja vende<input name="categoria" maxlength="60"></label>
+        <div class="msg" id="mLoja" hidden role="status"></div>
+        <button class="btn">Salvar dados</button>
+      </form>
+    </details>
+
+    <details class="box">
+      <summary style="font-weight:800;cursor:pointer;min-height:32px">Trocar senha</summary>
+      <form class="form" id="fSenha" style="margin-top:12px">
+        <div class="dois">
+          <label>Senha atual<input name="atual" type="password" required autocomplete="current-password"></label>
+          <label>Nova senha<input name="nova" type="password" required minlength="8" autocomplete="new-password"></label>
+        </div>
+        <div class="msg" id="mSenha" hidden role="status"></div>
+        <button class="btn">Trocar senha</button>
+      </form>
+    </details>
+  </section>
+</main>
+</body>
+</html>

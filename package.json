@@ -1,0 +1,19 @@
+{
+  "name": "citshop",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "CITshop: vitrine de afiliados e lojas da região, da CITmax.",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev": "node --env-file=.env servidor/servidor.js",
+    "start": "node servidor/servidor.js",
+    "teste": "node --test teste/*.test.js",
+    "senha": "node -e \"import('./servidor/seguranca.js').then(m=>console.log(m.gerarHashSenha(process.argv[1])))\""
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "multer": "^2.0.2",
+    "sharp": "^0.34.1"
+  }
+}

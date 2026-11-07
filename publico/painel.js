@@ -1,0 +1,185 @@
+// Painel da loja: cadastro, login, produtos com fotos, dados e assinatura.
+(() => {
+  const { DEPTS, D, esc, brl } = window.CIT;
+  const $ = (id) => document.getElementById(id);
+  let estado = null, editando = null, manter = [], novas = [];
+
+  async function api(url, { metodo = 'GET', json, form } = {}) {
+    const r = await fetch(url, {
+      method: metodo,
+      headers: json ? { 'Content-Type': 'application/json' } : undefined,
+      body: json ? JSON.stringify(json) : form,
+      credentials: 'same-origin',
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw Object.assign(new Error(d.erro ?? 'Não foi possível concluir. Tente de novo.'), { status: r.status });
+    return d;
+  }
+  const mostrarMsg = (el, texto, tipo = 'erro') => { el.textContent = texto; el.className = `msg ${tipo}`; el.hidden = !texto; };
+  const dados = (form) => Object.fromEntries(new FormData(form));
+  // `botao` pode vir nulo (envio pelo Enter em alguns navegadores): aí não há o que travar.
+  async function enviando(botao, fn) {
+    if (botao) botao.disabled = true;
+    try { await fn(); } finally { if (botao) botao.disabled = false; }
+  }
+
+  // ---------- entrar / cadastrar ----------
+  function aba(cad) {
+    $('abaCad').setAttribute('aria-pressed', cad); $('abaEnt').setAttribute('aria-pressed', !cad);
+    $('fCad').hidden = !cad; $('fEnt').hidden = cad;
+  }
+  $('abaCad').onclick = () => aba(true);
+  $('abaEnt').onclick = () => aba(false);
+
+  $('fCad').addEventListener('submit', (e) => {
+    e.preventDefault();
+    enviando(e.submitter, async () => {
+      try {
+        const d = dados(e.target);
+        mostrar(await api('/api/painel/cadastro', { metodo: 'POST', json: { ...d, aceite: e.target.aceite.checked } }));
+      } catch (err) { mostrarMsg($('eCad'), err.message); }
+    });
+  });
+  $('fEnt').addEventListener('submit', (e) => {
+    e.preventDefault();
+    enviando(e.submitter, async () => {
+      try { mostrar(await api('/api/painel/entrar', { metodo: 'POST', json: dados(e.target) })); }
+      catch (err) { mostrarMsg($('eEnt'), err.message); }
+    });
+  });
+  $('sair').onclick = async () => { await api('/api/painel/sair', { metodo: 'POST' }).catch(() => {}); location.href = '/painel'; };
+
+  // ---------- painel ----------
+  const TEXTO = {
+    teste: (s) => `Teste grátis: faltam ${s.diasTeste} ${s.diasTeste === 1 ? 'dia' : 'dias'}. Seus produtos estão na vitrine. Assine agora e a primeira cobrança só acontece quando o teste acabar.`,
+    ativa: () => 'Assinatura ativa. Seus produtos aparecem na vitrine, na frente dos afiliados.',
+    vencida: (s) => s.loja.assinatura?.status === 'pendente'
+      ? 'Estamos aguardando a confirmação do pagamento no Mercado Pago. Assim que confirmar, seus produtos voltam pra vitrine.'
+      : 'Seu teste acabou e seus produtos saíram da vitrine. Assine para voltar a aparecer.',
+    suspensa: () => 'Sua loja foi suspensa pela CITshop. Fale com a gente pelo WhatsApp da CITmax.',
+  };
+  const ROTULO = { teste: 'Teste grátis', ativa: 'Assinatura ativa', vencida: 'Fora da vitrine', suspensa: 'Suspensa' };
+
+  function mostrar(s) {
+    estado = s;
+    $('vAuth').hidden = true;
+    $('vPainel').hidden = false;
+    $('sair').hidden = false;
+    $('pNome').textContent = s.loja.nome;
+    $('pLink').innerHTML = `Sua página: <a href="/loja/${esc(s.loja.slug)}" target="_blank">${esc(location.host)}/loja/${esc(s.loja.slug)}</a>`;
+    $('pStatus').className = `pill ${s.status}`;
+    $('pStatus').textContent = ROTULO[s.status];
+    $('pStatusTxt').textContent = TEXTO[s.status](s);
+    $('assinar').hidden = s.status === 'ativa' || s.status === 'suspensa';
+    $('assinar').textContent = `Assinar ${brl.format(s.preco)}/mês`;
+    const f = $('fLoja');
+    for (const k of ['nome', 'responsavel', 'whatsapp', 'cidade', 'categoria']) f[k].value = s.loja[k] ?? '';
+    renderLista();
+  }
+
+  function renderLista() {
+    const ps = estado.produtos;
+    $('lista').innerHTML = ps.length ? ps.map((p) => `<div class="item ${p.ativo && !p.bloqueado ? '' : 'off'}">
+        <img src="${esc(p.fotos[0])}" alt="">
+        <div><b>${esc(p.nome)}</b><br><small class="note">${brl.format(p.preco)} · ${esc(D[p.dept]?.n ?? '')}${p.bloqueado ? ' · ocultado pela CITshop' : p.ativo ? '' : ' · pausado'}</small></div>
+        <div class="acoes">
+          <button class="btn sec" data-ed="${p.id}">Editar</button>
+          <button class="btn sec" data-at="${p.id}">${p.ativo ? 'Pausar' : 'Ativar'}</button>
+          <button class="btn perigo" data-del="${p.id}">Excluir</button>
+        </div></div>`).join('')
+      : '<p class="note" style="font-size:14px">Você ainda não publicou nenhum produto. Clique em <b>+ Novo produto</b> e tire as fotos pelo celular.</p>';
+  }
+
+  // ---------- formulário de produto ----------
+  $('pDept').innerHTML = '<option value="">Escolha…</option>' + DEPTS.map(([k, n]) => `<option value="${k}">${n}</option>`).join('');
+  function renderFotos() {
+    $('fotos').innerHTML = [
+      ...manter.map((u, i) => `<figure><img src="${esc(u)}" alt=""><button type="button" data-rm-m="${i}" aria-label="Remover foto">✕</button></figure>`),
+      ...novas.map((f, i) => `<figure><img src="${URL.createObjectURL(f)}" alt=""><button type="button" data-rm-n="${i}" aria-label="Remover foto">✕</button></figure>`),
+    ].join('');
+  }
+  function abrirForm(p) {
+    editando = p;
+    const f = $('fProd');
+    f.reset();
+    $('fProdTit').textContent = p ? 'Editar produto' : 'Novo produto';
+    if (p) for (const k of ['nome', 'dept', 'descricao']) f[k].value = p[k] ?? '';
+    if (p) { f.preco.value = String(p.preco).replace('.', ','); f.precoAntigo.value = p.precoAntigo ? String(p.precoAntigo).replace('.', ',') : ''; }
+    manter = p ? [...p.fotos] : [];
+    novas = [];
+    renderFotos();
+    mostrarMsg($('eProd'), '');
+    f.hidden = false;
+    f.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  $('novo').onclick = () => abrirForm(null);
+  $('cancProd').onclick = () => { $('fProd').hidden = true; };
+  $('fArq').addEventListener('change', (e) => {
+    novas.push(...e.target.files);
+    if (manter.length + novas.length > 4) { novas = novas.slice(0, 4 - manter.length); mostrarMsg($('eProd'), 'Use no máximo 4 fotos.'); }
+    e.target.value = '';
+    renderFotos();
+  });
+  $('fotos').addEventListener('click', (e) => {
+    const m = e.target.dataset.rmM, n = e.target.dataset.rmN;
+    if (m !== undefined) manter.splice(Number(m), 1);
+    if (n !== undefined) novas.splice(Number(n), 1);
+    renderFotos();
+  });
+  $('fProd').addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (!manter.length && !novas.length) return mostrarMsg($('eProd'), 'Adicione pelo menos uma foto.');
+    enviando($('salvarProd'), async () => {
+      const fd = new FormData();
+      for (const [k, v] of Object.entries(dados(e.target))) fd.append(k, v);
+      fd.append('manter', JSON.stringify(manter));
+      for (const f of novas) fd.append('fotos', f);
+      try {
+        await api(editando ? `/api/painel/produtos/${editando.id}` : '/api/painel/produtos', { metodo: editando ? 'PUT' : 'POST', form: fd });
+        $('fProd').hidden = true;
+        mostrar(await api('/api/painel/eu'));
+      } catch (err) { mostrarMsg($('eProd'), err.message); }
+    });
+  });
+
+  $('lista').addEventListener('click', async (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    const p = estado.produtos.find((x) => x.id === (b.dataset.ed ?? b.dataset.at ?? b.dataset.del));
+    if (!p) return;
+    try {
+      if (b.dataset.ed) return abrirForm(p);
+      if (b.dataset.at) await api(`/api/painel/produtos/${p.id}`, { metodo: 'PATCH', json: { ativo: !p.ativo } });
+      if (b.dataset.del) {
+        if (!confirm(`Excluir "${p.nome}"? Isso não pode ser desfeito.`)) return;
+        await api(`/api/painel/produtos/${p.id}`, { metodo: 'DELETE' });
+      }
+      mostrar(await api('/api/painel/eu'));
+    } catch (err) { alert(err.message); }
+  });
+
+  $('fLoja').addEventListener('submit', (e) => {
+    e.preventDefault();
+    enviando(e.submitter, async () => {
+      try { mostrar(await api('/api/painel/loja', { metodo: 'PUT', json: dados(e.target) })); mostrarMsg($('mLoja'), 'Dados salvos.', 'ok'); }
+      catch (err) { mostrarMsg($('mLoja'), err.message); }
+    });
+  });
+  $('fSenha').addEventListener('submit', (e) => {
+    e.preventDefault();
+    enviando(e.submitter, async () => {
+      try { await api('/api/painel/senha', { metodo: 'POST', json: dados(e.target) }); e.target.reset(); mostrarMsg($('mSenha'), 'Senha trocada.', 'ok'); }
+      catch (err) { mostrarMsg($('mSenha'), err.message); }
+    });
+  });
+  $('assinar').onclick = () => enviando($('assinar'), async () => {
+    try { location.href = (await api('/api/painel/assinar', { metodo: 'POST' })).url; }
+    catch (err) { alert(err.message); }
+  });
+
+  // ---------- início ----------
+  const retorno = new URLSearchParams(location.search).has('assinatura');
+  api(`/api/painel/eu${retorno ? '?atualizar=1' : ''}`)
+    .then((s) => { mostrar(s); if (retorno) history.replaceState(null, '', '/painel'); })
+    .catch(() => { $('vAuth').hidden = false; });
+})();

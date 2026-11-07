@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CITshop · ofertas e lojas da sua cidade</title>
+<meta name="description" content="Ofertas da Amazon, Shopee e Mercado Livre e as lojas da sua cidade num lugar só. Um serviço da CITmax.">
+<meta property="og:title" content="CITshop · ofertas e lojas da sua cidade">
+<meta property="og:description" content="Ofertas das grandes lojas e das lojas da sua cidade num lugar só.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#036271">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 30'%3E%3Cpath fill='%23008B87' d='M13 0 26 7.5v15L13 30 0 22.5v-15z'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400..800&display=swap">
+<link rel="stylesheet" href="/estilo.css">
+<script src="/comum.js" defer></script>
+<script src="/vitrine.js" defer></script>
+</head>
+<body>
+<div class="topline"><div class="wrap">
+  <span><b>Ofertas atualizadas 3x ao dia</b> nas maiores lojas do Brasil</span>
+  <span>Lojas da sua cidade vendendo aqui também</span>
+  <span>Um serviço da <b>CITmax</b></span>
+</div></div>
+
+<header class="site">
+  <div class="wrap bar">
+    <a class="logo" href="/" aria-label="CITshop, página inicial"><i></i>CIT<span>shop</span></a>
+    <form class="search" id="sf" role="search">
+      <select id="sdept" aria-label="Departamento"><option value="">Todos</option></select>
+      <input id="q" type="search" placeholder="O que você procura hoje?" aria-label="Buscar produtos">
+      <button aria-label="Buscar"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" style="stroke-width:2.4"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
+    </form>
+    <a class="sell" href="/painel"><svg class="ic" width="22" height="22" viewBox="0 0 64 64"><path d="M8 26l4-14h40l4 14M8 26h48v28H8zM24 54V38h16v16"/></svg><span class="t"><b>Venda aqui</b>30 dias grátis</span></a>
+  </div>
+  <nav class="nav" aria-label="Departamentos">
+    <div class="wrap" id="navlinks">
+      <button class="all" id="allbtn" aria-expanded="false"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" style="stroke-width:2.4"><path d="M4 7h16M4 12h16M4 17h16"/></svg>Todos os departamentos</button>
+      <a class="bf" href="https://www.amazon.com.br/blackfriday?&linkCode=ll2&tag=citshop-20&linkId=19fc97704e392c8b7ad573364830ea50&ref_=as_li_ss_tl" target="_blank" rel="sponsored nofollow noopener">Black Friday</a>
+      <button data-show="local">Lojas da região</button>
+    </div>
+    <div class="mega" id="mega" hidden><div class="wrap" id="megalist"></div></div>
+  </nav>
+</header>
+
+<main>
+  <div id="homeview">
+    <div class="wrap hero"><div class="slides" id="slides" aria-roledescription="carrossel"></div></div>
+
+    <div class="wrap trust">
+      <div><svg class="ic" viewBox="0 0 64 64"><path d="M32 6l20 8v16c0 14-9 22-20 28-11-6-20-14-20-28V14z"/><path d="M22 32l7 7 13-14"/></svg><span><b>Compra segura</b>Pagamento na loja que vende</span></div>
+      <div><svg class="ic" viewBox="0 0 64 64"><path d="M6 18h32v24H6zM38 26h12l8 8v8H38z"/><circle cx="16" cy="46" r="5"/><circle cx="48" cy="46" r="5"/></svg><span><b>Entrega ou retirada</b>Lojas locais entregam na cidade</span></div>
+      <div><svg class="ic" viewBox="0 0 64 64"><circle cx="32" cy="32" r="24"/><path d="M32 18v14l9 6"/></svg><span><b>Preços conferidos</b>Afiliados atualizados 3x ao dia</span></div>
+      <div><svg class="ic" viewBox="0 0 64 64"><path d="M10 50l3-10a22 22 0 1 1 8 7z"/></svg><span><b>Fale com a loja</b>Pedido direto no WhatsApp</span></div>
+    </div>
+
+    <section class="wrap block">
+      <div class="head"><h2>Departamentos</h2><button class="more" data-open-mega>Ver todos</button></div>
+      <div class="depts" id="depts"></div>
+    </section>
+
+    <section class="wrap block">
+      <div class="head"><h2>Lojas da região</h2><button class="more" data-show="local">Ver produtos</button></div>
+      <div class="sellers" id="sellers"></div>
+    </section>
+
+    <section class="wrap block" data-rail="local">
+      <div class="head"><h2>Achados das lojas locais</h2><button class="more" data-show="local">Ver todos</button></div>
+      <div class="rail"><div class="track" id="r-local"></div></div>
+    </section>
+
+    <section class="wrap block" data-rail="ofertas">
+      <div class="head"><h2>Maiores descontos</h2><button class="more" data-show="ofertas">Ver todos</button></div>
+      <div class="rail"><div class="track" id="r-ofertas"></div></div>
+    </section>
+
+    <section class="wrap block">
+      <div class="duo">
+        <button class="promo" data-dept="cozinha"><span><h3>Cozinha completa</h3><p>Air fryer, panelas e eletroportáteis</p></span><svg class="ic" viewBox="0 0 64 64"></svg></button>
+        <button class="promo alt" data-dept="brinq"><span><h3>Natal antecipado</h3><p>Brinquedos e presentes pra família toda</p></span><svg class="ic" viewBox="0 0 64 64"></svg></button>
+      </div>
+    </section>
+
+    <section class="wrap block" data-rail="ate100">
+      <div class="head"><h2>Tudo até R$ 100</h2><button class="more" data-show="ate100">Ver todos</button></div>
+      <div class="rail"><div class="track" id="r-ate100"></div></div>
+    </section>
+
+    <section class="wrap block" data-rail="casa">
+      <div class="head"><h2>Casa, cozinha e eletro</h2><button class="more" data-show="casa">Ver todos</button></div>
+      <div class="rail"><div class="track" id="r-casa"></div></div>
+    </section>
+
+    <section class="wrap block" data-rail="tech">
+      <div class="head"><h2>Tecnologia</h2><button class="more" data-show="tech">Ver todos</button></div>
+      <div class="rail"><div class="track" id="r-tech"></div></div>
+    </section>
+
+    <section class="wrap block" data-rail="moda">
+      <div class="head"><h2>Moda e beleza</h2><button class="more" data-show="moda">Ver todos</button></div>
+      <div class="rail"><div class="track" id="r-moda"></div></div>
+    </section>
+
+    <section class="wrap block">
+      <div class="sellbox">
+        <div><h2>Tem uma loja? Venda na CITshop</h2><p>Coloque seus produtos na vitrine, na frente das grandes lojas. O cliente da sua cidade encontra, chama no seu WhatsApp e compra com você. 30 dias grátis, depois R$ 49,90 por mês.</p><a class="btn" href="/painel">Quero vender aqui →</a></div>
+        <div class="steps">
+          <div class="step"><span>1</span><b>Cadastre a loja</b><small>Nome, WhatsApp e cidade. Leva 2 minutos.</small></div>
+          <div class="step"><span>2</span><b>Publique produtos</b><small>Foto, preço e descrição pelo celular.</small></div>
+          <div class="step"><span>3</span><b>Receba pedidos</b><small>O cliente fala direto com você no WhatsApp.</small></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap block">
+      <div class="head"><h2>Compre por loja</h2></div>
+      <div class="stores">
+        <button class="storecard" data-m="local" data-show="local"><b>Lojas da região</b><span>Compre perto, receba rápido</span></button>
+        <button class="storecard" data-m="amazon" data-store="amazon"><b>Amazon</b><span>Direto no carrinho</span></button>
+        <button class="storecard" data-m="shopee" data-store="shopee"><b>Shopee</b><span>Achadinhos com frete grátis</span></button>
+        <button class="storecard" data-m="ml" data-store="ml"><b>Mercado Livre</b><span>Compra garantida</span></button>
+      </div>
+    </section>
+  </div>
+
+  <section class="wrap block" id="resultsview" hidden>
+    <div class="head"><h2 id="rtitle">Resultados</h2><button class="back" id="back">← Voltar ao início</button></div>
+    <div id="rhead"></div>
+    <div class="chips" id="storechips"></div>
+    <div class="results-grid" id="rgrid"></div>
+  </section>
+</main>
+
+<footer class="site">
+  <div class="wrap cols">
+    <div><a class="logo" href="/"><i></i>CIT<span>shop</span></a><p>Ofertas da Amazon, Shopee e Mercado Livre e as lojas da sua cidade num lugar só.</p></div>
+    <div><h4>Departamentos</h4><ul id="fdepts"></ul></div>
+    <div><h4>Venda na CITshop</h4><ul><li><a href="/painel">Cadastre sua loja</a></li><li><a href="/painel">Entrar no painel</a></li><li><a href="/termos">Termos para lojas</a></li></ul></div>
+    <div><h4>CITmax</h4><ul><li>Internet fibra</li><li>CITtv</li><li>CITmóvel</li></ul></div>
+  </div>
+  <div class="wrap legal">O CITshop participa dos programas de afiliados da Amazon, Shopee e Mercado Livre e pode receber comissão pelas compras feitas pelos links, sem custo extra pra você. Produtos de lojas da região são vendidos e entregues pela própria loja. Preços e estoque podem mudar.</div>
+</footer>
+
+<div class="modal" id="modal" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mt">
+    <div class="gal"><div class="shot" id="mshot"></div><div class="thumbs" id="mthumbs"></div></div>
+    <div class="info">
+      <button class="x" id="mx" aria-label="Fechar">✕</button>
+      <span class="store" id="mstore" style="position:static;align-self:flex-start"></span>
+      <h3 id="mt"></h3>
+      <div class="rate" id="mrate"></div>
+      <div class="old" id="mold"></div>
+      <div class="price" id="mprice"></div>
+      <div class="save" id="msave"></div>
+      <p class="desc" id="mdesc"></p>
+      <a class="buybtn" id="mbuy" target="_blank"></a>
+      <a class="zapbtn" id="mzap" target="_blank" rel="noopener"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" style="stroke-width:2"><path d="M4 20l1.3-4A8 8 0 1 1 8 19z"/></svg>Mandar pra um amigo</a>
+      <p class="note" id="mnote"></p>
+    </div>
+  </div>
+</div>
+</body>
+</html>

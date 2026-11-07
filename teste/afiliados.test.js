@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { deShopee, marcarQuedas, carrinhoAmazon } from './atualizar.mjs';
+import { deShopee, marcarQuedas, carrinhoAmazon } from '../servidor/afiliados.js';
 
 test('monta link de carrinho da Amazon com a tag', () => {
   assert.equal(

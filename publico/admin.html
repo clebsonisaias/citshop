@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Administração · CITshop</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400..800&display=swap">
+<link rel="stylesheet" href="/estilo.css">
+<script src="/comum.js" defer></script>
+<script src="/admin.js" defer></script>
+</head>
+<body>
+<header class="site"><div class="wrap bar" style="grid-template-columns:auto 1fr auto">
+  <a class="logo" href="/"><i></i>CIT<span>shop</span></a><span></span>
+  <button class="btn sec" id="sair" hidden style="color:#FFFFFF;border-color:rgba(255,255,255,.4)">Sair</button>
+</div></header>
+<main class="pg" style="max-width:1200px">
+  <form class="box form" id="fEnt" hidden style="max-width:420px">
+    <h2>Administração</h2>
+    <label>Senha<input name="senha" type="password" required autocomplete="current-password"></label>
+    <div class="msg erro" id="eEnt" hidden role="alert"></div>
+    <button class="btn">Entrar</button>
+  </form>
+  <section id="vAdm" hidden>
+    <h1>Lojas</h1>
+    <p class="note" id="resumo"></p>
+    <div class="msg ok" id="aviso" hidden role="status"></div>
+    <div class="box rolar">
+      <table class="tabela">
+        <thead><tr><th>Loja</th><th>Contato</th><th>Status</th><th>Produtos</th><th>Ações</th></tr></thead>
+        <tbody id="linhas"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+</body>
+</html>
