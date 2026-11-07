@@ -1,5 +1,5 @@
 {
-  "atualizadoEm": "2026-11-06T23:49:08.085Z",
+  "atualizadoEm": "2026-11-07T00:39:36.206Z",
   "produtos": [
     {
       "id": "ml-airfryer-exemplo",
@@ -33,7 +33,7 @@
       "precoAntigo": 79.9,
       "nota": 4.7,
       "imagem": "",
-      "link": "https://www.amazon.com.br/gp/aws/cart/add.html?ASIN.1=B000000000&Quantity.1=1&AssociateTag=teste-20"
+      "link": "https://www.amazon.com.br/gp/aws/cart/add.html?ASIN.1=B000000000&Quantity.1=1&AssociateTag=citshop-20"
     }
   ]
 }
