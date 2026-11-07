@@ -300,6 +300,21 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     res.json({ url: pa.initPoint });
   }));
 
+  // Relê no MP o status de toda assinatura conhecida. Roda a cada 6h (servidor.js) e cobre o caso
+  // de o token ser compartilhado com outro sistema cujo webhook não aponta para cá.
+  async function sincronizarAssinaturas() {
+    if (!mp.configurado) return 0;
+    let mudou = 0;
+    for (const loja of banco.lojas.filter((l) => l.assinatura?.preapprovalId)) {
+      try {
+        const status = statusDoMp((await mp.consultarPreapproval(loja.assinatura.preapprovalId)).status);
+        if (status !== loja.assinatura.status) { loja.assinatura = { ...loja.assinatura, status, atualizadaEm: iso() }; mudou++; }
+      } catch (e) { log.warn?.(`[mp] ${loja.slug}: ${e.message}`); }
+    }
+    if (mudou) banco.salvar();
+    return mudou;
+  }
+
   // O webhook só avisa que algo mudou; o status real é relido na API do Mercado Pago.
   app.post("/webhook/mercadopago", a(async (req, res) => {
     const dataId = String(req.query["data.id"] ?? req.body?.data?.id ?? "");
@@ -381,5 +396,5 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     erro(res, 500, "Algo deu errado do nosso lado. Tente de novo.");
   });
 
-  return { app, banco, dadosDir };
+  return { app, banco, dadosDir, sincronizarAssinaturas };
 }

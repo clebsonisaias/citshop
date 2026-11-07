@@ -31,7 +31,7 @@ test("ordenarVitrine põe lojas locais antes dos afiliados e mantém a ordem", (
 });
 
 // ---------- fluxo completo com servidor real ----------
-let dir, servidor, base, relogio, lojaId;
+let dir, servidor, base, relogio, lojaId, sincronizar, statusMp = "authorized";
 const SEGREDO_WEBHOOK = "segredo-do-webhook";
 
 before(async () => {
@@ -41,11 +41,12 @@ before(async () => {
   // Mercado Pago falso: cria e consulta preapproval sem rede.
   const fetchImpl = async (url, init) => (init?.method === "POST"
     ? Response.json({ id: "pa-1", init_point: "https://mp.test/checkout" })
-    : Response.json({ id: "pa-1", status: "authorized", external_reference: lojaId }));
-  const { app } = criarApp({
+    : Response.json({ id: "pa-1", status: statusMp, external_reference: lojaId }));
+  const { app, sincronizarAssinaturas } = criarApp({
     env: { SESSAO_SEGREDO: "x".repeat(40), DADOS_DIR: dir, ADMIN_SENHA_HASH: gerarHashSenha("admin123"), MP_ACCESS_TOKEN: "teste", MP_WEBHOOK_SECRET: SEGREDO_WEBHOOK },
     log: {}, agora: () => relogio, fetchImpl,
   });
+  sincronizar = sincronizarAssinaturas;
   await new Promise((ok) => { servidor = app.listen(0, ok); });
   base = `http://127.0.0.1:${servidor.address().port}`;
 });
@@ -117,6 +118,14 @@ test("loja se cadastra, publica com foto, aparece antes dos afiliados, some ao v
   v = await (await req("/api/vitrine")).json();
   assert.equal(v.produtos[0].loja, "local");
   assert.equal((await (await req("/api/painel/eu", { cookie })).json()).status, "ativa");
+
+  // Sem webhook: a sincronização periódica percebe o cancelamento e tira a loja da vitrine.
+  statusMp = "cancelled";
+  assert.equal(await sincronizar(), 1);
+  v = await (await req("/api/vitrine")).json();
+  assert.deepEqual(v.produtos.map((p) => p.loja), ["amazon"]);
+  statusMp = "authorized";
+  assert.equal(await sincronizar(), 1);
 });
 
 test("login confere senha; escrita vinda de outro site é recusada", async () => {
