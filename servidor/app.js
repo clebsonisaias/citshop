@@ -349,8 +349,9 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   app.use("/api", (req, res) => erro(res, 404, "Rota não encontrada."));
   app.use((req, res) => res.status(404).sendFile(join(publico, "404.html")));
   app.use((err, req, res, _next) => {
-    if (err.status === 400) return erro(res, 400, err.message);
     if (err.type === "entity.parse.failed") return erro(res, 400, "Dados inválidos.");
+    if (err.status === 404) return erro(res, 404, "Não encontrado."); // ex.: foto apagada em /uploads
+    if (err.status >= 400 && err.status < 500) return erro(res, err.status, err.message);
     log.error?.(`[erro] ${req.method} ${req.path}: ${err.stack ?? err.message}`);
     erro(res, 500, "Algo deu errado do nosso lado. Tente de novo.");
   });
