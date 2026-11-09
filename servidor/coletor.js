@@ -4,6 +4,8 @@
  *    Cada oferta já traz o long_link, que é o link de afiliado (utm_source=an_<ID de afiliado>).
  *  - Amazon: lê as páginas de mais vendidos e a busca de dispositivos Alexa, e monta o link com AMAZON_TAG.
  * Grava coleta.json no volume e refaz afiliados.json. Se uma loja falhar, mantém os produtos dela da rodada anterior.
+ * Guarda também historico.json (um preço por produto por dia, 30 dias) para marcar "baixou de preço" e
+ * "menor preço em 30 dias" só com base no que foi visto de verdade.
  * Quando a SHOPEE_APP_ID existir, a Shopee passa a vir da API oficial (afiliados.js) e esta parte é pulada.
  */
 import { readFile, writeFile, rename } from "node:fs/promises";
@@ -15,16 +17,20 @@ const SHOPEE_LISTA = "https://affiliate.shopee.com.br/api/v3/offer/product/list"
 const SHOPEE_PAGINAS = 3; // 3 x 50 = até 150 ofertas
 const SHOPEE_IMG = "https://down-bs-br.img.susercontent.com/";
 
+// [departamento, página de mais vendidos, digital]. eBook Kindle não entra no carrinho: vai sem ASIN, com link pro produto.
 const AMAZON_MAIS_VENDIDOS = [
   ["cozinha", "kitchen"], ["casa", "home"], ["tec", "electronics"], ["info", "computers"], ["eletro", "appliances"],
-  ["beleza", "beauty"], ["pets", "pet-products"], ["ferr", "hi"], ["brinq", "toys"], ["brinq", "baby"],
-  ["esporte", "sports"], ["auto", "automotive"], ["moda", "fashion"], ["papel", "office-products"], ["tec", "videogames"],
+  ["beleza", "beauty"], ["pets", "pet-products"], ["ferr", "hi"], ["brinq", "toys"], ["bebe", "baby"],
+  ["esporte", "sports"], ["auto", "automotive"], ["moda", "fashion"], ["papel", "office-products"], ["games", "videogames"],
+  ["livros", "books"], ["livros", "digital-text", true], ["saude", "hpc"], ["mercado", "grocery"],
 ];
 const AMAZON_POR_CATEGORIA = 20;
 const AMAZON_DISPOSITIVOS = "https://www.amazon.com.br/gp/bestsellers/amazon-devices";
 const AMAZON_ALEXA = "https://www.amazon.com.br/s?k=echo+alexa&i=amazon-devices";
 
 const REGRAS = [
+  ["livros", /\blivros?\b|\bebook\b/],
+  ["games", /playstation|\bps[45]\b|xbox|nintendo|switch 2|controle gamer|videogame/],
   ["pets", /\bpet\b|gatos?\b|caes|cachorro|racao/],
   ["auto", /automotiv|carro|pneu|carenagem|capacete|vonixx|v-floc|calibrador|compressor|bomba de ar|moto\b|motocicleta/],
   ["ferr", /parafusadeira|furadeira|chave|ferramenta|soquete|soprador|motosserra|lavadora|esmerilhadeira/],
@@ -153,8 +159,11 @@ async function coletarAmazon(tag, fetchImpl, log) {
     try { alexa = lerBusca(await html(AMAZON_ALEXA, fetchImpl), tag); } catch (e) { log.warn(`[coletor] Alexa: ${e.message}`); }
   }
   produtos.push(...alexa);
-  for (const [cat, slug] of AMAZON_MAIS_VENDIDOS) {
-    try { produtos.push(...lerMaisVendidos(await html(`https://www.amazon.com.br/gp/bestsellers/${slug}`, fetchImpl), cat, tag)); }
+  for (const [cat, slug, digital] of AMAZON_MAIS_VENDIDOS) {
+    try {
+      const lista = lerMaisVendidos(await html(`https://www.amazon.com.br/gp/bestsellers/${slug}`, fetchImpl), cat, tag);
+      produtos.push(...(digital ? lista.map(comoEbook) : lista));
+    }
     catch (e) { log.warn(`[coletor] Amazon ${slug}: ${e.message}`); }
     await new Promise((r) => setTimeout(r, 1500));
   }
@@ -164,8 +173,45 @@ async function coletarAmazon(tag, fetchImpl, log) {
   return unicos;
 }
 
+// eBook Kindle: sem ASIN o afiliados.js não troca o link pelo carrinho (que não aceita eBook).
+export function comoEbook({ asin, ...p }) {
+  return { ...p, nome: /kindle|ebook/i.test(p.nome) ? p.nome : `${p.nome} (eBook Kindle)` };
+}
+
+// ---------- Histórico de preço ----------
+const DIAS_HISTORICO = 30;
+const QUEDA_MINIMA = 0.03; // menos de 3% é oscilação, não vira selo
+const diaDe = (t) => new Date(t).toISOString().slice(0, 10);
+
+/**
+ * Grava o preço de hoje de cada produto (um por dia, o último vale) e marca:
+ * - queda: quanto caiu em relação ao maior preço dos 7 dias anteriores;
+ * - menor30: menor preço dos últimos 30 dias, depois de ter estado pelo menos 3% mais caro.
+ * Sem dia anterior registrado, não marca nada: desconto só com histórico de verdade.
+ */
+export function aplicarHistorico(produtos, historico = {}, agora = Date.now()) {
+  const hoje = diaDe(agora), corte30 = diaDe(agora - DIAS_HISTORICO * 86_400_000), corte7 = diaDe(agora - 7 * 86_400_000);
+  const novo = {};
+  for (const [id, lista] of Object.entries(historico)) {
+    const dentro = (Array.isArray(lista) ? lista : []).filter(([d]) => d >= corte30);
+    if (dentro.length) novo[id] = dentro;
+  }
+  const marcados = produtos.map(({ queda, menor30, ...p }) => {
+    const antes = (novo[p.id] ?? []).filter(([d]) => d < hoje);
+    novo[p.id] = [...antes, [hoje, p.preco]];
+    if (!antes.length) return p;
+    const max7 = Math.max(0, ...antes.filter(([d]) => d >= corte7).map(([, v]) => v));
+    const precos = antes.map(([, v]) => v);
+    const marca = {};
+    if (max7 > p.preco * (1 + QUEDA_MINIMA)) marca.queda = Math.round((max7 - p.preco) * 100) / 100;
+    if (p.preco <= Math.min(...precos) && Math.max(...precos) > p.preco * (1 + QUEDA_MINIMA)) marca.menor30 = true;
+    return { ...p, ...marca };
+  });
+  return { produtos: marcados, historico: novo };
+}
+
 /** Uma rodada. Nunca lança: o resultado (e os erros) vão para coleta-status.json. */
-export async function rodarColeta({ env, dadosDir, manual, fetchImpl = fetch, log = console }) {
+export async function rodarColeta({ env, dadosDir, manual, fetchImpl = fetch, log = console, agora = Date.now }) {
   const arq = join(dadosDir, "coleta.json");
   let anterior = [];
   try { anterior = JSON.parse(await readFile(arq, "utf8")).produtos ?? []; } catch { /* primeira rodada */ }
@@ -185,8 +231,14 @@ export async function rodarColeta({ env, dadosDir, manual, fetchImpl = fetch, lo
   catch (e) { status.erros.push(`Amazon: ${e.message}`); }
 
   const outros = anterior.filter((p) => p.loja !== "shopee" && p.loja !== "amazon");
-  const produtos = [...amazon.filter((p) => p.destaque), ...shopee, ...amazon.filter((p) => !p.destaque), ...outros];
+  const juntos = [...amazon.filter((p) => p.destaque), ...shopee, ...amazon.filter((p) => !p.destaque), ...outros];
+  const arqHist = join(dadosDir, "historico.json");
+  let historico = {};
+  try { historico = JSON.parse(await readFile(arqHist, "utf8")); } catch { /* primeira rodada */ }
+  const { produtos, historico: novoHistorico } = aplicarHistorico(juntos, historico, agora());
   if (produtos.length) {
+    await writeFile(arqHist + ".tmp", JSON.stringify(novoHistorico));
+    await rename(arqHist + ".tmp", arqHist);
     await writeFile(arq + ".tmp", JSON.stringify({ atualizadoEm: status.ultimaTentativa, produtos }));
     await rename(arq + ".tmp", arq);
   }

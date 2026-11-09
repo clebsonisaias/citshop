@@ -7,7 +7,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "
 import { join } from "node:path";
 
 export const DIAS_TESTE = 30;
-export const DEPTS = ["tec", "cel", "info", "eletro", "cozinha", "casa", "cama", "moda", "calc", "beleza", "brinq", "esporte", "ferr", "auto", "pets", "papel"];
+export const DEPTS = ["tec", "cel", "info", "eletro", "cozinha", "casa", "cama", "moda", "calc", "beleza", "brinq", "esporte", "ferr", "auto", "pets", "papel", "livros", "games", "bebe", "saude", "mercado"];
 
 export class Banco {
   constructor(dir) {

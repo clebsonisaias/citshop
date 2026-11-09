@@ -176,7 +176,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     id: x.id, nome: x.nome, dept: DEPTS.includes(x.categoria) ? x.categoria : "casa", loja: x.loja,
     preco: x.preco, precoAntigo: x.precoAntigo, nota: x.nota ?? 0, vendidos: x.vendidos ?? 0,
     fotos: x.imagem ? [x.imagem] : [], link: x.link, queda: x.queda, atualizadoEm: x.atualizadoEm ?? null,
-    destaque: x.destaque === true,
+    destaque: x.destaque === true, menor30: x.menor30 === true, fixo: x.fixo === true,
   });
 
   // A vitrine pública inteira; usada pela API e pela página de produto (/p/:id).
@@ -513,6 +513,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   const semCache = (res) => res.setHeader("Cache-Control", "no-cache");
   app.use(express.static(publico, { extensions: ["html"], setHeaders: semCache }));
   app.get("/loja/:slug", (req, res) => { semCache(res); res.sendFile(join(publico, "index.html")); });
+  app.get("/black-friday", (req, res) => { semCache(res); res.sendFile(join(publico, "index.html")); });
 
   // Página de produto com prévia no WhatsApp: a mesma vitrine, com título, descrição e foto do produto no <head>.
   const PAGINA = readFileSync(join(publico, "index.html"), "utf8");
