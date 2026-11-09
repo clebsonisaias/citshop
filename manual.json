@@ -10,5 +10,17 @@
     "nota": 4.2,
     "imagem": "https://m.media-amazon.com/images/I/81PghVbGE6L._AC_SL1500_.jpg",
     "link": "https://www.amazon.com.br/dp/B0H3Q1RHD7?tag=citshop-20"
+  },
+  {
+    "id": "amazon-B0DHW6MKFG",
+    "nome": "A loja container: a história da Red Nut (eBook Kindle), de Adson Andrade",
+    "loja": "amazon",
+    "categoria": "livros",
+    "preco": 19.9,
+    "precoAntigo": null,
+    "nota": 0,
+    "fixo": true,
+    "imagem": "https://m.media-amazon.com/images/I/71HD4NpP5TL._AC_SL500_.jpg",
+    "link": "https://www.amazon.com.br/dp/B0DHW6MKFG?tag=citshop-20"
   }
 ]
