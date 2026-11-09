@@ -133,6 +133,8 @@ const AMAZON_POR_PAGINA = 25;
 const AMAZON_POR_RODADA = 35; // páginas por rodada; o coletor roda a cada 4h, então o catálogo todo gira em ~16h
 const AMAZON_BLOQUEIOS_SEGUIDOS = 3; // a Amazon bloqueou 3 seguidas: para a rodada e tenta o resto na próxima
 const AMAZON_DISPOSITIVOS = "https://www.amazon.com.br/gp/bestsellers/amazon-devices";
+// Ofertas do Dia (pública): traz o preço "De" de verdade, que as listas de mais vendidos não mostram.
+const AMAZON_OFERTAS = "https://www.amazon.com.br/gp/goldbox";
 const AMAZON_ALEXA = "https://www.amazon.com.br/s?k=echo+alexa&i=amazon-devices";
 
 const REGRAS = [
@@ -249,11 +251,30 @@ export function lerBusca(t, tag, cat = null, limite = 12) {
       ?? (bloco.match(/<img[^>]+alt="([^"]{5,})"/) || [])[1] ?? "");
     const img = (bloco.match(/\/images\/I\/([A-Za-z0-9+_-]+)\./) || [])[1];
     const valor = preco((bloco.match(/class="a-offscreen">R\$(?:\s|&nbsp;)?([\d.]+,\d{2})/) || [])[1] ?? "");
+    const antes = preco((bloco.match(/a-text-price[^>]*>\s*<span class="a-offscreen">R\$(?:\s|&nbsp;)?([\d.]+,\d{2})/) || [])[1] ?? "");
     const nota = Number(((bloco.match(/(\d,\d) de 5 estrelas/) || [])[1] ?? "0").replace(",", "."));
     if (!asin || !nome || !valor) continue;
-    if (cat) out.push(deAmazon(asin, nome, valor, nota, img, cat, tag));
+    if (cat) out.push({ ...deAmazon(asin, nome, valor, nota, img, cat, tag), precoAntigo: antes > valor && antes < valor * 5 ? antes : null });
     else if (/echo|alexa|kindle|fire tv|ring/i.test(nome)) out.push(deAmazon(asin, nome, valor, nota, img, "tec", tag, true));
     if (out.length >= limite) break;
+  }
+  return out;
+}
+
+/** Ofertas do Dia: cada card traz o preço com desconto e o "De" riscado. Sem o "De", não é oferta. */
+export function lerOfertas(t, tag) {
+  const out = [];
+  for (const bruto of t.split(/class="a-cardui dcl-product\b/).slice(1)) {
+    const fim = bruto.indexOf("dcl-product-wrapper");
+    const b = fim > 0 ? bruto.slice(0, fim) : bruto;
+    const asin = (b.match(/\/dp\/([A-Z0-9]{10})/) || [])[1];
+    const nome = decodificar(((b.match(/dcl-product-label[^>]*>([\s\S]*?)<\/span>/) || [])[1] ?? "").replace(/<[^>]+>/g, ""));
+    const img = (b.match(/\/images\/I\/([A-Za-z0-9+_-]+)\./) || [])[1];
+    const valor = preco((b.match(/dcl-product-price-new[\s\S]*?a-offscreen">R\$(?:\s|&nbsp;)?([\d.]+,\d{2})/) || [])[1] ?? "");
+    const antes = preco((b.match(/dcl-product-price-old[\s\S]*?a-offscreen">R\$(?:\s|&nbsp;)?([\d.]+,\d{2})/) || [])[1] ?? "");
+    if (asin && nome.length >= 5 && valor && antes > valor) {
+      out.push({ ...deAmazon(asin, nome, valor, 0, img, categoria(nome), tag), precoAntigo: antes, oferta: true });
+    }
   }
   return out;
 }
@@ -281,6 +302,13 @@ async function coletarAmazon(tag, fetchImpl, log, anteriores = [], { cursor = 0,
   if (alexa.length < 3) alexa = anteriores.filter((p) => p.destaque);
   produtos.push(...alexa);
 
+  // Ofertas do Dia: se a página falhar, valem as da rodada anterior.
+  let ofertas = [];
+  try { ofertas = lerOfertas(await html(AMAZON_OFERTAS, fetchImpl), tag); }
+  catch (e) { log.warn(`[coletor] Ofertas do Dia: ${e.message}`); }
+  if (ofertas.length < 5) ofertas = anteriores.filter((p) => p.oferta).map((p) => ({ ...p, fonte: undefined }));
+  const emOferta = new Map(ofertas.map((p) => [p.id, p]));
+
   const total = fontes.length;
   const novos = new Map(); // caminho -> produtos desta rodada
   let visitadas = 0, seguidos = 0, bloqueadas = 0;
@@ -302,10 +330,18 @@ async function coletarAmazon(tag, fetchImpl, log, anteriores = [], { cursor = 0,
   const conhecidas = new Set(fontes.map((f) => f.caminho));
   for (const f of fontes) produtos.push(...(novos.get(f.caminho) ?? anteriores.filter((p) => p.fonte === f.caminho)));
   const comFonte = new Set(produtos.filter((p) => p.fonte).map((p) => p.categoria));
-  produtos.push(...anteriores.filter((p) => !p.destaque && (!p.fonte || !conhecidas.has(p.fonte)) && !comFonte.has(p.categoria)));
+  produtos.push(...anteriores.filter((p) => !p.destaque && (!p.fonte || (p.fonte !== "ofertas" && !conhecidas.has(p.fonte))) && !comFonte.has(p.categoria)));
+
+  // Preço "De" só enquanto o produto está nas Ofertas do Dia (ou na busca desta rodada): nada de desconto vencido.
+  const comOferta = produtos.map(({ oferta, ...p }) => {
+    const o = emOferta.get(p.id);
+    if (o) { emOferta.delete(p.id); return { ...p, preco: o.preco, precoAntigo: o.precoAntigo, oferta: true }; }
+    return novos.has(p.fonte) && p.precoAntigo ? p : { ...p, precoAntigo: null };
+  });
+  comOferta.push(...[...emOferta.values()].map((p) => ({ ...p, fonte: "ofertas" })));
 
   const vistos = new Set();
-  const unicos = produtos.filter((p) => !vistos.has(p.id) && vistos.add(p.id));
+  const unicos = comOferta.filter((p) => !vistos.has(p.id) && vistos.add(p.id));
   if (unicos.length < 10) throw new Error(`Amazon devolveu só ${unicos.length} produtos`);
   return { produtos: unicos, cursor: (cursor + visitadas) % total, visitadas, bloqueadas };
 }
