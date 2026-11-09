@@ -20,6 +20,7 @@ const AMAZON_MAIS_VENDIDOS = [
   ["ferr", "hi"], ["brinq", "toys"], ["esporte", "sports"], ["auto", "automotive"],
 ];
 const AMAZON_POR_CATEGORIA = 8;
+const AMAZON_DISPOSITIVOS = "https://www.amazon.com.br/gp/bestsellers/amazon-devices";
 const AMAZON_ALEXA = "https://www.amazon.com.br/s?k=echo+alexa&i=amazon-devices";
 
 const REGRAS = [
@@ -109,7 +110,7 @@ const deAmazon = (asin, nome, valor, nota, img, cat, tag, destaque) => ({
   link: `https://www.amazon.com.br/dp/${asin}?tag=${tag}`, ...(destaque ? { destaque: true } : {}),
 });
 
-export function lerMaisVendidos(t, cat, tag) {
+export function lerMaisVendidos(t, cat, tag, limite = AMAZON_POR_CATEGORIA) {
   const out = [];
   for (const bloco of t.split('id="gridItemRoot"').slice(1)) {
     const asin = (bloco.match(/data-asin="([A-Z0-9]{10})"/) || [])[1];
@@ -118,7 +119,7 @@ export function lerMaisVendidos(t, cat, tag) {
     const valor = preco((bloco.match(/R\$(?:\s|&nbsp;)?([\d.]+,\d{2})/) || [])[1] ?? "");
     const nota = Number(((bloco.match(/(\d,\d) de 5 estrelas/) || [])[1] ?? "0").replace(",", "."));
     if (asin && nome && valor) out.push(deAmazon(asin, nome, valor, nota, img, cat === "tec" ? categoria(nome) : cat, tag));
-    if (out.length >= AMAZON_POR_CATEGORIA) break;
+    if (out.length >= limite) break;
   }
   return out;
 }
@@ -141,14 +142,25 @@ export function lerBusca(t, tag) {
 
 async function coletarAmazon(tag, fetchImpl, log) {
   const produtos = [];
-  try { produtos.push(...lerBusca(await html(AMAZON_ALEXA, fetchImpl), tag)); } catch (e) { log.warn(`[coletor] Alexa: ${e.message}`); }
+  // Destaque: Alexa e dispositivos Amazon (mais vendidos de Dispositivos Amazon; a busca fica de reserva).
+  let alexa = [];
+  try {
+    alexa = lerMaisVendidos(await html(AMAZON_DISPOSITIVOS, fetchImpl), "tec", tag, 30)
+      .filter((p) => /echo|alexa|kindle|fire tv/i.test(p.nome)).slice(0, 12).map((p) => ({ ...p, destaque: true }));
+  } catch (e) { log.warn(`[coletor] Dispositivos Amazon: ${e.message}`); }
+  if (alexa.length < 3) {
+    try { alexa = lerBusca(await html(AMAZON_ALEXA, fetchImpl), tag); } catch (e) { log.warn(`[coletor] Alexa: ${e.message}`); }
+  }
+  produtos.push(...alexa);
   for (const [cat, slug] of AMAZON_MAIS_VENDIDOS) {
     try { produtos.push(...lerMaisVendidos(await html(`https://www.amazon.com.br/gp/bestsellers/${slug}`, fetchImpl), cat, tag)); }
     catch (e) { log.warn(`[coletor] Amazon ${slug}: ${e.message}`); }
     await new Promise((r) => setTimeout(r, 1500));
   }
-  if (produtos.length < 10) throw new Error(`Amazon devolveu só ${produtos.length} produtos`);
-  return produtos;
+  const vistos = new Set();
+  const unicos = produtos.filter((p) => !vistos.has(p.id) && vistos.add(p.id));
+  if (unicos.length < 10) throw new Error(`Amazon devolveu só ${unicos.length} produtos`);
+  return unicos;
 }
 
 /** Uma rodada. Nunca lança: o resultado (e os erros) vão para coleta-status.json. */
