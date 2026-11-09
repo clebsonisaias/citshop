@@ -42,6 +42,17 @@
       <button class="btn sec" id="amzTestar" type="button">Testar conexão</button>
       <div class="msg" id="amzTeste" hidden role="status"></div>
     </div>
+    <details class="box" style="margin-top:24px">
+      <summary style="font-weight:800;cursor:pointer;min-height:44px">Trocar senha do admin</summary>
+      <form class="form" id="fSenhaAdm" style="margin-top:12px">
+        <div class="dois">
+          <label>Senha atual<input name="atual" type="password" required autocomplete="current-password"></label>
+          <label>Nova senha<input name="nova" type="password" required minlength="8" autocomplete="new-password"></label>
+        </div>
+        <div class="msg" id="mSenhaAdm" hidden role="status"></div>
+        <button class="btn">Trocar senha</button>
+      </form>
+    </details>
   </section>
 </main>
 </body>

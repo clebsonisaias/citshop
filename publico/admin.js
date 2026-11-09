@@ -80,6 +80,18 @@
     } catch (err) { alert(err.message); }
   };
 
+  $('fSenhaAdm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target, m = $('mSenhaAdm');
+    try {
+      await api('/api/admin/senha', 'POST', { atual: f.atual.value, nova: f.nova.value });
+      f.reset();
+      m.className = 'msg ok';
+      m.textContent = 'Senha trocada. Use a nova no próximo login.';
+    } catch (err) { m.className = 'msg erro'; m.textContent = err.message; }
+    m.hidden = false;
+  });
+
   function iniciar() {
     carregar().then(() => { $('fEnt').hidden = true; $('vAdm').hidden = false; $('sair').hidden = false; carregarAmazon(); })
       .catch(() => { $('fEnt').hidden = false; });

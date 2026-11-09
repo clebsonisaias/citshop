@@ -416,10 +416,22 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   }));
 
   // ---------- administração ----------
+  // Senha do admin: a trocada no /admin, enquanto o ADMIN_SENHA_HASH do Coolify for o mesmo de quando ela foi
+  // trocada. Mudar o hash no Coolify (esqueci a senha) volta a valer a do Coolify.
+  const hashAdmin = () => (banco.d.admin && banco.d.admin.base === (env.ADMIN_SENHA_HASH ?? null) ? banco.d.admin.hash : env.ADMIN_SENHA_HASH);
   app.post("/api/admin/entrar", (req, res) => {
     if (!limiteLogin.registrar(`admin|${S.ipDe(req)}`).permitido) return erro(res, 429, "Muitas tentativas. Espere alguns minutos.");
-    if (!env.ADMIN_SENHA_HASH || !S.conferirSenha(req.body?.senha, env.ADMIN_SENHA_HASH)) return erro(res, 401, "Senha incorreta.");
+    const hash = hashAdmin();
+    if (!hash || !S.conferirSenha(req.body?.senha, hash)) return erro(res, 401, "Senha incorreta.");
     abrirSessao(req, res, "admin", "admin");
+    res.json({ ok: true });
+  });
+  app.post("/api/admin/senha", exigirAdmin, (req, res) => {
+    if (!limiteLogin.registrar(`admin|${S.ipDe(req)}`).permitido) return erro(res, 429, "Muitas tentativas. Espere alguns minutos.");
+    if (!S.conferirSenha(req.body?.atual, hashAdmin())) return erro(res, 400, "A senha atual não confere.");
+    if (String(req.body?.nova ?? "").length < 8) return erro(res, 400, "A nova senha precisa ter pelo menos 8 caracteres.");
+    banco.d.admin = { hash: S.gerarHashSenha(req.body.nova), base: env.ADMIN_SENHA_HASH ?? null, trocadaEm: iso() };
+    banco.salvar();
     res.json({ ok: true });
   });
   app.post("/api/admin/sair", (req, res) => { fecharSessao(req, res, "admin"); res.json({ ok: true }); });

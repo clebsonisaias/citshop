@@ -191,3 +191,19 @@ test("Amazon da API fica na vitrine por até 1 hora e substitui o item manual de
   v = await (await req("/api/vitrine")).json();
   assert.deepEqual(v.produtos.filter((p) => p.id === "amazon-X").map((p) => p.nome), ["TV"]);
 });
+
+test("admin troca a própria senha pelo painel", async () => {
+  const cookie = cookieDe(await req("/api/admin/entrar", json({ senha: "admin123" })));
+  assert.equal((await req("/api/admin/senha", { ...json({ atual: "errada", nova: "outra-senha-forte" }), cookie })).status, 400);
+  assert.equal((await req("/api/admin/senha", { ...json({ atual: "admin123", nova: "outra-senha-forte" }), cookie })).status, 200);
+  assert.equal((await req("/api/admin/entrar", json({ senha: "admin123" }))).status, 401);
+  assert.equal((await req("/api/admin/entrar", json({ senha: "outra-senha-forte" }))).status, 200);
+
+  // Esqueci a senha: um ADMIN_SENHA_HASH novo no Coolify volta a valer, mesmo com a troca gravada nos dados.
+  const { app: resetado } = criarApp({ env: { SESSAO_SEGREDO: "x".repeat(40), DADOS_DIR: dir, ADMIN_SENHA_HASH: gerarHashSenha("reset-123") }, log: {} });
+  const s2 = await new Promise((ok) => { const s = resetado.listen(0, () => ok(s)); });
+  const entrar2 = (senha) => fetch(`http://127.0.0.1:${s2.address().port}/api/admin/entrar`, json({ senha })).then((r) => r.status);
+  try {
+    assert.deepEqual([await entrar2("outra-senha-forte"), await entrar2("reset-123")], [401, 200]);
+  } finally { s2.close(); }
+});
