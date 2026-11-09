@@ -1,6 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { aplicarHistorico, categoria, comoEbook } from "../servidor/coletor.js";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { FONTES_AMAZON, aplicarHistorico, categoria, comoEbook, rodarColeta } from "../servidor/coletor.js";
 
 const DIA = 86_400_000;
 const agora = Date.parse("2026-11-20T15:00:00Z");
@@ -48,4 +51,51 @@ test("categoria reconhece livros e games", () => {
   assert.equal(categoria("Livro de receitas da vovó"), "livros");
   assert.equal(categoria("Controle sem fio para PS5 DualSense"), "games");
   assert.equal(categoria("Fone Bluetooth"), "cel");
+});
+
+test("catálogo da Amazon cobre geladeira, air fryer, camping e perneira, sem caminho repetido", () => {
+  const subs = FONTES_AMAZON.map((f) => f.sub);
+  for (const s of ["Geladeiras e freezers", "Air fryer e fritadeiras", "Barracas e abrigos", "Perneiras", "Lava-louças"]) assert.ok(subs.includes(s), s);
+  assert.equal(new Set(FONTES_AMAZON.map((f) => f.caminho)).size, FONTES_AMAZON.length);
+});
+
+test("rodízio: visita um pedaço por rodada, e o que não foi visitado ou foi bloqueado continua na vitrine", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "citshop-coleta-"));
+  const manual = join(dir, "manual.json");
+  writeFileSync(manual, "[]");
+  // Antes do rodízio: um produto antigo de "eletro" sem fonte.
+  writeFileSync(join(dir, "coleta.json"), JSON.stringify({ produtos: [{ id: "amazon-VELHO", nome: "Velho", loja: "amazon", asin: "VELHO00000", categoria: "eletro", preco: 10 }] }));
+  const fontes = [
+    { dept: "eletro", caminho: "appliances/1", sub: "Geladeiras" },
+    { dept: "camping", caminho: "sports/2", sub: "Barracas" },
+    { dept: "camping", caminho: "busca:perneira", sub: "Perneiras" },
+  ];
+  let bloquear = "";
+  let n = 0;
+  const pagina = (url) => Array.from({ length: 12 }, (_, i) => {
+    const asin = `B${String(++n).padStart(9, "0")}`;
+    return url.includes("/s?k=")
+      ? `<div data-component-type="s-search-result" data-asin="${asin}"><h2><span>Perneira ${i}</span></h2><span class="a-offscreen">R$ 49,90</span></div>`
+      : `<div id="gridItemRoot"><div data-asin="${asin}"><img alt="Produto ${i}">R$ 1.299,00</div></div>`;
+  }).join("");
+  const fetchImpl = async (url) => new Response(bloquear && url.includes(bloquear) ? "captcha" : pagina(url));
+  const rodar = () => rodarColeta({ env: {}, dadosDir: dir, manual, fetchImpl, log: { warn() {} }, opcoesAmazon: { fontes, porRodada: 2, pausaMs: 0 } });
+  const ler = () => JSON.parse(readFileSync(join(dir, "coleta.json"), "utf8"));
+  try {
+    await rodar();
+    let c = ler();
+    assert.equal(c.cursor, 2);
+    assert.equal(c.produtos.some((p) => p.id === "amazon-VELHO"), false); // eletro já tem produto novo
+    assert.equal(c.produtos.filter((p) => p.sub === "Geladeiras").length, 12);
+    assert.equal(c.produtos.filter((p) => p.sub === "Barracas").length, 12);
+    assert.equal(c.produtos.find((p) => p.sub === "Barracas").categoria, "camping");
+
+    bloquear = "appliances"; // 2ª rodada: perneira (nova) e geladeira (bloqueada)
+    await rodar();
+    c = ler();
+    assert.equal(c.cursor, 1);
+    assert.equal(c.produtos.filter((p) => p.sub === "Perneiras").length, 12);
+    assert.equal(c.produtos.filter((p) => p.sub === "Geladeiras").length, 12); // bloqueada: fica a da rodada anterior
+    assert.equal(c.produtos.filter((p) => p.sub === "Barracas").length, 12); // não visitada: continua
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });
