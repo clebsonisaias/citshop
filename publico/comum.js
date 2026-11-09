@@ -39,12 +39,15 @@ window.CIT = (() => {
   }
   const iniciais = (n) => String(n).split(/\s+/).map((w) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
   // Cabeçalho da página da loja, usado pela vitrine e pela amostra do painel.
+  // Como a loja local entrega, informado por ela no painel. Sem informação, não prometemos nada.
+  const ENTREGA = { retirada: 'Retirada na loja', entrega: 'Entrega', ambos: 'Entrega ou retirada' };
+  const textoEntrega = (e) => ENTREGA[e] ?? 'Loja';
   function cabecalhoLoja(l, extra = '') {
     const cor = l.cor || '#036271';
     const avatar = l.logo ? `<img src="${esc(l.logo)}" alt="Logo ${esc(l.nome)}">` : esc(iniciais(l.nome));
     return `<div class="sellerhead loja-cor" style="--loja:${cor};--loja-ink:${textoSobre(cor)}">
       <span class="avatar grande">${avatar}</span>
-      <div class="info"><b>${esc(l.nome)}</b><small>${esc(l.categoria || 'Loja local')} · ${esc(l.cidade)}</small>${l.sobre ? `<p>${esc(l.sobre)}</p>` : ''}</div>${extra}</div>`;
+      <div class="info"><b>${esc(l.nome)}</b><small>${esc(l.categoria || 'Loja local')} · ${esc(l.cidade)}${ENTREGA[l.entrega] ? ` · ${ENTREGA[l.entrega]}` : ''}</small>${l.sobre ? `<p>${esc(l.sobre)}</p>` : ''}</div>${extra}</div>`;
   }
-  return { ICON, DEPTS, D, esc, brl, svg, textoSobre, iniciais, cabecalhoLoja };
+  return { ICON, DEPTS, D, esc, brl, svg, textoSobre, iniciais, cabecalhoLoja, textoEntrega };
 })();

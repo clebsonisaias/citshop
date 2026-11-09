@@ -50,4 +50,5 @@ export async function salvarFoto(buffer, dir, { logo = false } = {}) {
 export async function apagarFoto(url, dir) {
   if (!String(url).startsWith("/uploads/")) return;
   await unlink(join(dir, basename(url))).catch(() => {});
+  await unlink(join(dir, `og-${basename(url, ".webp")}.jpg`)).catch(() => {}); // prévia do WhatsApp, se já gerada
 }

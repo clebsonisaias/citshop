@@ -4,8 +4,9 @@
  * para os testes rodarem com pasta temporária e tempo controlado.
  */
 import express from "express";
-import { readFileSync, renameSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { existsSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
+import sharp from "sharp";
 import { fileURLToPath } from "node:url";
 import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import * as S from "./seguranca.js";
@@ -19,6 +20,7 @@ export const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const PRECO_PLANO = 49.9;
 const DIA = 86_400_000;
 const MAX_PRODUTOS = 200;
+const ENTREGAS = ["retirada", "entrega", "ambos"];
 
 // ---------- validação ----------
 const txt = (v, max) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, max);
@@ -136,7 +138,21 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   }
 
   // ---------- vitrine pública ----------
-  const ler = (arquivo, padrao) => { try { return JSON.parse(readFileSync(join(dadosDir, arquivo), "utf8")); } catch { return padrao; } };
+  // Lê o JSON só quando o arquivo muda (o robô grava com rename, que troca a data de modificação).
+  const cacheArquivos = new Map();
+  function ler(arquivo, padrao) {
+    const caminho = join(dadosDir, arquivo);
+    try {
+      const { mtimeMs } = statSync(caminho);
+      const c = cacheArquivos.get(caminho);
+      if (c?.mtimeMs === mtimeMs) return c.dados;
+      const dados = JSON.parse(readFileSync(caminho, "utf8"));
+      cacheArquivos.set(caminho, { mtimeMs, dados });
+      return dados;
+    } catch {
+      return padrao;
+    }
+  }
   // A Creators API só permite guardar oferta por 1 hora: passado isso, a Amazon da API some da vitrine
   // (a lista manual continua) em vez de mostrar preço vencido. Quando o ASIN se repete, vale o dado da API.
   const IDADE_MAXIMA_AMAZON = 60 * 60_000;
@@ -149,12 +165,12 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   }
   const lojaPublica = (l) => ({
     slug: l.slug, nome: l.nome, cidade: l.cidade, categoria: l.categoria, whatsapp: l.whatsapp, desde: l.criadaEm,
-    logo: l.logo ?? null, cor: l.cor ?? null, sobre: l.sobre ?? "",
+    logo: l.logo ?? null, cor: l.cor ?? null, sobre: l.sobre ?? "", entrega: l.entrega ?? null,
   });
   const produtoLocal = (p, l) => ({
     id: `l-${p.id}`, nome: p.nome, descricao: p.descricao, dept: p.dept, loja: "local",
     lojaSlug: l.slug, lojaNome: l.nome, lojaLogo: l.logo ?? null, cidade: l.cidade, whatsapp: l.whatsapp,
-    preco: p.preco, precoAntigo: p.precoAntigo, fotos: p.fotos, nota: 0, vendidos: 0,
+    preco: p.preco, precoAntigo: p.precoAntigo, fotos: p.fotos, nota: 0, vendidos: 0, entrega: l.entrega ?? null,
   });
   const produtoAfiliado = (x) => ({
     id: x.id, nome: x.nome, dept: DEPTS.includes(x.categoria) ? x.categoria : "casa", loja: x.loja,
@@ -163,7 +179,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     destaque: x.destaque === true,
   });
 
-  app.get("/api/vitrine", (req, res) => {
+  // A vitrine pública inteira; usada pela API e pela página de produto (/p/:id).
+  function vitrine() {
     const t = agora();
     const visiveis = new Map(banco.lojas.filter((l) => lojaVisivel(l, t)).map((l) => [l.id, l]));
     const locais = banco.produtos
@@ -171,12 +188,23 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       .sort((x, y) => y.criadoEm.localeCompare(x.criadoEm))
       .map((p) => produtoLocal(p, visiveis.get(p.lojaId)));
     const af = afiliados();
-    res.set("Cache-Control", "no-cache").json({
+    return {
       atualizadoEm: af.atualizadoEm ?? null,
       lojas: [...visiveis.values()].map(lojaPublica),
       produtos: ordenarVitrine([...locais, ...af.produtos.map(produtoAfiliado)]),
-    });
-  });
+    };
+  }
+  app.get("/api/vitrine", (req, res) => res.set("Cache-Control", "no-cache").json(vitrine()));
+  // Um produto só, com as mesmas regras de visibilidade da vitrine, sem montar o catálogo inteiro.
+  function produtoPorId(id) {
+    if (id.startsWith("l-")) {
+      const p = banco.produto(id.slice(2));
+      const l = p && banco.loja(p.lojaId);
+      return p && l && p.ativo && !p.bloqueado && lojaVisivel(l, agora()) ? produtoLocal(p, l) : null;
+    }
+    const x = afiliados().produtos.find((y) => y.id === id);
+    return x ? produtoAfiliado(x) : null;
+  }
 
   // ---------- painel da loja ----------
   function painelDe(loja) {
@@ -258,6 +286,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       nome, whatsapp: zap, cidade, cor, categoria: txt(b.categoria, 60),
       responsavel: txt(b.responsavel, 80) || req.loja.responsavel,
       sobre: b.sobre === undefined ? req.loja.sobre : String(b.sobre).trim().slice(0, 300),
+      // Sem o campo (ex.: formulário de aparência), mantém o que já estava.
+      entrega: b.entrega === undefined ? req.loja.entrega ?? null : ENTREGAS.includes(b.entrega) ? b.entrega : null,
     });
     banco.salvar();
     res.json(painelDe(req.loja));
@@ -471,6 +501,53 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   const semCache = (res) => res.setHeader("Cache-Control", "no-cache");
   app.use(express.static(publico, { extensions: ["html"], setHeaders: semCache }));
   app.get("/loja/:slug", (req, res) => { semCache(res); res.sendFile(join(publico, "index.html")); });
+
+  // Página de produto com prévia no WhatsApp: a mesma vitrine, com título, descrição e foto do produto no <head>.
+  const PAGINA = readFileSync(join(publico, "index.html"), "utf8");
+  const NOME_LOJA = { amazon: "Amazon", shopee: "Shopee", ml: "Mercado Livre" };
+  const attr = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  function metaProduto(x) {
+    const titulo = `${x.nome} por ${x.preco.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`;
+    const desc = x.loja === "local"
+      ? `${x.lojaNome}, ${x.cidade}. Peça pelo WhatsApp da loja na CITshop.`
+      : `Oferta na ${NOME_LOJA[x.loja] ?? "loja parceira"}, achada pela CITshop.`;
+    const foto = x.fotos?.[0];
+    const imagem = !foto ? null : foto.startsWith("/uploads/") ? `${urlPublica}/og/${basename(foto, ".webp")}.jpg` : foto;
+    return [
+      `<title>${attr(titulo)} · CITshop</title>`,
+      `<meta name="description" content="${attr(desc)}">`,
+      `<meta property="og:title" content="${attr(titulo)}">`,
+      `<meta property="og:description" content="${attr(desc)}">`,
+      `<meta property="og:type" content="product">`,
+      `<meta property="og:url" content="${attr(`${urlPublica}/p/${encodeURIComponent(x.id)}`)}">`,
+      ...(imagem ? [`<meta property="og:image" content="${attr(imagem)}">`, `<meta name="twitter:card" content="summary_large_image">`] : []),
+    ].join("\n");
+  }
+  app.get("/p/:id", (req, res) => {
+    const x = produtoPorId(req.params.id);
+    if (!x) return res.status(404).sendFile(join(publico, "404.html"));
+    semCache(res);
+    // Função no replace: nome com "$" não vira padrão de substituição.
+    res.type("html").send(PAGINA.replace(/<!--meta-->[\s\S]*?<!--\/meta-->/, () => metaProduto(x)));
+  });
+  // A prévia do WhatsApp não lê WebP com segurança: a foto vira JPEG 1200x630 uma vez só, gravado ao lado
+  // da original (og-<uuid>.jpg). apagarFoto remove os dois.
+  app.get("/og/:arquivo", a(async (req, res) => {
+    const m = /^([0-9a-f-]{36})\.jpg$/.exec(req.params.arquivo);
+    if (!m) return res.status(404).end();
+    const jpg = join(uploadsDir, `og-${m[1]}.jpg`);
+    try {
+      if (!existsSync(jpg)) {
+        const tmp = `${jpg}.${randomUUID()}.tmp`; // nome único: dois pedidos ao mesmo tempo não se atropelam
+        await sharp(join(uploadsDir, `${m[1]}.webp`))
+          .resize(1200, 630, { fit: "contain", background: "#FFFFFF" }).jpeg({ quality: 82 }).toFile(tmp);
+        renameSync(tmp, jpg);
+      }
+      res.set("Cache-Control", "public, max-age=86400").sendFile(jpg);
+    } catch {
+      res.status(404).end();
+    }
+  }));
   app.use("/api", (req, res) => erro(res, 404, "Rota não encontrada."));
   app.use((req, res) => res.status(404).sendFile(join(publico, "404.html")));
   app.use((err, req, res, _next) => {

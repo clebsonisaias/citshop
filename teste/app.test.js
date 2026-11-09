@@ -83,7 +83,7 @@ test("loja se cadastra, publica com foto, aparece antes dos afiliados, some ao v
 
   // Personalização: cor, texto e logo aparecem na vitrine; cor inválida é ignorada.
   const visual = await req("/api/painel/loja", { method: "PUT", headers: { "Content-Type": "application/json" }, cookie,
-    body: JSON.stringify({ nome: "Moda Nossa", whatsapp: "84999990000", cidade: "Natal", cor: "#d23c8c", sobre: "Moda feminina em Natal." }) });
+    body: JSON.stringify({ nome: "Moda Nossa", whatsapp: "84999990000", cidade: "Natal", cor: "#d23c8c", sobre: "Moda feminina em Natal.", entrega: "ambos" }) });
   assert.equal((await visual.json()).loja.cor, "#D23C8C");
   const fl = new FormData();
   fl.append("logo", new Blob([png], { type: "image/png" }), "logo.png");
@@ -97,6 +97,21 @@ test("loja se cadastra, publica com foto, aparece antes dos afiliados, some ao v
   assert.deepEqual([v.lojas[0].cor, v.lojas[0].sobre, v.lojas[0].logo], ["#D23C8C", "Moda feminina em Natal.", comLogo.loja.logo]);
   assert.equal(v.produtos[0].whatsapp, "5584999990000");
   assert.equal(v.lojas[0].slug, "moda-nossa");
+  // Entrega: salva no 1º PUT e mantida no 2º, que não mandou o campo.
+  assert.deepEqual([v.lojas[0].entrega, v.produtos[0].entrega], ["ambos", "ambos"]);
+
+  // Página do produto com prévia no WhatsApp: título com preço e foto em JPEG no <head>.
+  const pagina = await req(`/p/${v.produtos[0].id}`);
+  assert.equal(pagina.status, 200);
+  const html = await pagina.text();
+  assert.match(html, /<meta property="og:title" content="Vestido midi por R\$\s89,90">/);
+  assert.equal(html.match(/<title>/g).length, 1);
+  const og = html.match(/og:image" content="[^"]*(\/og\/[0-9a-f-]+\.jpg)"/)[1];
+  const jpg = await req(og);
+  assert.equal(jpg.headers.get("content-type"), "image/jpeg");
+  assert.equal((await sharp(Buffer.from(await jpg.arrayBuffer())).metadata()).width, 1200);
+  assert.equal((await req("/p/nao-existe")).status, 404);
+  assert.equal((await req("/og/../../etc.jpg")).status, 404);
 
   relogio += 31 * DIA; // teste acabou
   v = await (await req("/api/vitrine")).json();
@@ -149,6 +164,7 @@ test("admin suspende loja e ela sai da vitrine", async () => {
   assert.equal((await req(`/api/admin/lojas/${loja.id}`, { method: "DELETE", cookie })).status, 200);
   assert.deepEqual(await (await req("/api/admin/lojas", { cookie })).json(), []);
   assert.equal((await req(foto)).status, 404); // foto apagada do disco
+  assert.equal((await req(foto.replace("/uploads/", "/og/").replace(".webp", ".jpg"))).status, 404); // prévia em cache também
 });
 
 test("admin vê o estado da Amazon sem segredos e o teste pede credenciais", async () => {

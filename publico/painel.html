@@ -119,6 +119,12 @@
           <label>Cidade<input name="cidade" required maxlength="60"></label>
         </div>
         <label>O que a loja vende<input name="categoria" maxlength="60"></label>
+        <label>Como o cliente recebe<select name="entrega">
+          <option value="">Não informar</option>
+          <option value="retirada">Só retirada na loja</option>
+          <option value="entrega">Só entrega</option>
+          <option value="ambos">Entrega e retirada</option>
+        </select></label>
         <div class="msg" id="mLoja" hidden role="status"></div>
         <button class="btn">Salvar dados</button>
       </form>

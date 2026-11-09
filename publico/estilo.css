@@ -147,6 +147,9 @@ section.block { padding-block: 18px; }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
 .chip { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 99px; padding: 7px 12px; font-size: 12px; font-weight: 600; cursor: pointer; min-height: 36px; }
 .chip[aria-pressed="true"] { background: #036271; color: #FFFFFF; border-color: #036271; }
+.rtools { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: -4px 0 14px; }
+.rtools label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.rtools select { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 10px; padding: 6px 10px; min-height: 44px; font-weight: 600; }
 .back { background: none; border: 0; color: var(--brand); font-weight: 700; cursor: pointer; padding: 0; min-height: 36px; }
 .empty { grid-column: 1 / -1; text-align: center; color: var(--muted); padding: 40px 0; }
 .sellerhead { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }

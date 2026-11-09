@@ -3,11 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!--meta-->
 <title>CITshop · ofertas e lojas da sua cidade</title>
 <meta name="description" content="Ofertas da Amazon, Shopee e Mercado Livre e as lojas da sua cidade num lugar só. Um serviço da CITmax.">
 <meta property="og:title" content="CITshop · ofertas e lojas da sua cidade">
 <meta property="og:description" content="Ofertas das grandes lojas e das lojas da sua cidade num lugar só.">
 <meta property="og:type" content="website">
+<!--/meta-->
 <meta name="theme-color" content="#036271">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 30'%3E%3Cpath fill='%23008B87' d='M13 0 26 7.5v15L13 30 0 22.5v-15z'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -133,6 +135,13 @@
     <div class="head"><h2 id="rtitle">Resultados</h2><button class="back" id="back">← Voltar ao início</button></div>
     <div id="rhead"></div>
     <div class="chips" id="storechips"></div>
+    <div class="rtools">
+      <label>Ordenar<select id="rsort">
+        <option value="">Relevância</option><option value="menor">Menor preço</option>
+        <option value="maior">Maior preço</option><option value="desconto">Maior desconto</option>
+      </select></label>
+      <label id="rcidadeL" hidden>Cidade<select id="rcidade"></select></label>
+    </div>
     <div class="results-grid" id="rgrid"></div>
   </section>
 </main>

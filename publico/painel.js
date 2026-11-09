@@ -73,7 +73,7 @@
     $('assinar').hidden = s.status === 'ativa' || s.status === 'suspensa';
     $('assinar').textContent = `Assinar ${brl.format(s.preco)}/mês`;
     const f = $('fLoja');
-    for (const k of ['nome', 'responsavel', 'whatsapp', 'cidade', 'categoria']) f[k].value = s.loja[k] ?? '';
+    for (const k of ['nome', 'responsavel', 'whatsapp', 'cidade', 'categoria', 'entrega']) f[k].value = s.loja[k] ?? '';
     $('vCor').value = s.loja.cor || '#036271';
     $('vSobre').value = s.loja.sobre ?? '';
     $('tirarLogo').hidden = !s.loja.logo;

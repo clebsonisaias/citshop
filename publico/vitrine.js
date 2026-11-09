@@ -32,7 +32,7 @@
   }
   function card(x) {
     const nota = x.nota ? `<div class="rate"><b>★ ${x.nota.toFixed(1).replace('.', ',')}</b>${x.vendidos ? ` · ${num.format(x.vendidos)} vendidos` : ''}</div>` : '';
-    const ship = x.loja === 'local' ? `<div class="ship">Entrega ou retirada em ${esc(x.cidade)}</div>` : x.queda ? `<div class="ship">↓ caiu ${brl.format(x.queda)}</div>` : '';
+    const ship = x.loja === 'local' ? `<div class="ship">${esc(window.CIT.textoEntrega(x.entrega))} em ${esc(x.cidade)}</div>` : x.queda ? `<div class="ship">↓ caiu ${brl.format(x.queda)}</div>` : '';
     const direto = x.loja !== 'local' && x.link;
     const abre = direto ? `<a class="card" href="${esc(x.link)}" target="_blank" rel="sponsored nofollow noopener" style="text-decoration:none">` : `<button class="card" data-p="${esc(x.id)}">`;
     return `${abre}${shot(x)}<span class="store" data-m="${esc(x.loja)}">${esc(label(x))}</span></div>
@@ -80,9 +80,19 @@
   }
 
   // Resultados (departamento, lista, loja, busca)
-  const view = { list: [], store: '' };
+  const view = { list: [], store: '', ordem: '', cidade: '' };
+  const TITULO = 'CITshop · ofertas e lojas da sua cidade';
+  let voltar = '/'; // endereço (com a query, ex.: utm) para onde a janela do produto devolve ao fechar
+  let empurrou = false; // abrir o produto criou uma entrada no histórico: o Voltar só fecha a janela
+  let tituloAntes = TITULO;
+  const ORDEM = {
+    menor: (a, b) => a.preco - b.preco,
+    maior: (a, b) => b.preco - a.preco,
+    desconto: (a, b) => off(b) - off(a),
+  };
   function showResults(title, list, head = '') {
-    Object.assign(view, { list, store: '' });
+    Object.assign(view, { list, store: '', ordem: '', cidade: '' });
+    $('rsort').value = '';
     $('rtitle').textContent = title;
     $('rhead').innerHTML = head;
     $('homeview').hidden = true;
@@ -93,14 +103,21 @@
   }
   function renderResults() {
     const chave = (x) => (x.loja === 'local' ? `local:${x.lojaSlug}` : x.loja);
-    const nomes = new Map(view.list.map((x) => [chave(x), label(x)]));
+    // A cidade filtra antes dos chips: com cidade escolhida, só aparecem as lojas daquela cidade.
+    const base = view.list.filter((x) => !view.cidade || (x.loja === 'local' && x.cidade === view.cidade));
+    const nomes = new Map(base.map((x) => [chave(x), label(x)]));
     $('storechips').innerHTML = nomes.size > 1 ? [['', 'Todas as lojas'], ...nomes]
       .map(([k, n]) => `<button class="chip" data-chip="${esc(k)}" aria-pressed="${view.store === k}">${esc(n)}</button>`).join('') : '';
-    const list = view.list.filter((x) => !view.store || chave(x) === view.store);
+    const cidades = [...new Set(view.list.filter((x) => x.loja === 'local').map((x) => x.cidade))].sort();
+    $('rcidadeL').hidden = cidades.length < 2;
+    $('rcidade').innerHTML = ['<option value="">Todas</option>', ...cidades.map((c) => `<option ${view.cidade === c ? 'selected' : ''}>${esc(c)}</option>`)].join('');
+    let list = base.filter((x) => !view.store || chave(x) === view.store);
+    // Lojas da região continuam na frente (regra da CITshop); a ordem escolhida vale dentro de cada grupo.
+    if (ORDEM[view.ordem]) list = ordenar([...list].sort(ORDEM[view.ordem]));
     $('rgrid').innerHTML = list.length ? list.map(card).join('') : '<p class="empty">Nenhum produto por aqui ainda. Tente outro departamento ou outra busca.</p>';
   }
   function goHome() {
-    document.title = 'CITshop · ofertas e lojas da sua cidade';
+    document.title = TITULO;
     $('resultsview').hidden = true;
     $('homeview').hidden = false;
     $('q').value = '';
@@ -137,12 +154,13 @@
     $('mprice').textContent = brl.format(x.preco);
     $('msave').textContent = off(x) ? `Economia de ${brl.format(x.precoAntigo - x.preco)} (${off(x)}% off)` : '';
     $('mdesc').textContent = x.descricao ?? '';
-    const link = `${location.origin}/#p-${x.id}`;
+    // Link próprio do produto: o servidor monta a prévia (título, preço e foto) que o WhatsApp mostra.
+    const link = `${location.origin}/p/${encodeURIComponent(x.id)}`;
     if (local) {
       $('mbuy').href = `https://wa.me/${x.whatsapp}?text=${encodeURIComponent(`Olá! Vi na CITshop e tenho interesse: ${x.nome} por ${brl.format(x.preco)}. ${link}`)}`;
       $('mbuy').rel = 'noopener';
       $('mbuy').textContent = 'Pedir pelo WhatsApp da loja ↗';
-      $('mnote').textContent = `Vendido e entregue por ${x.lojaNome}, ${x.cidade}. Combine pagamento e entrega direto com a loja.`;
+      $('mnote').textContent = `Vendido por ${x.lojaNome}, ${x.cidade}${x.entrega ? ` · ${window.CIT.textoEntrega(x.entrega)}` : ''}. Combine pagamento e entrega direto com a loja.`;
     } else {
       $('mbuy').href = x.link;
       $('mbuy').rel = 'sponsored nofollow noopener';
@@ -152,13 +170,26 @@
       $('mnote').textContent = `Você finaliza a compra no site da loja. Preço e frete confirmados lá.${quando}`;
     }
     $('mzap').href = `https://wa.me/?text=${encodeURIComponent(`Olha esse achado na CITshop: ${x.nome} por ${brl.format(x.preco)} ${link}`)}`;
+    const jaAberto = !$('modal').hidden;
     $('modal').hidden = false;
     $('mx').focus();
-    if (location.hash !== `#p-${x.id}`) history.replaceState(null, '', `#p-${x.id}`);
+    if (!jaAberto) tituloAntes = location.pathname.startsWith('/p/') ? TITULO : document.title;
+    document.title = `${x.nome} · CITshop`;
+    const url = `/p/${encodeURIComponent(x.id)}`;
+    // Link direto (/p/ ou #p- antigo): só troca o endereço. Aberto pela vitrine: cria entrada, e o Voltar fecha.
+    if (location.pathname.startsWith('/p/') || location.hash.startsWith('#p-')) history.replaceState(null, '', url);
+    else { voltar = location.pathname + location.search; history.pushState(null, '', url); empurrou = true; }
+  }
+  function fecharJanela() {
+    $('modal').hidden = true;
+    empurrou = false;
+    document.title = tituloAntes;
   }
   function closeProduct() {
-    $('modal').hidden = true;
-    if (location.hash.startsWith('#p-')) history.replaceState(null, '', location.pathname);
+    if ($('modal').hidden) return;
+    if (empurrou) return history.back(); // o popstate fecha a janela e devolve o endereço anterior
+    fecharJanela();
+    if (location.pathname.startsWith('/p/') || location.hash.startsWith('#p-')) history.replaceState(null, '', voltar);
   }
   function fecharMega() { $('mega').hidden = true; $('allbtn').setAttribute('aria-expanded', 'false'); }
 
@@ -173,7 +204,8 @@
   function rota() {
     const m = location.pathname.match(/^\/loja\/([a-z0-9-]+)/);
     if (m) bySeller(m[1]);
-    const h = location.hash.match(/^#p-(.+)$/);
+    // /p/<id> é o link novo; #p-<id> continua valendo para links antigos já compartilhados.
+    const h = location.pathname.match(/^\/p\/(.+)$/) ?? location.hash.match(/^#p-(.+)$/);
     const x = h && P.find((p) => p.id === decodeURIComponent(h[1]));
     if (x) openProduct(x);
   }
@@ -205,10 +237,16 @@
     if (t.closest('#back')) return goHome();
     if (!t.closest('.mega') && !$('mega').hidden) fecharMega();
   });
+  $('rsort').addEventListener('change', (e) => { view.ordem = e.target.value; renderResults(); });
+  $('rcidade').addEventListener('change', (e) => { view.cidade = e.target.value; view.store = ''; renderResults(); });
   $('mx').onclick = closeProduct;
   $('modal').addEventListener('click', (e) => { if (e.target.id === 'modal') closeProduct(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeProduct(); fecharMega(); } });
-  addEventListener('popstate', () => (location.pathname === '/' ? goHome() : rota()));
+  // Voltar (navegador ou celular) com o produto aberto só fecha a janela; a página de baixo fica como estava.
+  addEventListener('popstate', () => {
+    if (!$('modal').hidden) return fecharJanela();
+    location.pathname === '/' ? goHome() : rota();
+  });
   $('sf').addEventListener('submit', (e) => {
     e.preventDefault();
     const q = $('q').value.trim().toLowerCase(), dep = $('sdept').value;
