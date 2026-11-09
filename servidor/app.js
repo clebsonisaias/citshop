@@ -91,6 +91,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
         if (/^[A-Z0-9]{10}$/.test(String(b.asin ?? ""))) p.asin = String(b.asin);
         if (!/^(shopee|amazon|ml)-[A-Za-z0-9_-]+$/.test(p.id) || vistos.has(p.id) || !LOJAS_AF.has(p.loja) || p.nome.length < 3 || !p.preco || !HOSTS_AF.test(p.link)) continue;
         if (p.precoAntigo && p.precoAntigo <= p.preco) p.precoAntigo = null;
+        if (b.destaque === true) p.destaque = true;
         vistos.add(p.id);
         produtos.push(p);
       }
@@ -159,6 +160,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     id: x.id, nome: x.nome, dept: DEPTS.includes(x.categoria) ? x.categoria : "casa", loja: x.loja,
     preco: x.preco, precoAntigo: x.precoAntigo, nota: x.nota ?? 0, vendidos: x.vendidos ?? 0,
     fotos: x.imagem ? [x.imagem] : [], link: x.link, queda: x.queda, atualizadoEm: x.atualizadoEm ?? null,
+    destaque: x.destaque === true,
   });
 
   app.get("/api/vitrine", (req, res) => {
@@ -437,6 +439,11 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   const clienteAmazon = () => criarClienteAmazon({
     credencialId: env.AMAZON_CREDENCIAL_ID, credencialSegredo: env.AMAZON_CREDENCIAL_SEGREDO,
     versao: env.AMAZON_CREDENCIAL_VERSAO ?? "3.1", parceiro: env.AMAZON_PARTNER_TAG, fetchImpl,
+  });
+  app.get("/api/admin/coleta", exigirAdmin, (req, res) => {
+    let st = {};
+    try { st = JSON.parse(readFileSync(join(dadosDir, "coleta-status.json"), "utf8")); } catch { /* ainda não rodou */ }
+    res.json({ shopeeCookie: Boolean(env.SHOPEE_COOKIE), ...st });
   });
   app.get("/api/admin/amazon", exigirAdmin, (req, res) => {
     let st = {};

@@ -2,6 +2,7 @@
 import { join } from "node:path";
 import { RAIZ, criarApp } from "./app.js";
 import { atualizarAfiliados, atualizarAmazon } from "./afiliados.js";
+import { rodarColeta } from "./coletor.js";
 
 const PORTA = Number(process.env.PORT ?? 3000);
 
@@ -18,6 +19,13 @@ const rodarRobo = () => atualizarAfiliados({ env: process.env, dadosDir, manual:
   .catch((e) => console.error(`[afiliados] falhou, mantendo a lista anterior: ${e.message}`));
 rodarRobo();
 setInterval(rodarRobo, 8 * 60 * 60 * 1000).unref();
+
+// Coletor sem API (Shopee pelo cookie do painel, Amazon pelas páginas públicas): 1 min após subir e a cada 12 horas.
+const rodarColetor = () => rodarColeta({ env: process.env, dadosDir, manual: join(RAIZ, "manual.json") })
+  .then((s) => console.log(`[coletor] shopee=${s.shopee} amazon=${s.amazon} total=${s.total ?? "-"} ${s.erros.join(" | ")}`))
+  .catch((e) => console.error(`[coletor] ${e.message}`));
+setTimeout(rodarColetor, 60_000).unref();
+setInterval(rodarColetor, 12 * 60 * 60 * 1000).unref();
 
 // Amazon separada: a Creators API só permite guardar preço e oferta por 1 hora.
 const rodarAmazon = () => atualizarAmazon({ env: process.env, dadosDir, manual: join(RAIZ, "manual.json") })
