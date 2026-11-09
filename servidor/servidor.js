@@ -20,12 +20,13 @@ const rodarRobo = () => atualizarAfiliados({ env: process.env, dadosDir, manual:
 rodarRobo();
 setInterval(rodarRobo, 8 * 60 * 60 * 1000).unref();
 
-// Coletor sem API (Shopee pelo cookie do painel, Amazon pelas páginas públicas): 1 min após subir e a cada 12 horas.
+// Coletor sem API (Shopee pelo cookie do painel, Amazon pelas páginas públicas): 1 min após subir e a cada 4 horas.
+// A Amazon vai em rodízio (um pedaço do catálogo por rodada, ver coletor.js), então o catálogo todo gira em ~16h.
 const rodarColetor = () => rodarColeta({ env: process.env, dadosDir, manual: join(RAIZ, "manual.json") })
   .then((s) => console.log(`[coletor] shopee=${s.shopee} amazon=${s.amazon} total=${s.total ?? "-"} ${s.erros.join(" | ")}`))
   .catch((e) => console.error(`[coletor] ${e.message}`));
 setTimeout(rodarColetor, 60_000).unref();
-setInterval(rodarColetor, 12 * 60 * 60 * 1000).unref();
+setInterval(rodarColetor, 4 * 60 * 60 * 1000).unref();
 
 // Amazon separada: a Creators API só permite guardar preço e oferta por 1 hora.
 const rodarAmazon = () => atualizarAmazon({ env: process.env, dadosDir, manual: join(RAIZ, "manual.json") })
