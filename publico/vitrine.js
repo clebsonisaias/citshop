@@ -15,6 +15,7 @@
   const iniciais = (n) => n.split(/\s+/).map((w) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
 
   const LISTS = {
+    alexa: { t: 'Alexa e dispositivos Amazon', f: () => P.filter((x) => x.destaque) },
     local: { t: 'Lojas da região', f: () => P.filter((x) => x.loja === 'local') },
     ofertas: { t: 'Maiores descontos', f: () => ordenar([...P].filter((x) => off(x) > 0).sort((a, b) => off(b) - off(a))) },
     ate100: { t: 'Tudo até R$ 100', f: () => ordenar(P.filter((x) => x.preco <= 100).sort((a, b) => a.preco - b.preco)) },
