@@ -147,7 +147,8 @@ export function lerBusca(t, tag) {
   return out;
 }
 
-async function coletarAmazon(tag, fetchImpl, log) {
+// Se a Amazon bloquear uma categoria, ela fica com os produtos da rodada anterior em vez de sumir da vitrine.
+async function coletarAmazon(tag, fetchImpl, log, anteriores = []) {
   const produtos = [];
   // Destaque: Alexa e dispositivos Amazon (mais vendidos de Dispositivos Amazon; a busca fica de reserva).
   let alexa = [];
@@ -164,7 +165,10 @@ async function coletarAmazon(tag, fetchImpl, log) {
       const lista = lerMaisVendidos(await html(`https://www.amazon.com.br/gp/bestsellers/${slug}`, fetchImpl), cat, tag);
       produtos.push(...(digital ? lista.map(comoEbook) : lista));
     }
-    catch (e) { log.warn(`[coletor] Amazon ${slug}: ${e.message}`); }
+    catch (e) {
+      log.warn(`[coletor] Amazon ${slug}: ${e.message}`);
+      if (cat !== "tec") produtos.push(...anteriores.filter((p) => p.categoria === cat && !p.destaque && (digital ? !p.asin : Boolean(p.asin))));
+    }
     await new Promise((r) => setTimeout(r, 1500));
   }
   const vistos = new Set();
@@ -227,7 +231,7 @@ export async function rodarColeta({ env, dadosDir, manual, fetchImpl = fetch, lo
   } else status.erros.push("Shopee: falta SHOPEE_COOKIE");
 
   let amazon = daLoja("amazon");
-  try { amazon = await coletarAmazon(env.AMAZON_TAG || "citshop-20", fetchImpl, log); status.amazon = amazon.length; }
+  try { amazon = await coletarAmazon(env.AMAZON_TAG || "citshop-20", fetchImpl, log, amazon); status.amazon = amazon.length; }
   catch (e) { status.erros.push(`Amazon: ${e.message}`); }
 
   const outros = anterior.filter((p) => p.loja !== "shopee" && p.loja !== "amazon");
