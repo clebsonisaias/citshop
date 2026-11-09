@@ -28,6 +28,7 @@
     // Os fixos do manual.json (ex.: livro de autor da região) vêm primeiro.
     livros: { t: 'Livros e eBooks', f: () => P.filter((x) => x.dept === 'livros').sort((a, b) => b.fixo - a.fixo) },
     mercado: { t: 'Mercado, saúde e bebê', f: () => P.filter((x) => ['mercado', 'saude', 'bebe'].includes(x.dept)) },
+    camping: { t: 'Camping e sobrevivência', f: () => P.filter((x) => x.dept === 'camping') },
   };
 
   function shot(x, foto = x.fotos?.[0]) {
@@ -87,7 +88,7 @@
   }
 
   // Resultados (departamento, lista, loja, busca)
-  const view = { list: [], store: '', ordem: '', cidade: '' };
+  const view = { list: [], store: '', ordem: '', cidade: '', sub: '' };
   const TITULO = 'CITshop · ofertas e lojas da sua cidade';
   let voltar = '/'; // endereço (com a query, ex.: utm) para onde a janela do produto devolve ao fechar
   let empurrou = false; // abrir o produto criou uma entrada no histórico: o Voltar só fecha a janela
@@ -98,7 +99,7 @@
     desconto: (a, b) => off(b) - off(a),
   };
   function showResults(title, list, head = '') {
-    Object.assign(view, { list, store: '', ordem: '', cidade: '' });
+    Object.assign(view, { list, store: '', ordem: '', cidade: '', sub: '' });
     $('rsort').value = '';
     $('rtitle').textContent = title;
     $('rhead').innerHTML = head;
@@ -118,7 +119,11 @@
     const cidades = [...new Set(view.list.filter((x) => x.loja === 'local').map((x) => x.cidade))].sort();
     $('rcidadeL').hidden = cidades.length < 2;
     $('rcidade').innerHTML = ['<option value="">Todas</option>', ...cidades.map((c) => `<option ${view.cidade === c ? 'selected' : ''}>${esc(c)}</option>`)].join('');
-    let list = base.filter((x) => !view.store || chave(x) === view.store);
+    // Subcategorias (Geladeiras, Air fryer, Barracas...): chips quando a lista tem mais de uma.
+    const subs = [...new Set(base.map((x) => x.sub).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    $('subchips').innerHTML = subs.length > 1 ? [['', 'Tudo'], ...subs.map((s) => [s, s])]
+      .map(([k, n]) => `<button class="chip" data-sub="${esc(k)}" aria-pressed="${view.sub === k}">${esc(n)}</button>`).join('') : '';
+    let list = base.filter((x) => (!view.store || chave(x) === view.store) && (!view.sub || x.sub === view.sub));
     // Lojas da região continuam na frente (regra da CITshop); a ordem escolhida vale dentro de cada grupo.
     if (ORDEM[view.ordem]) list = ordenar([...list].sort(ORDEM[view.ordem]));
     $('rgrid').innerHTML = list.length ? list.map(card).join('') : '<p class="empty">Nenhum produto por aqui ainda. Tente outro departamento ou outra busca.</p>';
@@ -263,6 +268,7 @@
     const s = t.closest('[data-show]'); if (s) return showResults(LISTS[s.dataset.show].t, LISTS[s.dataset.show].f());
     const st = t.closest('[data-store]'); if (st) return showResults(`Ofertas ${STORE[st.dataset.store]}`, P.filter((x) => x.loja === st.dataset.store));
     const c = t.closest('[data-chip]'); if (c) { view.store = c.dataset.chip; return renderResults(); }
+    const sb = t.closest('[data-sub]'); if (sb) { view.sub = sb.dataset.sub; return renderResults(); }
     if (t.closest('[data-open-mega]') || t.closest('#allbtn')) {
       const abrir = $('mega').hidden;
       $('mega').hidden = !abrir;
@@ -285,7 +291,7 @@
   $('sf').addEventListener('submit', (e) => {
     e.preventDefault();
     const q = $('q').value.trim().toLowerCase(), dep = $('sdept').value;
-    const list = P.filter((x) => (!dep || x.dept === dep) && (!q || x.nome.toLowerCase().includes(q) || (x.lojaNome ?? '').toLowerCase().includes(q)));
+    const list = P.filter((x) => (!dep || x.dept === dep) && (!q || x.nome.toLowerCase().includes(q) || (x.lojaNome ?? '').toLowerCase().includes(q) || (x.sub ?? '').toLowerCase().includes(q)));
     showResults(q ? `Resultados para "${$('q').value.trim()}"` : dep ? D[dep].n : 'Todos os produtos', ordenar(list));
   });
 

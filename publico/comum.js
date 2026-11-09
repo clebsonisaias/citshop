@@ -24,6 +24,10 @@ window.CIT = (() => {
     bebe: '<path d="M14 30h36a18 18 0 0 1-36 0z"/><path d="M50 30V14a8 8 0 0 0-8-8"/><circle cx="22" cy="55" r="4"/><circle cx="42" cy="55" r="4"/>',
     saude: '<rect x="10" y="10" width="44" height="44" rx="8"/><path d="M32 20v24M20 32h24"/>',
     mercado: '<path d="M6 10h8l6 30h30l6-20H17"/><circle cx="24" cy="50" r="4"/><circle cx="46" cy="50" r="4"/>',
+    camping: '<path d="M32 8 6 54h52z"/><path d="M32 8v46M24 54l8-16 8 16"/>',
+    moveis: '<path d="M10 30v18h44V30M10 30a6 6 0 0 1 12 0v8h20v-8a6 6 0 0 1 12 0M14 48v6M50 48v6M18 30V20a6 6 0 0 1 6-6h16a6 6 0 0 1 6 6v10"/>',
+    jardim: '<path d="M32 56V30M32 30c-10 0-16-8-16-18 10 0 16 8 16 18zM32 38c8 0 14-6 14-14-8 0-14 6-14 14z"/><path d="M18 56h28"/>',
+    musica: '<path d="M24 46V12l28-6v34"/><circle cx="18" cy="46" r="6"/><circle cx="46" cy="40" r="6"/>',
   };
   const DEPTS = [
     ['tec', 'Eletrônicos', '#3A7BD5'], ['cel', 'Celulares', '#008B87'], ['info', 'Informática', '#5A5FD8'], ['eletro', 'Eletrodomésticos', '#0F8FB0'],
@@ -31,7 +35,8 @@ window.CIT = (() => {
     ['calc', 'Calçados', '#B5651D'], ['beleza', 'Beleza e Perfumaria', '#C2417A'], ['brinq', 'Brinquedos', '#E0A100'], ['esporte', 'Esporte e Lazer', '#2E9E3E'],
     ['ferr', 'Ferramentas', '#C0582A'], ['auto', 'Automotivo', '#4A6178'], ['pets', 'Pet Shop', '#B88A12'], ['papel', 'Papelaria', '#2D7FB8'],
     ['livros', 'Livros e eBooks', '#8B5E3C'], ['games', 'Games', '#6A3FB5'], ['bebe', 'Bebês', '#D0607F'], ['saude', 'Saúde e Cuidados', '#C94444'],
-    ['mercado', 'Mercado', '#5C8A1E'],
+    ['mercado', 'Mercado', '#5C8A1E'], ['camping', 'Camping e Sobrevivência', '#4F6B2A'], ['moveis', 'Móveis', '#9A6B3F'],
+    ['jardim', 'Jardim e Piscina', '#2F8F5B'], ['musica', 'Instrumentos Musicais', '#7A4FB0'],
   ];
   const D = Object.fromEntries(DEPTS.map(([k, n, h]) => [k, { n, h }]));
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
