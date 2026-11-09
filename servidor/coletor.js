@@ -16,10 +16,11 @@ const SHOPEE_PAGINAS = 3; // 3 x 50 = até 150 ofertas
 const SHOPEE_IMG = "https://down-bs-br.img.susercontent.com/";
 
 const AMAZON_MAIS_VENDIDOS = [
-  ["cozinha", "kitchen"], ["casa", "home"], ["tec", "electronics"], ["beleza", "beauty"], ["pets", "pet-products"],
-  ["ferr", "hi"], ["brinq", "toys"], ["esporte", "sports"], ["auto", "automotive"],
+  ["cozinha", "kitchen"], ["casa", "home"], ["tec", "electronics"], ["info", "computers"], ["eletro", "appliances"],
+  ["beleza", "beauty"], ["pets", "pet-products"], ["ferr", "hi"], ["brinq", "toys"], ["brinq", "baby"],
+  ["esporte", "sports"], ["auto", "automotive"], ["moda", "fashion"], ["papel", "office-products"], ["tec", "videogames"],
 ];
-const AMAZON_POR_CATEGORIA = 8;
+const AMAZON_POR_CATEGORIA = 20;
 const AMAZON_DISPOSITIVOS = "https://www.amazon.com.br/gp/bestsellers/amazon-devices";
 const AMAZON_ALEXA = "https://www.amazon.com.br/s?k=echo+alexa&i=amazon-devices";
 
