@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { FONTES_AMAZON, aplicarHistorico, categoria, comoEbook, rodarColeta } from "../servidor/coletor.js";
+import { FONTES_AMAZON, aplicarHistorico, categoria, comoEbook, lerOfertas, rodarColeta } from "../servidor/coletor.js";
 
 const DIA = 86_400_000;
 const agora = Date.parse("2026-11-20T15:00:00Z");
@@ -97,5 +97,43 @@ test("rodízio: visita um pedaço por rodada, e o que não foi visitado ou foi b
     assert.equal(c.produtos.filter((p) => p.sub === "Perneiras").length, 12);
     assert.equal(c.produtos.filter((p) => p.sub === "Geladeiras").length, 12); // bloqueada: fica a da rodada anterior
     assert.equal(c.produtos.filter((p) => p.sub === "Barracas").length, 12); // não visitada: continua
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+const cardOferta = (asin, nome, novo, velho) => `<div class="a-cardui dcl-product" ><a class="dcl-product-link" href="/dp/${asin}">
+  <img src="https://m.media-amazon.com/images/I/41abc._AC_.jpg"><span class="dcl-truncate dcl-product-label"><span>${nome}</span></span>
+  <span class="a-price dcl-product-price-new"><span class="a-offscreen">R$ ${novo}</span></span>
+  ${velho ? `<span class="a-price a-text-price dcl-product-price-old"><span class="a-offscreen">R$ ${velho}</span></span>` : ""}</a></div><div class="dcl-product-wrapper">`;
+
+test("Ofertas do Dia: lê preço com desconto e o De; sem De não é oferta", () => {
+  const html = cardOferta("B0AIRFRY01", "Fritadeira Air Fryer Philips 12L", "549,00", "999,90") + cardOferta("B0SEMDE001", "Produto sem desconto", "10,00", "");
+  const o = lerOfertas(html, "citshop-20");
+  assert.equal(o.length, 1);
+  assert.deepEqual([o[0].id, o[0].preco, o[0].precoAntigo, o[0].categoria, o[0].oferta], ["amazon-B0AIRFRY01", 549, 999.9, "cozinha", true]);
+});
+
+test("desconto vale só enquanto o produto está nas Ofertas do Dia", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "citshop-ofertas-"));
+  const manual = join(dir, "manual.json");
+  writeFileSync(manual, "[]");
+  const fontes = [{ dept: "cozinha", caminho: "kitchen/1", sub: "Air fryer" }];
+  const grade = `<div id="gridItemRoot"><div data-asin="B0AIRFRY01"><img alt="Fritadeira Air Fryer Philips 12L">R$ 999,90</div></div>` +
+    Array.from({ length: 11 }, (_, i) => `<div id="gridItemRoot"><div data-asin="B0OUTRO0${String(i).padStart(2, "0")}"><img alt="Outro produto ${i}">R$ 50,00</div></div>`).join("");
+  const ofertasHoje = Array.from({ length: 5 }, (_, i) => cardOferta(`B0OFERTA0${i}`, `Oferta avulsa numero ${i}`, "10,00", "20,00")).join("");
+  let comAirFryer = true;
+  const fetchImpl = async (url) => new Response(url.includes("goldbox")
+    ? ofertasHoje + (comAirFryer ? cardOferta("B0AIRFRY01", "Fritadeira Air Fryer Philips 12L", "549,00", "999,90") : cardOferta("B0OFERTA09", "Outra oferta qualquer", "10,00", "20,00"))
+    : grade);
+  const rodar = () => rodarColeta({ env: {}, dadosDir: dir, manual, fetchImpl, log: { warn() {} }, opcoesAmazon: { fontes, porRodada: 1, pausaMs: 0 } });
+  const airfryer = () => JSON.parse(readFileSync(join(dir, "coleta.json"), "utf8")).produtos.filter((p) => p.id === "amazon-B0AIRFRY01");
+  try {
+    await rodar();
+    let a = airfryer();
+    assert.equal(a.length, 1); // não duplica: a oferta entra no produto da lista
+    assert.deepEqual([a[0].preco, a[0].precoAntigo, a[0].sub], [549, 999.9, "Air fryer"]);
+    comAirFryer = false;
+    await rodar();
+    a = airfryer();
+    assert.deepEqual([a[0].preco, a[0].precoAntigo], [999.9, null]);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
