@@ -37,6 +37,9 @@ test('deAmazon usa o preço de lista só quando a própria API informa', () => {
   assert.equal(comLista.link, 'https://www.amazon.com.br/dp/B0H3Q1RHD7?tag=citshop-20');
   const semLista = deAmazon({ ...base, offersV2: { listings: [{ price: { money: { amount: 100 } } }] } }, 'tec', 'citshop-20', 'agora');
   assert.equal(semLista.precoAntigo, null);
+  assert.equal(semLista.descricao, '');
+  const comDestaques = deAmazon({ ...base, itemInfo: { title: { displayValue: 'TV' }, features: { displayValues: ['4K QLED', 'Wi-Fi e Bluetooth'] } }, offersV2: { listings: [{ price: { money: { amount: 100 } } }] } }, 'tec', 'citshop-20', 'agora');
+  assert.equal(comDestaques.descricao, '4K QLED · Wi-Fi e Bluetooth');
 });
 
 test('o token é reaproveitado e getItems vai em lotes de 10 com marketplace e tag', async () => {

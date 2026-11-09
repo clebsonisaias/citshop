@@ -177,6 +177,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     preco: x.preco, precoAntigo: x.precoAntigo, nota: x.nota ?? 0, vendidos: x.vendidos ?? 0,
     fotos: x.imagem ? [x.imagem] : [], link: x.link, queda: x.queda, atualizadoEm: x.atualizadoEm ?? null,
     destaque: x.destaque === true, menor30: x.menor30 === true, fixo: x.fixo === true, sub: x.sub ?? null,
+    descricao: x.descricao ?? "", // destaques do produto, quando a API oficial manda
   });
 
   // A vitrine pública inteira; usada pela API e pela página de produto (/p/:id).

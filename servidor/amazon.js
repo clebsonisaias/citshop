@@ -55,6 +55,7 @@ export function deAmazon(item, categoria, tag, atualizadoEm) {
     id: `amazon-${item.asin}`,
     asin: item.asin,
     nome,
+    descricao: (item.itemInfo?.features?.displayValues ?? []).join(" · ").slice(0, 1000),
     loja: "amazon",
     categoria,
     preco,

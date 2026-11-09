@@ -2,7 +2,6 @@
 (() => {
   const { DEPTS, D, ICON, esc, brl, svg } = window.CIT;
   const STORE = { ml: 'Mercado Livre', shopee: 'Shopee', amazon: 'Amazon', local: 'Lojas da região' };
-  const BF = 'https://www.amazon.com.br/blackfriday?&linkCode=ll2&tag=citshop-20&linkId=19fc97704e392c8b7ad573364830ea50&ref_=as_li_ss_tl';
   const $ = (id) => document.getElementById(id);
   const num = new Intl.NumberFormat('pt-BR');
   let P = [], LOJAS = [];
@@ -17,7 +16,7 @@
   const iniciais = (n) => n.split(/\s+/).map((w) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
 
   const LISTS = {
-    alexa: { t: 'Alexa e dispositivos Amazon', f: () => P.filter((x) => x.destaque) },
+    alexa: { t: 'Casa inteligente', f: () => P.filter((x) => x.destaque) },
     quedas: { t: 'Baixou de preço', f: () => [...P].filter((x) => caiu(x) > 0 || x.menor30).sort((a, b) => caiu(b) - caiu(a)) },
     local: { t: 'Lojas da região', f: () => P.filter((x) => x.loja === 'local') },
     ofertas: { t: 'Maiores descontos', f: () => ordenar([...P].filter((x) => off(x) > 0).sort((a, b) => off(b) - off(a))) },
@@ -31,21 +30,22 @@
     camping: { t: 'Camping e sobrevivência', f: () => P.filter((x) => x.dept === 'camping') },
   };
 
+  // O desconto aparece ao lado do preço ("33% OFF"), como no Mercado Livre, e não em cima da foto.
   function shot(x, foto = x.fotos?.[0]) {
-    const tag = off(x) ? `<span class="tag">-${off(x)}%</span>` : '';
     return foto
-      ? `<div class="shot foto"><img src="${esc(foto)}" alt="" loading="lazy">${tag}`
-      : `<div class="shot" style="--hue:${hue(x)}">${svg(x.dept)}${tag}`;
+      ? `<div class="shot foto"><img src="${esc(foto)}" alt="" loading="lazy">`
+      : `<div class="shot" style="--hue:${hue(x)}">${svg(x.dept)}`;
   }
+  const preco = (x) => `${brl.format(x.preco)}${off(x) ? ` <span class="pct">${off(x)}% OFF</span>` : ''}`;
   function card(x) {
     const nota = x.nota ? `<div class="rate"><b>★ ${x.nota.toFixed(1).replace('.', ',')}</b>${x.vendidos ? ` · ${num.format(x.vendidos)} vendidos` : ''}</div>` : '';
     const ship = x.loja === 'local' ? `<div class="ship">${esc(window.CIT.textoEntrega(x.entrega))} em ${esc(x.cidade)}</div>` : x.queda ? `<div class="ship">↓ caiu ${brl.format(x.queda)}</div>` : '';
     const selo = x.menor30 && x.loja !== 'local' ? '<div class="ship"><b>Menor preço em 30 dias</b></div>' : '';
-    const direto = x.loja !== 'local' && x.link;
-    const abre = direto ? `<a class="card" href="${esc(x.link)}" target="_blank" rel="sponsored nofollow noopener" style="text-decoration:none">` : `<button class="card" data-p="${esc(x.id)}">`;
-    return `${abre}${shot(x)}<span class="store" data-m="${esc(x.loja)}">${esc(label(x))}</span></div>
+    // Loja comum: a marca de quem vende só aparece discreta no produto ("Vendido por X"), igual para todas as lojas.
+    // Todo card abre o detalhe aqui no site; a ida para a loja fica no botão "Comprar" do detalhe.
+    return `<button class="card" data-p="${esc(x.id)}">${shot(x)}</div>
       <div class="body"><h3>${esc(x.nome)}</h3>${nota}${off(x) ? `<div class="old">${brl.format(x.precoAntigo)}</div>` : ''}
-      <div class="price">${brl.format(x.preco)}</div>${ship}${selo}${direto ? `<div class="ship">Comprar na ${STORE[x.loja]} ↗</div>` : ''}</div>${direto ? '</a>' : '</button>'}`;
+      <div class="price">${preco(x)}</div>${ship}${selo}<div class="vendido">Vendido por ${esc(label(x))}</div></div></button>`;
   }
   function rail(id, list) {
     const el = $(id);
@@ -88,7 +88,7 @@
   }
 
   // Resultados (departamento, lista, loja, busca)
-  const view = { list: [], store: '', ordem: '', cidade: '', sub: '' };
+  const view = { list: [], ordem: '', cidade: '', sub: '' };
   const TITULO = 'CITshop · ofertas e lojas da sua cidade';
   let voltar = '/'; // endereço (com a query, ex.: utm) para onde a janela do produto devolve ao fechar
   let empurrou = false; // abrir o produto criou uma entrada no histórico: o Voltar só fecha a janela
@@ -99,7 +99,7 @@
     desconto: (a, b) => off(b) - off(a),
   };
   function showResults(title, list, head = '') {
-    Object.assign(view, { list, store: '', ordem: '', cidade: '', sub: '' });
+    Object.assign(view, { list, ordem: '', cidade: '', sub: '' });
     $('rsort').value = '';
     $('rtitle').textContent = title;
     $('rhead').innerHTML = head;
@@ -110,12 +110,8 @@
     scrollTo({ top: 0 });
   }
   function renderResults() {
-    const chave = (x) => (x.loja === 'local' ? `local:${x.lojaSlug}` : x.loja);
-    // A cidade filtra antes dos chips: com cidade escolhida, só aparecem as lojas daquela cidade.
+    // Sem filtro por loja: a CITshop é uma loja só; quem vende aparece em cada produto.
     const base = view.list.filter((x) => !view.cidade || (x.loja === 'local' && x.cidade === view.cidade));
-    const nomes = new Map(base.map((x) => [chave(x), label(x)]));
-    $('storechips').innerHTML = nomes.size > 1 ? [['', 'Todas as lojas'], ...nomes]
-      .map(([k, n]) => `<button class="chip" data-chip="${esc(k)}" aria-pressed="${view.store === k}">${esc(n)}</button>`).join('') : '';
     const cidades = [...new Set(view.list.filter((x) => x.loja === 'local').map((x) => x.cidade))].sort();
     $('rcidadeL').hidden = cidades.length < 2;
     $('rcidade').innerHTML = ['<option value="">Todas</option>', ...cidades.map((c) => `<option ${view.cidade === c ? 'selected' : ''}>${esc(c)}</option>`)].join('');
@@ -123,7 +119,7 @@
     const subs = [...new Set(base.map((x) => x.sub).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
     $('subchips').innerHTML = subs.length > 1 ? [['', 'Tudo'], ...subs.map((s) => [s, s])]
       .map(([k, n]) => `<button class="chip" data-sub="${esc(k)}" aria-pressed="${view.sub === k}">${esc(n)}</button>`).join('') : '';
-    let list = base.filter((x) => (!view.store || chave(x) === view.store) && (!view.sub || x.sub === view.sub));
+    let list = base.filter((x) => !view.sub || x.sub === view.sub);
     // Lojas da região continuam na frente (regra da CITshop); a ordem escolhida vale dentro de cada grupo.
     if (ORDEM[view.ordem]) list = ordenar([...list].sort(ORDEM[view.ordem]));
     $('rgrid').innerHTML = list.length ? list.map(card).join('') : '<p class="empty">Nenhum produto por aqui ainda. Tente outro departamento ou outra busca.</p>';
@@ -162,8 +158,7 @@
     const melhor = (x) => Math.max(off(x), caiu(x));
     const lista = ordenar([...P].filter((x) => melhor(x) > 0 || x.menor30).sort((a, b) => melhor(b) - melhor(a)));
     showResults('Black Friday CITshop', lista, `<div class="sellbox" style="margin-bottom:16px"><div><h2 id="bfconta">${contagemBF()}</h2>
-      <p>Produtos com desconto e os que baixaram de preço nos últimos dias, conferidos 2x ao dia.</p>
-      <a class="btn" href="${BF}" target="_blank" rel="sponsored nofollow noopener">Todas as ofertas na Amazon ↗</a></div></div>`);
+      <p>Produtos com desconto e os que baixaram de preço nos últimos dias.</p></div></div>`);
     document.title = 'Black Friday · CITshop';
     if (location.pathname !== '/black-friday') history.pushState(null, '', '/black-friday');
     clearInterval(bfTimer);
@@ -185,13 +180,19 @@
     $('mthumbs').innerHTML = fotos.length > 1 ? fotos.map((f, i) => `<button aria-label="Foto ${i + 1}"><img src="${esc(f)}" alt=""></button>`).join('') : '';
     $('mthumbs').querySelectorAll('button').forEach((b, i) => (b.onclick = () => mostrar(i)));
     mostrar(0);
-    $('mstore').dataset.m = x.loja;
-    $('mstore').textContent = label(x);
+    $('mstore').textContent = `Vendido por ${label(x)}`;
     $('mt').textContent = x.nome;
-    $('mrate').textContent = [x.nota ? `★ ${x.nota.toFixed(1).replace('.', ',')}` : '', x.vendidos ? `${num.format(x.vendidos)} vendidos` : '', D[x.dept]?.n, local ? x.cidade : ''].filter(Boolean).join(' · ');
+    $('mcrumb').textContent = [D[x.dept]?.n, x.sub].filter(Boolean).join(' › ');
+    $('mrate').textContent = [x.nota ? `★ ${x.nota.toFixed(1).replace('.', ',')}` : '', x.vendidos ? `${num.format(x.vendidos)} vendidos` : '', local ? x.cidade : ''].filter(Boolean).join(' · ');
     $('mold').textContent = off(x) ? `de ${brl.format(x.precoAntigo)}` : '';
-    $('mprice').textContent = brl.format(x.preco);
-    $('msave').textContent = off(x) ? `Economia de ${brl.format(x.precoAntigo - x.preco)} (${off(x)}% off)` : '';
+    $('mprice').innerHTML = preco(x);
+    // Produtos parecidos: mesma subcategoria primeiro, depois o departamento; lojas da região na frente.
+    const outros = P.filter((y) => y.id !== x.id);
+    const parecidos = ordenar([...outros.filter((y) => x.sub && y.sub === x.sub), ...outros.filter((y) => y.dept === x.dept && !(x.sub && y.sub === x.sub))]).slice(0, 6);
+    $('msimBox').hidden = !parecidos.length;
+    $('msim').innerHTML = parecidos.map(card).join('');
+    $('modal').querySelector('.sheet').scrollTop = 0;
+    $('msave').textContent = off(x) ? `Economia de ${brl.format(x.precoAntigo - x.preco)} (${off(x)}% off)` : x.menor30 ? 'Menor preço em 30 dias' : '';
     $('mdesc').textContent = x.descricao ?? '';
     // Link próprio do produto: o servidor monta a prévia (título, preço e foto) que o WhatsApp mostra.
     const link = `${location.origin}/p/${encodeURIComponent(x.id)}`;
@@ -266,8 +267,6 @@
     const sl = t.closest('[data-seller]'); if (sl) { e.preventDefault(); return bySeller(sl.dataset.seller); }
     const d = t.closest('[data-dept]'); if (d) { e.preventDefault(); return byDept(d.dataset.dept); }
     const s = t.closest('[data-show]'); if (s) return showResults(LISTS[s.dataset.show].t, LISTS[s.dataset.show].f());
-    const st = t.closest('[data-store]'); if (st) return showResults(`Ofertas ${STORE[st.dataset.store]}`, P.filter((x) => x.loja === st.dataset.store));
-    const c = t.closest('[data-chip]'); if (c) { view.store = c.dataset.chip; return renderResults(); }
     const sb = t.closest('[data-sub]'); if (sb) { view.sub = sb.dataset.sub; return renderResults(); }
     if (t.closest('[data-open-mega]') || t.closest('#allbtn')) {
       const abrir = $('mega').hidden;
@@ -279,7 +278,7 @@
     if (!t.closest('.mega') && !$('mega').hidden) fecharMega();
   });
   $('rsort').addEventListener('change', (e) => { view.ordem = e.target.value; renderResults(); });
-  $('rcidade').addEventListener('change', (e) => { view.cidade = e.target.value; view.store = ''; renderResults(); });
+  $('rcidade').addEventListener('change', (e) => { view.cidade = e.target.value; renderResults(); });
   $('mx').onclick = closeProduct;
   $('modal').addEventListener('click', (e) => { if (e.target.id === 'modal') closeProduct(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeProduct(); fecharMega(); } });
