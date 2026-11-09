@@ -8,6 +8,8 @@
   let P = [], LOJAS = [];
 
   const off = (x) => (x.precoAntigo > x.preco ? Math.round((1 - x.preco / x.precoAntigo) * 100) : 0);
+  // Quanto (em %) caiu desde o maior preço que a CITshop viu nos últimos dias.
+  const caiu = (x) => (x.queda > 0 ? Math.round((x.queda / (x.preco + x.queda)) * 100) : 0);
   const label = (x) => (x.loja === 'local' ? x.lojaNome : STORE[x.loja]);
   const hue = (x) => (D[x.dept] ?? D.casa).h;
   // Mesma regra do servidor: lojas locais primeiro, ordem preservada dentro de cada grupo.
@@ -16,12 +18,16 @@
 
   const LISTS = {
     alexa: { t: 'Alexa e dispositivos Amazon', f: () => P.filter((x) => x.destaque) },
+    quedas: { t: 'Baixou de preço', f: () => [...P].filter((x) => caiu(x) > 0 || x.menor30).sort((a, b) => caiu(b) - caiu(a)) },
     local: { t: 'Lojas da região', f: () => P.filter((x) => x.loja === 'local') },
     ofertas: { t: 'Maiores descontos', f: () => ordenar([...P].filter((x) => off(x) > 0).sort((a, b) => off(b) - off(a))) },
     ate100: { t: 'Tudo até R$ 100', f: () => ordenar(P.filter((x) => x.preco <= 100).sort((a, b) => a.preco - b.preco)) },
     casa: { t: 'Casa, cozinha e eletro', f: () => P.filter((x) => ['casa', 'cozinha', 'eletro', 'cama'].includes(x.dept)) },
-    tech: { t: 'Tecnologia', f: () => P.filter((x) => ['tec', 'cel', 'info'].includes(x.dept)) },
+    tech: { t: 'Tecnologia e games', f: () => P.filter((x) => ['tec', 'cel', 'info', 'games'].includes(x.dept)) },
     moda: { t: 'Moda e beleza', f: () => P.filter((x) => ['moda', 'calc', 'beleza'].includes(x.dept)) },
+    // Os fixos do manual.json (ex.: livro de autor da região) vêm primeiro.
+    livros: { t: 'Livros e eBooks', f: () => P.filter((x) => x.dept === 'livros').sort((a, b) => b.fixo - a.fixo) },
+    mercado: { t: 'Mercado, saúde e bebê', f: () => P.filter((x) => ['mercado', 'saude', 'bebe'].includes(x.dept)) },
   };
 
   function shot(x, foto = x.fotos?.[0]) {
@@ -33,11 +39,12 @@
   function card(x) {
     const nota = x.nota ? `<div class="rate"><b>★ ${x.nota.toFixed(1).replace('.', ',')}</b>${x.vendidos ? ` · ${num.format(x.vendidos)} vendidos` : ''}</div>` : '';
     const ship = x.loja === 'local' ? `<div class="ship">${esc(window.CIT.textoEntrega(x.entrega))} em ${esc(x.cidade)}</div>` : x.queda ? `<div class="ship">↓ caiu ${brl.format(x.queda)}</div>` : '';
+    const selo = x.menor30 && x.loja !== 'local' ? '<div class="ship"><b>Menor preço em 30 dias</b></div>' : '';
     const direto = x.loja !== 'local' && x.link;
     const abre = direto ? `<a class="card" href="${esc(x.link)}" target="_blank" rel="sponsored nofollow noopener" style="text-decoration:none">` : `<button class="card" data-p="${esc(x.id)}">`;
     return `${abre}${shot(x)}<span class="store" data-m="${esc(x.loja)}">${esc(label(x))}</span></div>
       <div class="body"><h3>${esc(x.nome)}</h3>${nota}${off(x) ? `<div class="old">${brl.format(x.precoAntigo)}</div>` : ''}
-      <div class="price">${brl.format(x.preco)}</div>${ship}${direto ? `<div class="ship">Comprar na ${STORE[x.loja]} ↗</div>` : ''}</div>${direto ? '</a>' : '</button>'}`;
+      <div class="price">${brl.format(x.preco)}</div>${ship}${selo}${direto ? `<div class="ship">Comprar na ${STORE[x.loja]} ↗</div>` : ''}</div>${direto ? '</a>' : '</button>'}`;
   }
   function rail(id, list) {
     const el = $(id);
@@ -52,7 +59,7 @@
 
   // Carrossel
   const SLIDES = [
-    { k: 'Black Friday', h: 'Black Friday Amazon', p: 'Descontos em todas as categorias, direto no carrinho.', c: 'Ver ofertas ↗', a: 'bag', href: BF, ext: true },
+    { k: 'Black Friday', h: 'Black Friday CITshop', p: 'Contagem regressiva e os produtos que mais baixaram de preço.', c: 'Ver ofertas →', a: 'bag', href: '/black-friday' },
     { k: 'Compre perto', h: 'As lojas da sua cidade estão aqui', p: 'Escolha, chame a loja no WhatsApp e receba rápido.', c: 'Ver lojas →', a: 'shop', show: 'local' },
     { k: 'Venda na CITshop', h: 'Sua loja na frente das gigantes', p: '30 dias grátis pra testar. Depois, R$ 49,90 por mês.', c: 'Cadastrar minha loja →', a: 'shop', href: '/painel' },
   ];
@@ -135,6 +142,33 @@
     if (location.pathname !== `/loja/${slug}`) history.pushState(null, '', `/loja/${slug}`);
   }
 
+  // Black Friday: página própria (/black-friday) com contagem regressiva e o que tem desconto ou baixou de preço.
+  const BF_INICIO = Date.parse('2026-11-27T00:00:00-03:00');
+  const BF_FIM = Date.parse('2026-12-01T00:00:00-03:00'); // vai até a Cyber Monday (30/11)
+  let bfTimer;
+  function contagemBF(agora = Date.now()) {
+    if (agora >= BF_FIM) return 'A Black Friday acabou, mas as ofertas continuam por aqui.';
+    if (agora >= BF_INICIO) return 'A Black Friday começou! Ofertas até segunda, 30/11.';
+    const m = Math.floor((BF_INICIO - agora) / 60_000);
+    const d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60), min = m % 60;
+    return `Faltam ${d ? `${d} dia${d > 1 ? 's' : ''}, ` : ''}${h}h${String(min).padStart(2, '0')} pra Black Friday (27/11)`;
+  }
+  function blackFriday() {
+    const melhor = (x) => Math.max(off(x), caiu(x));
+    const lista = ordenar([...P].filter((x) => melhor(x) > 0 || x.menor30).sort((a, b) => melhor(b) - melhor(a)));
+    showResults('Black Friday CITshop', lista, `<div class="sellbox" style="margin-bottom:16px"><div><h2 id="bfconta">${contagemBF()}</h2>
+      <p>Produtos com desconto e os que baixaram de preço nos últimos dias, conferidos 2x ao dia.</p>
+      <a class="btn" href="${BF}" target="_blank" rel="sponsored nofollow noopener">Todas as ofertas na Amazon ↗</a></div></div>`);
+    document.title = 'Black Friday · CITshop';
+    if (location.pathname !== '/black-friday') history.pushState(null, '', '/black-friday');
+    clearInterval(bfTimer);
+    bfTimer = setInterval(() => {
+      const el = $('bfconta');
+      if (el && !$('resultsview').hidden) el.textContent = contagemBF();
+      else clearInterval(bfTimer);
+    }, 30_000);
+  }
+
   // Janela do produto
   function openProduct(x) {
     const local = x.loja === 'local';
@@ -204,6 +238,7 @@
   function rota() {
     const m = location.pathname.match(/^\/loja\/([a-z0-9-]+)/);
     if (m) bySeller(m[1]);
+    if (location.pathname === '/black-friday') blackFriday();
     // /p/<id> é o link novo; #p-<id> continua valendo para links antigos já compartilhados.
     const h = location.pathname.match(/^\/p\/(.+)$/) ?? location.hash.match(/^#p-(.+)$/);
     const x = h && P.find((p) => p.id === decodeURIComponent(h[1]));
