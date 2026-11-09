@@ -32,9 +32,11 @@
   function card(x) {
     const nota = x.nota ? `<div class="rate"><b>★ ${x.nota.toFixed(1).replace('.', ',')}</b>${x.vendidos ? ` · ${num.format(x.vendidos)} vendidos` : ''}</div>` : '';
     const ship = x.loja === 'local' ? `<div class="ship">Entrega ou retirada em ${esc(x.cidade)}</div>` : x.queda ? `<div class="ship">↓ caiu ${brl.format(x.queda)}</div>` : '';
-    return `<button class="card" data-p="${esc(x.id)}">${shot(x)}<span class="store" data-m="${esc(x.loja)}">${esc(label(x))}</span></div>
+    const direto = x.loja !== 'local' && x.link;
+    const abre = direto ? `<a class="card" href="${esc(x.link)}" target="_blank" rel="sponsored nofollow noopener" style="text-decoration:none">` : `<button class="card" data-p="${esc(x.id)}">`;
+    return `${abre}${shot(x)}<span class="store" data-m="${esc(x.loja)}">${esc(label(x))}</span></div>
       <div class="body"><h3>${esc(x.nome)}</h3>${nota}${off(x) ? `<div class="old">${brl.format(x.precoAntigo)}</div>` : ''}
-      <div class="price">${brl.format(x.preco)}</div>${ship}</div></button>`;
+      <div class="price">${brl.format(x.preco)}</div>${ship}${direto ? `<div class="ship">Comprar na ${STORE[x.loja]} ↗</div>` : ''}</div>${direto ? '</a>' : '</button>'}`;
   }
   function rail(id, list) {
     const el = $(id);
