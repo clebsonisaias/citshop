@@ -20,6 +20,14 @@ export class Banco {
   loja(id) { return this.lojas.find((l) => l.id === id); }
   lojaPorEmail(email) { return this.lojas.find((l) => l.email === email); }
   produto(id) { return this.produtos.find((p) => p.id === id); }
+  cliquesContato(chave) { return this.d.metricasContato?.[chave]?.total ?? 0; }
+  registrarCliqueContato(chave, em) {
+    if (!this.d.metricasContato) this.d.metricasContato = {};
+    const anterior = this.d.metricasContato[chave] ?? { total: 0 };
+    this.d.metricasContato[chave] = { total: anterior.total + 1, ultimoCliqueEm: em };
+    this.salvar();
+    return this.d.metricasContato[chave].total;
+  }
   salvar() {
     const tmp = `${this.caminho}.tmp`;
     writeFileSync(tmp, JSON.stringify(this.d));

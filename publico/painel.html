@@ -60,6 +60,7 @@
   <section id="vPainel" hidden>
     <h1 id="pNome"></h1>
     <p class="note" id="pLink"></p>
+    <p class="note" id="pContatoResumo" aria-live="polite"></p>
 
     <div class="box status">
       <div><span class="pill" id="pStatus"></span><p id="pStatusTxt" style="margin:8px 0 0"></p></div>
@@ -95,6 +96,11 @@
           <label>Departamento<select name="dept" id="pDept" required></select></label>
           <label>Preço (R$)<input name="preco" required inputmode="decimal" placeholder="89,90"></label>
         </div>
+        <label>Disponibilidade<select name="disponibilidade">
+          <option value="consulte">Consultar disponibilidade</option>
+          <option value="disponivel">Disponível, informado pela loja</option>
+          <option value="sob-encomenda">Sob encomenda</option>
+        </select></label>
         <label>Preço antigo (R$) <small>opcional, para mostrar o desconto</small><input name="precoAntigo" inputmode="decimal" placeholder="129,90"></label>
         <label>Descrição <small>tamanhos, cores, como entrega</small><textarea name="descricao" maxlength="1000"></textarea></label>
         <div><b style="font-size:13px">Fotos</b> <small class="note">até 4, JPG ou PNG</small>
@@ -125,6 +131,9 @@
           <option value="entrega">Só entrega</option>
           <option value="ambos">Entrega e retirada</option>
         </select></label>
+        <label>Horário de atendimento<input name="horario" maxlength="120" placeholder="Segunda a sábado, 9h às 18h"></label>
+        <label>Prazo de entrega <small>opcional; será exibido como informado pela loja</small><input name="prazoEntrega" maxlength="120" placeholder="Entrega em até 2 dias úteis"></label>
+        <label>Bairros atendidos <small>opcional; separe por vírgula</small><textarea name="bairrosAtendidos" maxlength="300" placeholder="Centro, Tirol, Petrópolis"></textarea></label>
         <div class="msg" id="mLoja" hidden role="status"></div>
         <button class="btn">Salvar dados</button>
       </form>

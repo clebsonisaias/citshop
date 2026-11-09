@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!--meta-->
+<title>{{TITULO}}</title>
+<meta name="description" content="{{DESCRICAO_META}}">
+<meta name="robots" content="index,follow">
+<link rel="canonical" href="{{CANONICAL}}">
+<meta property="og:title" content="{{TITULO}}">
+<meta property="og:description" content="{{DESCRICAO_META}}">
+<meta property="og:type" content="product">
+<meta property="og:url" content="{{CANONICAL}}">
+{{OG_IMAGE}}
+<meta property="product:price:amount" content="{{PRECO_DADOS}}">
+<meta property="product:price:currency" content="BRL">
+<meta name="twitter:card" content="summary_large_image">
+<!--/meta-->
+<meta name="theme-color" content="#036271">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 30'%3E%3Cpath fill='%23008B87' d='M13 0 26 7.5v15L13 30 0 22.5v-15z'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400..800&display=swap">
+<link rel="stylesheet" href="/estilo.css">
+<!--structured-->
+</head>
+<body>
+<header class="site product-top">
+  <div class="wrap bar">
+    <a class="logo" href="/" aria-label="CITshop, página inicial"><i></i>CIT<span>shop</span></a>
+    <a class="product-back" href="/">Voltar às ofertas</a>
+    <a class="sell" href="/painel"><span class="t"><b>Venda aqui</b>30 dias grátis</span></a>
+  </div>
+</header>
+<main class="wrap product-page">
+  <nav class="product-crumb" aria-label="Navegação estrutural"><a href="/">CITshop</a><span aria-hidden="true">›</span><span>{{CATEGORIA}}</span></nav>
+  <article class="product-detail">
+    <div class="product-gallery">{{IMAGEM}}</div>
+    <div class="product-info">
+      <p class="product-seller">Vendido por <strong>{{VENDEDOR}}</strong>{{LOCAL_INFO}}</p>
+      <h1>{{NOME}}</h1>
+      {{DISPONIBILIDADE}}
+      {{LOCAL_DETALHES}}
+      {{AVALIACAO}}
+      {{DESCRICAO}}
+      <div class="product-prices">{{PRECO_ANTIGO}}<strong>{{PRECO}}</strong>{{DESCONTO}}</div>
+      <a class="buybtn product-buy" href="{{LINK_COMPRA}}" target="{{ALVO_COMPRA}}" rel="{{REL_COMPRA}}">{{TEXTO_COMPRA}}</a>
+      <p class="product-note">{{AVISO_COMPRA}}</p>
+      <a class="product-share" href="https://wa.me/?text={{COMPARTILHAR}}" target="_blank" rel="noopener">Compartilhar produto</a>
+    </div>
+  </article>
+  <section class="product-description" aria-labelledby="product-description-title">
+    <h2 id="product-description-title">Sobre este produto</h2>
+    <p>{{DESCRICAO_LONGA}}</p>
+  </section>
+</main>
+<footer class="site product-footer"><div class="wrap legal">{{AVISO_AFILIADO}}</div></footer>
+</body>
+</html>

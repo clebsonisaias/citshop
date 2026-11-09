@@ -258,3 +258,61 @@ footer.site a:hover { text-decoration: underline; }
 }
 @media (max-width: 560px) { .sheet .similar .results-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+
+/* Filtros da vitrine: usam a mesma identidade da CITshop em desktop e celular. */
+.rtools { align-items: end; flex-wrap: wrap; }
+.rtools label { display: grid; gap: 5px; color: var(--muted); font-size: 12px; font-weight: 700; }
+.rtools select, .rtools input { min-height: 40px; min-width: 132px; border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; background: var(--surface); color: var(--ink); }
+.rtools input { width: 132px; }
+.filter-reset { min-height: 40px; border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px; background: var(--surface); color: var(--deep); font-weight: 700; cursor: pointer; }
+.filter-reset:hover { border-color: var(--brand); }
+.result-count { margin: 8px 0 12px; color: var(--muted); font-size: 12px; }
+.profile-details { display: block; margin-top: 4px; color: var(--muted); line-height: 1.55; }
+.availability-tag { align-self: flex-start; color: var(--good); background: color-mix(in oklab, var(--good) 10%, var(--surface)); border-radius: 6px; padding: 3px 6px; font-size: 10px; font-weight: 700; }
+.product-availability { display: inline-block; border-radius: 7px; padding: 6px 9px; margin: 6px 0 0; background: color-mix(in oklab, var(--good) 10%, var(--surface)); color: var(--good); font-size: 12px; font-weight: 700; }
+.product-local-details { margin: 8px 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+@media (max-width: 560px) {
+  .rtools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .rtools label, .rtools select, .rtools input { min-width: 0; width: 100%; }
+}
+
+/* Página de produto: HTML indexável já vem completo do servidor, sem depender do JS da vitrine. */
+.product-top .bar { grid-template-columns: auto 1fr auto; }
+.product-back { justify-self: center; color: var(--on-deep); font-weight: 700; text-decoration: none; }
+.product-page { padding-block: 22px 48px; }
+.product-crumb { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; margin-bottom: 18px; }
+.product-crumb a { color: var(--deep); font-weight: 700; }
+.product-detail { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, .8fr); gap: clamp(24px, 5vw, 64px); align-items: start; }
+.product-gallery { min-height: 320px; aspect-ratio: 1 / .82; display: grid; place-items: center; overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; }
+.product-gallery img { width: 100%; height: 100%; max-height: min(68vh, 680px); object-fit: contain; }
+.product-no-image { color: var(--brand); font-size: 28px; font-weight: 800; }
+.product-info { padding-block: 8px; }
+.product-seller, .product-rating { color: var(--muted); font-size: 13px; margin: 0 0 10px; }
+.product-seller strong, .product-rating strong { color: var(--ink); }
+.product-info h1 { font-size: clamp(24px, 3vw, 34px); line-height: 1.2; letter-spacing: -.025em; margin-bottom: 12px; }
+.product-highlights { color: var(--muted); line-height: 1.65; margin: 14px 0; white-space: pre-line; }
+.product-prices { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 20px 0 16px; }
+.product-prices del { color: var(--muted); font-size: 14px; }
+.product-prices strong { font-size: clamp(28px, 4vw, 36px); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.product-buy { width: 100%; justify-content: center; }
+.product-note { color: var(--muted); font-size: 12px; line-height: 1.6; }
+.product-share { display: inline-flex; min-height: 44px; align-items: center; color: var(--deep); font-weight: 700; }
+.product-description { max-width: 760px; margin-top: 42px; border-top: 1px solid var(--line); padding-top: 22px; }
+.product-description h2 { font-size: 20px; margin-bottom: 8px; }
+.product-description p { color: var(--muted); white-space: pre-line; line-height: 1.7; }
+.product-footer { background: var(--deep); color: var(--on-deep); padding-block: 12px; }
+@media (max-width: 760px) {
+  .product-detail { grid-template-columns: 1fr; gap: 20px; }
+  .product-gallery { min-height: 0; aspect-ratio: 1 / .86; }
+  .product-info { padding: 0 2px; }
+  .product-back { justify-self: end; font-size: 12px; }
+}
+@media (max-width: 480px) {
+  .product-top .bar { gap: 8px; padding-block: 10px; }
+  .product-top .logo { font-size: 22px; }
+  .product-top .logo i { width: 22px; height: 26px; }
+  .product-top .sell { display: none; }
+  .product-crumb { margin-bottom: 12px; }
+  .product-prices { margin-top: 14px; }
+  .product-description { margin-top: 28px; }
+}

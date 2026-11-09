@@ -3,6 +3,7 @@
   const { esc, brl } = window.CIT;
   const $ = (id) => document.getElementById(id);
   const ROTULO = { teste: 'Teste grátis', ativa: 'Pagante', vencida: 'Vencida', suspensa: 'Suspensa' };
+  const DISPONIBILIDADE = { disponivel: 'Disponível', 'sob-encomenda': 'Sob encomenda', consulte: 'Consultar disponibilidade' };
   let lojas = [];
 
   async function api(url, metodo = 'GET', json) {
@@ -19,10 +20,10 @@
     $('linhas').innerHTML = lojas.map((l) => `<tr>
       <td><b>${esc(l.nome)}</b><br><small class="note">${esc(l.cidade)} · desde ${data(l.criadaEm)}</small><br><a href="/loja/${esc(l.slug)}" target="_blank">ver página</a></td>
       <td>${esc(l.responsavel)}<br>${esc(l.email)}<br><a href="https://wa.me/${esc(l.whatsapp)}" target="_blank" rel="noopener">${esc(l.whatsapp)}</a></td>
-      <td><span class="pill ${l.status}">${ROTULO[l.status]}</span><br><small class="note">teste até ${data(l.testeAte)}<br>MP: ${esc(l.assinatura?.status ?? 'nenhuma')}</small></td>
+      <td><span class="pill ${l.status}">${ROTULO[l.status]}</span><br><small class="note">teste até ${data(l.testeAte)}<br>MP: ${esc(l.assinatura?.status ?? 'nenhuma')}<br>${l.cliquesContatoLoja ?? 0} cliques no WhatsApp da loja</small></td>
       <td>${l.produtos.map((p) => `<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
           <img src="${esc(p.foto)}" alt="" style="width:32px;height:32px;object-fit:cover;border-radius:6px">
-          <span style="flex:1">${esc(p.nome)} · ${brl.format(p.preco)}${p.ativo ? '' : ' (pausado)'}</span>
+          <span style="flex:1">${esc(p.nome)} · ${brl.format(p.preco)}<br><small class="note">${esc(DISPONIBILIDADE[p.disponibilidade] ?? DISPONIBILIDADE.consulte)} · ${p.cliquesContato ?? 0} cliques WhatsApp${p.ativo ? '' : ' · pausado'}</small></span>
           <button class="btn sec" style="min-height:32px;padding:4px 8px;font-size:11px" data-bloq="${p.id}" data-v="${!p.bloqueado}">${p.bloqueado ? 'Mostrar' : 'Ocultar'}</button></div>`).join('') || '<small class="note">nenhum</small>'}</td>
       <td style="display:grid;gap:6px">
         <button class="btn sec" data-susp="${l.id}" data-v="${!l.suspensa}">${l.suspensa ? 'Reativar' : 'Suspender'}</button>

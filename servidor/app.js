@@ -21,6 +21,7 @@ export const PRECO_PLANO = 49.9;
 const DIA = 86_400_000;
 const MAX_PRODUTOS = 200;
 const ENTREGAS = ["retirada", "entrega", "ambos"];
+const DISPONIBILIDADES = ["disponivel", "sob-encomenda", "consulte"];
 
 // ---------- validação ----------
 const txt = (v, max) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, max);
@@ -40,6 +41,7 @@ function lerProduto(b) {
     nome: txt(b.nome, 90),
     descricao: String(b.descricao ?? "").trim().slice(0, 1000),
     dept: DEPTS.includes(b.dept) ? b.dept : null,
+    disponibilidade: DISPONIBILIDADES.includes(b.disponibilidade) ? b.disponibilidade : "consulte",
     preco: valor(b.preco),
     precoAntigo: b.precoAntigo ? valor(b.precoAntigo) : null,
   };
@@ -166,11 +168,14 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   const lojaPublica = (l) => ({
     slug: l.slug, nome: l.nome, cidade: l.cidade, categoria: l.categoria, whatsapp: l.whatsapp, desde: l.criadaEm,
     logo: l.logo ?? null, cor: l.cor ?? null, sobre: l.sobre ?? "", entrega: l.entrega ?? null,
+    horario: l.horario ?? "", bairrosAtendidos: l.bairrosAtendidos ?? "", prazoEntrega: l.prazoEntrega ?? "",
   });
   const produtoLocal = (p, l) => ({
     id: `l-${p.id}`, nome: p.nome, descricao: p.descricao, dept: p.dept, loja: "local",
     lojaSlug: l.slug, lojaNome: l.nome, lojaLogo: l.logo ?? null, cidade: l.cidade, whatsapp: l.whatsapp,
     preco: p.preco, precoAntigo: p.precoAntigo, fotos: p.fotos, nota: 0, vendidos: 0, entrega: l.entrega ?? null,
+    disponibilidade: p.disponibilidade ?? "consulte", horario: l.horario ?? "",
+    bairrosAtendidos: l.bairrosAtendidos ?? "", prazoEntrega: l.prazoEntrega ?? "",
   });
   const produtoAfiliado = (x) => ({
     id: x.id, nome: x.nome, dept: DEPTS.includes(x.categoria) ? x.categoria : "casa", loja: x.loja,
@@ -207,6 +212,26 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     return x ? produtoAfiliado(x) : null;
   }
 
+  // Conta o redirecionamento ao WhatsApp sem persistir IP ou identidade do visitante.
+  app.get("/contato/:id", (req, res) => {
+    const x = produtoPorId(req.params.id);
+    if (!x || x.loja !== "local") return res.status(404).sendFile(join(publico, "404.html"));
+    banco.registrarCliqueContato(`produto:${req.params.id.slice(2)}`, iso());
+    const pagina = `${urlPublica}/p/${encodeURIComponent(req.params.id)}`;
+    const mensagem = `Olá! Vi na CITshop e tenho interesse: ${x.nome} por ${x.preco.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}. ${pagina}`;
+    const destino = `https://wa.me/${encodeURIComponent(x.whatsapp)}?text=${encodeURIComponent(mensagem)}`;
+    res.set("Cache-Control", "no-store").set("X-Robots-Tag", "noindex, nofollow").redirect(302, destino);
+  });
+  app.get("/contato/loja/:slug", (req, res) => {
+    const loja = banco.lojas.find((l) => l.slug === req.params.slug && lojaVisivel(l, agora()));
+    if (!loja) return res.status(404).sendFile(join(publico, "404.html"));
+    banco.registrarCliqueContato(`loja:${loja.id}`, iso());
+    const pagina = `${urlPublica}/loja/${encodeURIComponent(loja.slug)}`;
+    const mensagem = `Olá! Encontrei sua loja na CITshop. ${pagina}`;
+    const destino = `https://wa.me/${encodeURIComponent(loja.whatsapp)}?text=${encodeURIComponent(mensagem)}`;
+    res.set("Cache-Control", "no-store").set("X-Robots-Tag", "noindex, nofollow").redirect(302, destino);
+  });
+
   // ---------- painel da loja ----------
   function painelDe(loja) {
     const t = agora();
@@ -217,7 +242,11 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       diasTeste: Math.max(0, Math.ceil((Date.parse(loja.testeAte) - t) / DIA)),
       preco: PRECO_PLANO,
       pagamentoConfigurado: mp.configurado,
-      produtos: banco.produtos.filter((p) => p.lojaId === loja.id),
+      cliquesContatoLoja: banco.cliquesContato(`loja:${loja.id}`),
+      produtos: banco.produtos.filter((p) => p.lojaId === loja.id).map((p) => ({
+        ...p, disponibilidade: p.disponibilidade ?? "consulte",
+        cliquesContato: banco.cliquesContato(`produto:${p.id}`),
+      })),
     };
   }
 
@@ -287,6 +316,9 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       nome, whatsapp: zap, cidade, cor, categoria: txt(b.categoria, 60),
       responsavel: txt(b.responsavel, 80) || req.loja.responsavel,
       sobre: b.sobre === undefined ? req.loja.sobre : String(b.sobre).trim().slice(0, 300),
+      horario: b.horario === undefined ? req.loja.horario ?? "" : txt(b.horario, 120),
+      bairrosAtendidos: b.bairrosAtendidos === undefined ? req.loja.bairrosAtendidos ?? "" : txt(b.bairrosAtendidos, 300),
+      prazoEntrega: b.prazoEntrega === undefined ? req.loja.prazoEntrega ?? "" : txt(b.prazoEntrega, 120),
       // Sem o campo (ex.: formulário de aparência), mantém o que já estava.
       entrega: b.entrega === undefined ? req.loja.entrega ?? null : ENTREGAS.includes(b.entrega) ? b.entrega : null,
     });
@@ -441,7 +473,11 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const t = agora();
     res.json(banco.lojas.map(({ senhaHash, ...l }) => ({
       ...l, status: statusLoja(l, t),
-      produtos: banco.produtos.filter((p) => p.lojaId === l.id).map((p) => ({ id: p.id, nome: p.nome, preco: p.preco, foto: p.fotos[0], ativo: p.ativo, bloqueado: p.bloqueado })),
+      cliquesContatoLoja: banco.cliquesContato(`loja:${l.id}`),
+      produtos: banco.produtos.filter((p) => p.lojaId === l.id).map((p) => ({
+        id: p.id, nome: p.nome, preco: p.preco, foto: p.fotos[0], ativo: p.ativo, bloqueado: p.bloqueado,
+        disponibilidade: p.disponibilidade ?? "consulte", cliquesContato: banco.cliquesContato(`produto:${p.id}`),
+      })),
     })));
   });
 
@@ -516,33 +552,83 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   app.get("/loja/:slug", (req, res) => { semCache(res); res.sendFile(join(publico, "index.html")); });
   app.get("/black-friday", (req, res) => { semCache(res); res.sendFile(join(publico, "index.html")); });
 
-  // Página de produto com prévia no WhatsApp: a mesma vitrine, com título, descrição e foto do produto no <head>.
-  const PAGINA = readFileSync(join(publico, "index.html"), "utf8");
+  // Página de produto renderizada no servidor: conteúdo, metadados e JSON-LD chegam no HTML inicial.
+  const PAGINA_PRODUTO = readFileSync(join(publico, "produto.html"), "utf8");
   const NOME_LOJA = { amazon: "Amazon", shopee: "Shopee", ml: "Mercado Livre" };
   const attr = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   function metaProduto(x) {
-    const titulo = `${x.nome} por ${x.preco.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`;
+    const titulo = `${x.nome} · CITshop`;
     const desc = x.loja === "local"
-      ? `${x.lojaNome}, ${x.cidade}. Peça pelo WhatsApp da loja na CITshop.`
+      ? `${x.lojaNome}, ${x.cidade}. Produto disponível na CITshop; consulte a loja pelo WhatsApp.`
       : `Oferta na ${NOME_LOJA[x.loja] ?? "loja parceira"}, achada pela CITshop.`;
     const foto = x.fotos?.[0];
     const imagem = !foto ? null : foto.startsWith("/uploads/") ? `${urlPublica}/og/${basename(foto, ".webp")}.jpg` : foto;
-    return [
-      `<title>${attr(titulo)} · CITshop</title>`,
-      `<meta name="description" content="${attr(desc)}">`,
-      `<meta property="og:title" content="${attr(titulo)}">`,
-      `<meta property="og:description" content="${attr(desc)}">`,
-      `<meta property="og:type" content="product">`,
-      `<meta property="og:url" content="${attr(`${urlPublica}/p/${encodeURIComponent(x.id)}`)}">`,
-      ...(imagem ? [`<meta property="og:image" content="${attr(imagem)}">`, `<meta name="twitter:card" content="summary_large_image">`] : []),
-    ].join("\n");
+    const canonical = `${urlPublica}/p/${encodeURIComponent(x.id)}`;
+    const preco = Number(x.preco).toFixed(2);
+    const local = x.loja === "local";
+    const destino = local ? `/contato/${encodeURIComponent(x.id)}` : x.link;
+    const infoLocal = local
+      ? ` · ${attr(x.cidade)}${x.entrega ? ` · ${attr(x.entrega === "ambos" ? "Entrega ou retirada" : x.entrega === "entrega" ? "Entrega" : "Retirada na loja")}` : ""}`
+      : "";
+    const avaliacao = x.nota
+      ? `<p class="product-rating"><strong>★ ${attr(Number(x.nota).toFixed(1).replace(".", ","))}</strong>${x.vendidos ? ` · ${Number(x.vendidos).toLocaleString("pt-BR")} vendidos` : ""}</p>`
+      : "";
+    const disponibilidade = x.disponibilidade ?? "consulte";
+    const localDetalhes = local ? [
+      x.horario && `Horário: ${x.horario}`,
+      x.bairrosAtendidos && `Bairros atendidos: ${x.bairrosAtendidos}`,
+      x.prazoEntrega && `Prazo de entrega informado: ${x.prazoEntrega}`,
+    ].filter(Boolean).map(attr).join(" · ") : "";
+    const descricao = String(x.descricao ?? "").trim();
+    const imagemHtml = imagem
+      ? `<img src="${attr(imagem)}" alt="${attr(x.nome)}" width="720" height="720" fetchpriority="high">`
+      : `<div class="product-no-image" aria-label="Produto sem foto">CITshop</div>`;
+    const jsonLd = {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      name: x.nome,
+      description: descricao || desc,
+      category: x.dept,
+      ...(imagem ? { image: imagem } : {}),
+      offers: {
+        "@type": "Offer",
+        url: canonical,
+        priceCurrency: "BRL",
+        price: preco,
+        seller: { "@type": "Organization", name: local ? x.lojaNome : NOME_LOJA[x.loja] ?? "Loja parceira" },
+      },
+    };
+    const substituir = {
+      TITULO: attr(titulo), DESCRICAO_META: attr(desc), CANONICAL: attr(canonical), PRECO_DADOS: preco,
+      OG_IMAGE: imagem ? `<meta property="og:image" content="${attr(imagem)}">` : "",
+      CATEGORIA: attr(x.dept), NOME: attr(x.nome), VENDEDOR: attr(local ? x.lojaNome : NOME_LOJA[x.loja] ?? "Loja parceira"),
+      LOCAL_INFO: infoLocal, AVALIACAO: avaliacao, DESCRICAO: descricao ? `<p class="product-highlights">${attr(descricao)}</p>` : "",
+      DISPONIBILIDADE: local ? `<p class="product-availability">${attr(({ disponivel: "Disponível, conforme informado pela loja", "sob-encomenda": "Sob encomenda", consulte: "Consulte a disponibilidade com a loja" })[disponibilidade] ?? "Consulte a disponibilidade com a loja")}</p>` : "",
+      LOCAL_DETALHES: localDetalhes ? `<p class="product-local-details">${localDetalhes}</p>` : "",
+      IMAGEM: imagemHtml, PRECO_ANTIGO: x.precoAntigo > x.preco ? `<del>${attr(x.precoAntigo.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }))}</del>` : "",
+      PRECO: attr(x.preco.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })),
+      DESCONTO: x.precoAntigo > x.preco ? `<span class="pct">${Math.round((1 - x.preco / x.precoAntigo) * 100)}% OFF</span>` : "",
+      LINK_COMPRA: attr(destino), ALVO_COMPRA: local ? "_self" : "_blank",
+      REL_COMPRA: local ? "" : "sponsored nofollow noopener",
+      TEXTO_COMPRA: local ? "Pedir pelo WhatsApp da loja ↗" : `Comprar na ${NOME_LOJA[x.loja] ?? "loja parceira"} ↗`,
+      AVISO_COMPRA: local
+        ? `Vendido por ${attr(x.lojaNome)}, em ${attr(x.cidade)}. Combine pagamento, disponibilidade e entrega diretamente com a loja.`
+        : `Você finaliza a compra no site da loja. Preço e frete são confirmados lá${x.atualizadoEm ? `; preço consultado em ${attr(new Date(x.atualizadoEm).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }))}` : ""}.`,
+      COMPARTILHAR: encodeURIComponent(`${x.nome} · ${canonical}`),
+      DESCRICAO_LONGA: attr(descricao || "Consulte as informações e a disponibilidade com o vendedor."),
+      AVISO_AFILIADO: local
+        ? "Produtos de lojas locais são vendidos e entregues pela própria loja."
+        : "O CITshop pode receber comissão por compras feitas pelos links de afiliado, sem custo adicional para você. Preço e estoque podem mudar.",
+    };
+    const html = PAGINA_PRODUTO.replace(/<!--meta-->|<!--\/meta-->/g, "")
+      .replace("<!--structured-->", `<script type="application/ld+json">${JSON.stringify(jsonLd).replace(/[<>&\u2028\u2029]/g, (c) => ({ "<": "\\u003c", ">": "\\u003e", "&": "\\u0026", "\u2028": "\\u2028", "\u2029": "\\u2029" })[c])}</script>`);
+    return html.replace(/\{\{([A-Z_]+)\}\}/g, (_match, chave) => substituir[chave] ?? "");
   }
   app.get("/p/:id", (req, res) => {
     const x = produtoPorId(req.params.id);
     if (!x) return res.status(404).sendFile(join(publico, "404.html"));
     semCache(res);
-    // Função no replace: nome com "$" não vira padrão de substituição.
-    res.type("html").send(PAGINA.replace(/<!--meta-->[\s\S]*?<!--\/meta-->/, () => metaProduto(x)));
+    res.type("html").send(metaProduto(x));
   });
   // A prévia do WhatsApp não lê WebP com segurança: a foto vira JPEG 1200x630 uma vez só, gravado ao lado
   // da original (og-<uuid>.jpg). apagarFoto remove os dois.

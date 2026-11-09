@@ -1,6 +1,6 @@
 import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHmac } from "node:crypto";
@@ -73,17 +73,25 @@ test("loja se cadastra, publica com foto, aparece antes dos afiliados, some ao v
   const png = await sharp({ create: { width: 20, height: 20, channels: 3, background: "#00C896" } }).png().toBuffer();
   const fd = new FormData();
   fd.append("nome", "Vestido midi"); fd.append("dept", "moda"); fd.append("preco", "89,90"); fd.append("precoAntigo", "129,90");
+  fd.append("disponibilidade", "sob-encomenda");
   fd.append("fotos", new Blob([png], { type: "image/png" }), "a.png");
   const criado = await req("/api/painel/produtos", { method: "POST", body: fd, cookie });
   assert.equal(criado.status, 201);
-  const produto = await criado.json();
+  let produto = await criado.json();
   assert.equal(produto.preco, 89.9);
+  assert.equal(produto.disponibilidade, "sob-encomenda");
   assert.match(produto.fotos[0], /^\/uploads\/.+\.webp$/);
   assert.equal((await req(produto.fotos[0])).headers.get("content-type"), "image/webp");
 
+  const editarProduto = new FormData();
+  editarProduto.append("nome", produto.nome); editarProduto.append("dept", produto.dept); editarProduto.append("preco", "89,90");
+  editarProduto.append("disponibilidade", "disponivel"); editarProduto.append("manter", JSON.stringify(produto.fotos));
+  produto = await (await req(`/api/painel/produtos/${produto.id}`, { method: "PUT", body: editarProduto, cookie })).json();
+  assert.equal(produto.disponibilidade, "disponivel");
+
   // Personalização: cor, texto e logo aparecem na vitrine; cor inválida é ignorada.
   const visual = await req("/api/painel/loja", { method: "PUT", headers: { "Content-Type": "application/json" }, cookie,
-    body: JSON.stringify({ nome: "Moda Nossa", whatsapp: "84999990000", cidade: "Natal", cor: "#d23c8c", sobre: "Moda feminina em Natal.", entrega: "ambos" }) });
+    body: JSON.stringify({ nome: "Moda Nossa", whatsapp: "84999990000", cidade: "Natal", cor: "#d23c8c", sobre: "Moda feminina em Natal.", entrega: "ambos", horario: "Segunda a sábado, 9h às 18h", bairrosAtendidos: "Tirol, Petrópolis", prazoEntrega: "Até 2 dias úteis" }) });
   assert.equal((await visual.json()).loja.cor, "#D23C8C");
   const fl = new FormData();
   fl.append("logo", new Blob([png], { type: "image/png" }), "logo.png");
@@ -95,21 +103,44 @@ test("loja se cadastra, publica com foto, aparece antes dos afiliados, some ao v
   let v = await (await req("/api/vitrine")).json();
   assert.deepEqual(v.produtos.map((p) => p.loja), ["local", "amazon"]);
   assert.deepEqual([v.lojas[0].cor, v.lojas[0].sobre, v.lojas[0].logo], ["#D23C8C", "Moda feminina em Natal.", comLogo.loja.logo]);
+  assert.deepEqual([v.lojas[0].horario, v.lojas[0].bairrosAtendidos, v.lojas[0].prazoEntrega], ["Segunda a sábado, 9h às 18h", "Tirol, Petrópolis", "Até 2 dias úteis"]);
   assert.equal(v.produtos[0].whatsapp, "5584999990000");
   assert.equal(v.lojas[0].slug, "moda-nossa");
   // Entrega: salva no 1º PUT e mantida no 2º, que não mandou o campo.
   assert.deepEqual([v.lojas[0].entrega, v.produtos[0].entrega], ["ambos", "ambos"]);
+  assert.equal(v.produtos[0].disponibilidade, "disponivel");
 
-  // Página do produto com prévia no WhatsApp: título com preço e foto em JPEG no <head>.
+  // Página individual renderizada no servidor, com SEO, descrição e compra local pelo WhatsApp.
   const pagina = await req(`/p/${v.produtos[0].id}`);
   assert.equal(pagina.status, 200);
   const html = await pagina.text();
-  assert.match(html, /<meta property="og:title" content="Vestido midi por R\$\s89,90">/);
+  assert.match(html, /<meta property="og:title" content="Vestido midi · CITshop">/);
+  assert.match(html, /<link rel="canonical" href="http:\/\/localhost:3000\/p\/l-[^"]+">/);
+  assert.match(html, /<h1>Vestido midi<\/h1>/);
+  assert.match(html, /Pedir pelo WhatsApp da loja/);
+  assert.match(html, /Combine pagamento, disponibilidade e entrega diretamente com a loja/);
+  assert.match(html, /Disponível, conforme informado pela loja/);
+  assert.match(html, /Bairros atendidos: Tirol, Petrópolis/);
+  assert.doesNotMatch(html, /<script type="module" src="\/vitrine\.js">/);
   assert.equal(html.match(/<title>/g).length, 1);
+  const jsonLd = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
+  assert.deepEqual([jsonLd["@type"], jsonLd.name, jsonLd.offers.priceCurrency, jsonLd.offers.seller.name], ["Product", "Vestido midi", "BRL", "Moda Nossa"]);
   const og = html.match(/og:image" content="[^"]*(\/og\/[0-9a-f-]+\.jpg)"/)[1];
   const jpg = await req(og);
   assert.equal(jpg.headers.get("content-type"), "image/jpeg");
   assert.equal((await sharp(Buffer.from(await jpg.arrayBuffer())).metadata()).width, 1200);
+
+  const contatoProduto = await req(`/contato/${encodeURIComponent(v.produtos[0].id)}`, { redirect: "manual" });
+  assert.equal(contatoProduto.status, 302);
+  assert.match(contatoProduto.headers.get("location"), /^https:\/\/wa\.me\/5584999990000\?/);
+  const contatoLoja = await req(`/contato/loja/${v.lojas[0].slug}`, { redirect: "manual" });
+  assert.equal(contatoLoja.status, 302);
+  assert.match(contatoLoja.headers.get("location"), /^https:\/\/wa\.me\/5584999990000\?/);
+  const painelComMetricas = await (await req("/api/painel/eu", { cookie })).json();
+  assert.deepEqual([painelComMetricas.cliquesContatoLoja, painelComMetricas.produtos[0].cliquesContato], [1, 1]);
+  const dadosPersistidos = JSON.parse(readFileSync(join(dir, "citshop.json"), "utf8"));
+  assert.deepEqual(Object.values(dadosPersistidos.metricasContato).map((m) => m.total), [1, 1]);
+  assert.equal(JSON.stringify(dadosPersistidos.metricasContato).includes("127.0.0.1"), false);
   assert.equal((await req("/p/nao-existe")).status, 404);
   assert.equal((await req("/og/../../etc.jpg")).status, 404);
 
@@ -155,6 +186,7 @@ test("admin suspende loja e ela sai da vitrine", async () => {
   const cookie = cookieDe(await req("/api/admin/entrar", json({ senha: "admin123" })));
   const [loja] = await (await req("/api/admin/lojas", { cookie })).json();
   assert.equal(loja.senhaHash, undefined);
+  assert.deepEqual([loja.cliquesContatoLoja, loja.produtos[0].cliquesContato, loja.produtos[0].disponibilidade], [1, 1, "disponivel"]);
   const r = await req(`/api/admin/lojas/${loja.id}/suspensa`, { ...json({ suspensa: true }), cookie });
   assert.equal(r.status, 200);
   const v = await (await req("/api/vitrine")).json();
@@ -187,6 +219,11 @@ test("Amazon da API fica na vitrine por até 1 hora e substitui o item manual de
   const tv = v.produtos.filter((p) => p.id === "amazon-X");
   assert.equal(tv.length, 1);
   assert.deepEqual([tv[0].nome, tv[0].preco, tv[0].atualizadoEm], ["TV da API", 90, quando]);
+  const paginaAfiliada = await (await req("/p/amazon-X")).text();
+  assert.match(paginaAfiliada, /<h1>TV da API<\/h1>/);
+  assert.match(paginaAfiliada, /href="https:\/\/www\.amazon\.com\.br\/dp\/X\?tag=citshop-20" target="_blank" rel="sponsored nofollow noopener"/);
+  assert.equal((await req("/contato/amazon-X", { redirect: "manual" })).status, 404);
+  assert.equal(Object.keys(JSON.parse(readFileSync(join(dir, "citshop.json"), "utf8")).metricasContato).length, 2);
   relogio += 61 * 60_000; // passou de 1 hora: o preço da API não pode mais aparecer
   v = await (await req("/api/vitrine")).json();
   assert.deepEqual(v.produtos.filter((p) => p.id === "amazon-X").map((p) => p.nome), ["TV"]);

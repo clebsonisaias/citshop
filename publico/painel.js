@@ -59,6 +59,7 @@
     suspensa: () => 'Sua loja foi suspensa pela CITshop. Fale com a gente pelo WhatsApp da CITmax.',
   };
   const ROTULO = { teste: 'Teste grátis', ativa: 'Assinatura ativa', vencida: 'Fora da vitrine', suspensa: 'Suspensa' };
+  const ROTULO_DISPONIBILIDADE = { disponivel: 'Disponível', 'sob-encomenda': 'Sob encomenda', consulte: 'Consultar disponibilidade' };
 
   function mostrar(s) {
     estado = s;
@@ -67,13 +68,14 @@
     $('sair').hidden = false;
     $('pNome').textContent = s.loja.nome;
     $('pLink').innerHTML = `Sua página: <a href="/loja/${esc(s.loja.slug)}" target="_blank">${esc(location.host)}/loja/${esc(s.loja.slug)}</a>`;
+    $('pContatoResumo').textContent = `${s.cliquesContatoLoja ?? 0} cliques para o WhatsApp da loja`;
     $('pStatus').className = `pill ${s.status}`;
     $('pStatus').textContent = ROTULO[s.status];
     $('pStatusTxt').textContent = TEXTO[s.status](s);
     $('assinar').hidden = s.status === 'ativa' || s.status === 'suspensa';
     $('assinar').textContent = `Assinar ${brl.format(s.preco)}/mês`;
     const f = $('fLoja');
-    for (const k of ['nome', 'responsavel', 'whatsapp', 'cidade', 'categoria', 'entrega']) f[k].value = s.loja[k] ?? '';
+    for (const k of ['nome', 'responsavel', 'whatsapp', 'cidade', 'categoria', 'entrega', 'horario', 'bairrosAtendidos', 'prazoEntrega']) f[k].value = s.loja[k] ?? '';
     $('vCor').value = s.loja.cor || '#036271';
     $('vSobre').value = s.loja.sobre ?? '';
     $('tirarLogo').hidden = !s.loja.logo;
@@ -83,10 +85,15 @@
 
   // ---------- aparência ----------
   const amostra = () => {
-    $('amostra').outerHTML = window.CIT.cabecalhoLoja({ ...estado.loja, cor: $('vCor').value, sobre: $('vSobre').value }).replace('class="sellerhead', 'id="amostra" class="sellerhead');
+    const f = $('fLoja');
+    $('amostra').outerHTML = window.CIT.cabecalhoLoja({
+      ...estado.loja, cor: $('vCor').value, sobre: $('vSobre').value,
+      horario: f.horario.value, bairrosAtendidos: f.bairrosAtendidos.value, prazoEntrega: f.prazoEntrega.value,
+    }).replace('class="sellerhead', 'id="amostra" class="sellerhead');
   };
   $('vCor').addEventListener('input', amostra);
   $('vSobre').addEventListener('input', amostra);
+  for (const campo of ['horario', 'bairrosAtendidos', 'prazoEntrega']) $('fLoja')[campo].addEventListener('input', amostra);
   $('fVisual').addEventListener('submit', (e) => {
     e.preventDefault();
     enviando(e.submitter, async () => {
@@ -115,7 +122,7 @@
     const ps = estado.produtos;
     $('lista').innerHTML = ps.length ? ps.map((p) => `<div class="item ${p.ativo && !p.bloqueado ? '' : 'off'}">
         <img src="${esc(p.fotos[0])}" alt="">
-        <div><b>${esc(p.nome)}</b><br><small class="note">${brl.format(p.preco)} · ${esc(D[p.dept]?.n ?? '')}${p.bloqueado ? ' · ocultado pela CITshop' : p.ativo ? '' : ' · pausado'}</small></div>
+        <div><b>${esc(p.nome)}</b><br><small class="note">${brl.format(p.preco)} · ${esc(D[p.dept]?.n ?? '')} · ${esc(ROTULO_DISPONIBILIDADE[p.disponibilidade] ?? ROTULO_DISPONIBILIDADE.consulte)}${p.bloqueado ? ' · ocultado pela CITshop' : p.ativo ? '' : ' · pausado'} · ${p.cliquesContato ?? 0} cliques no WhatsApp</small></div>
         <div class="acoes">
           <button class="btn sec" data-ed="${p.id}">Editar</button>
           <button class="btn sec" data-at="${p.id}">${p.ativo ? 'Pausar' : 'Ativar'}</button>
@@ -137,7 +144,7 @@
     const f = $('fProd');
     f.reset();
     $('fProdTit').textContent = p ? 'Editar produto' : 'Novo produto';
-    if (p) for (const k of ['nome', 'dept', 'descricao']) f[k].value = p[k] ?? '';
+    if (p) for (const k of ['nome', 'dept', 'descricao', 'disponibilidade']) f[k].value = p[k] ?? 'consulte';
     if (p) { f.preco.value = String(p.preco).replace('.', ','); f.precoAntigo.value = p.precoAntigo ? String(p.precoAntigo).replace('.', ',') : ''; }
     manter = p ? [...p.fotos] : [];
     novas = [];

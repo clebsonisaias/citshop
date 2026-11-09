@@ -57,9 +57,14 @@ window.CIT = (() => {
   function cabecalhoLoja(l, extra = '') {
     const cor = l.cor || '#036271';
     const avatar = l.logo ? `<img src="${esc(l.logo)}" alt="Logo ${esc(l.nome)}">` : esc(iniciais(l.nome));
+    const detalhes = [
+      l.horario && `Horário: ${l.horario}`,
+      l.bairrosAtendidos && `Bairros: ${l.bairrosAtendidos}`,
+      l.prazoEntrega && `Prazo: ${l.prazoEntrega}`,
+    ].filter(Boolean).map(esc).join(' · ');
     return `<div class="sellerhead loja-cor" style="--loja:${cor};--loja-ink:${textoSobre(cor)}">
       <span class="avatar grande">${avatar}</span>
-      <div class="info"><b>${esc(l.nome)}</b><small>${esc(l.categoria || 'Loja local')} · ${esc(l.cidade)}${ENTREGA[l.entrega] ? ` · ${ENTREGA[l.entrega]}` : ''}</small>${l.sobre ? `<p>${esc(l.sobre)}</p>` : ''}</div>${extra}</div>`;
+      <div class="info"><b>${esc(l.nome)}</b><small>${esc(l.categoria || 'Loja local')} · ${esc(l.cidade)}${ENTREGA[l.entrega] ? ` · ${ENTREGA[l.entrega]}` : ''}</small>${detalhes ? `<small class="profile-details">${detalhes}</small>` : ''}${l.sobre ? `<p>${esc(l.sobre)}</p>` : ''}</div>${extra}</div>`;
   }
   return { ICON, DEPTS, D, esc, brl, svg, textoSobre, iniciais, cabecalhoLoja, textoEntrega };
 })();
