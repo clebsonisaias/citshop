@@ -21,20 +21,18 @@ const POR_BUSCA = 8;
 const SHOPEE_API = "https://open-api.affiliate.shopee.com.br/graphql";
 const centavos = (n) => Math.round(n * 100) / 100;
 
+// Sem precoAntigo: a Shopee informa só o percentual, e um "de" calculado a partir dele pode enganar.
 export function deShopee(n, categoria) {
-  const preco = Number(n.priceMin);
-  const desconto = Number(n.priceDiscountRate) || 0;
   return {
     id: `shopee-${n.itemId}`,
     nome: n.productName,
     loja: "shopee",
     categoria,
-    preco,
-    precoAntigo: desconto > 0 && desconto < 100 ? centavos(preco / (1 - desconto / 100)) : preco,
+    preco: Number(n.priceMin),
+    precoAntigo: null,
     nota: Number(n.ratingStar) || 0,
     vendidos: Number(n.sales) || 0,
     imagem: n.imageUrl,
-    link: n.offerLink,
   };
 }
 
@@ -54,10 +52,7 @@ export function marcarQuedas(novos, antigos) {
   });
 }
 
-async function buscarShopee({ termo, categoria }, { appId, segredo }) {
-  // Campos de productOfferV2; confira os nomes na documentação do painel de afiliados da Shopee.
-  const query = `{ productOfferV2(keyword: ${JSON.stringify(termo)}, sortType: 2, page: 1, limit: ${POR_BUSCA}) {
-    nodes { itemId productName priceMin priceDiscountRate ratingStar sales imageUrl offerLink } } }`;
+async function chamarShopee(query, { appId, segredo }) {
   const body = JSON.stringify({ query });
   const ts = Math.floor(Date.now() / 1000);
   const assinatura = createHash("sha256").update(`${appId}${ts}${body}${segredo}`).digest("hex");
@@ -68,8 +63,35 @@ async function buscarShopee({ termo, categoria }, { appId, segredo }) {
     signal: AbortSignal.timeout(20_000),
   });
   const j = await r.json();
-  if (j.errors?.length) throw new Error(`Shopee (${termo}): ${j.errors[0].message}`);
-  return j.data.productOfferV2.nodes.map((n) => deShopee(n, categoria));
+  if (j.errors?.length) throw new Error(j.errors[0].message);
+  return j.data;
+}
+
+// productLink é só a página do produto: sem este link gerado, a compra não rende comissão.
+async function linkDeAfiliado(url, credenciais) {
+  const data = await chamarShopee(`mutation { generateShortLink(input: { originUrl: ${JSON.stringify(url)} }) { shortLink } }`, credenciais);
+  return data.generateShortLink.shortLink;
+}
+
+async function buscarShopee({ termo, categoria }, credenciais) {
+  // Campos de productOfferV2 conforme o perfil oficial BR (jeffmonteiroo/shopee-br-affiliate-mcp).
+  const query = `{ productOfferV2(keyword: ${JSON.stringify(termo)}, sortType: 2, page: 1, limit: ${POR_BUSCA}) {
+    nodes { itemId productName priceMin priceDiscountRate ratingStar sales imageUrl productLink } } }`;
+  let nos;
+  try {
+    nos = (await chamarShopee(query, credenciais)).productOfferV2.nodes;
+  } catch (e) {
+    throw new Error(`Shopee (${termo}): ${e.message}`);
+  }
+  const produtos = [];
+  for (const n of nos) {
+    try {
+      produtos.push({ ...deShopee(n, categoria), link: await linkDeAfiliado(n.productLink, credenciais) });
+    } catch (e) {
+      console.warn(`[afiliados] produto ${n.itemId} ficou de fora, sem link de afiliado: ${e.message}`);
+    }
+  }
+  return produtos;
 }
 
 /** Uma rodada completa. Se a Shopee falhar, lança e o afiliados.json anterior continua valendo. */
