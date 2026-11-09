@@ -139,7 +139,8 @@ const AMAZON_ALEXA = "https://www.amazon.com.br/s?k=echo+alexa&i=amazon-devices"
 
 const REGRAS = [
   ["camping", /barraca|camping|acampamento|saco de dormir|perneira|sobreviv/],
-  ["livros", /\blivros?\b|\bebook\b/],
+  ["livros", /\blivros?\b|\bebook\b|capa dura|biblia|capa comum|edicao de luxo/],
+  ["camping", /cadeira (de praia|reclinavel)|guarda-sol/],
   ["games", /playstation|\bps[45]\b|xbox|nintendo|switch 2|controle gamer|videogame/],
   ["pets", /\bpet\b|gatos?\b|caes|cachorro|racao/],
   ["auto", /automotiv|carro|pneu|carenagem|capacete|vonixx|v-floc|calibrador|compressor|bomba de ar|moto\b|motocicleta/],
