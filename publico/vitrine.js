@@ -144,7 +144,9 @@
       $('mbuy').href = x.link;
       $('mbuy').rel = 'sponsored nofollow noopener';
       $('mbuy').textContent = `Comprar na ${STORE[x.loja]} ↗`;
-      $('mnote').textContent = 'Você finaliza a compra no site da loja. Preço e frete confirmados lá.';
+      // Preço vindo de API com hora da consulta (hoje só a Amazon): mostra quando foi visto.
+      const quando = x.atualizadoEm ? ` Preço consultado em ${new Date(x.atualizadoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })} e pode mudar.` : '';
+      $('mnote').textContent = `Você finaliza a compra no site da loja. Preço e frete confirmados lá.${quando}`;
     }
     $('mzap').href = `https://wa.me/?text=${encodeURIComponent(`Olha esse achado na CITshop: ${x.nome} por ${brl.format(x.preco)} ${link}`)}`;
     $('modal').hidden = false;

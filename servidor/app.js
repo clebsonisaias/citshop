@@ -12,6 +12,7 @@ import * as S from "./seguranca.js";
 import { Banco, DEPTS, DIAS_TESTE, lojaVisivel, ordenarVitrine, slugUnico, statusLoja } from "./dados.js";
 import { MAX_FOTOS, apagarFoto, receberFotos, receberLogo, salvarFoto } from "./uploads.js";
 import { criarMercadoPago, statusDoMp, webhookValido } from "./mercadopago.js";
+import { MARKETPLACE, criarClienteAmazon } from "./amazon.js";
 
 export const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const PRECO_PLANO = 49.9;
@@ -94,8 +95,16 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   }
 
   // ---------- vitrine pública ----------
+  const ler = (arquivo, padrao) => { try { return JSON.parse(readFileSync(join(dadosDir, arquivo), "utf8")); } catch { return padrao; } };
+  // A Creators API só permite guardar oferta por 1 hora: passado isso, a Amazon da API some da vitrine
+  // (a lista manual continua) em vez de mostrar preço vencido. Quando o ASIN se repete, vale o dado da API.
+  const IDADE_MAXIMA_AMAZON = 60 * 60_000;
   function afiliados() {
-    try { return JSON.parse(readFileSync(join(dadosDir, "afiliados.json"), "utf8")); } catch { return { produtos: [] }; }
+    const af = ler("afiliados.json", { produtos: [] });
+    const amz = ler("amazon.json", { produtos: [] });
+    const frescos = amz.atualizadoEm && agora() - Date.parse(amz.atualizadoEm) <= IDADE_MAXIMA_AMAZON ? amz.produtos : [];
+    const ids = new Set(frescos.map((p) => p.id));
+    return { atualizadoEm: af.atualizadoEm, produtos: [...frescos, ...af.produtos.filter((p) => !ids.has(p.id))] };
   }
   const lojaPublica = (l) => ({
     slug: l.slug, nome: l.nome, cidade: l.cidade, categoria: l.categoria, whatsapp: l.whatsapp, desde: l.criadaEm,
@@ -109,7 +118,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   const produtoAfiliado = (x) => ({
     id: x.id, nome: x.nome, dept: DEPTS.includes(x.categoria) ? x.categoria : "casa", loja: x.loja,
     preco: x.preco, precoAntigo: x.precoAntigo, nota: x.nota ?? 0, vendidos: x.vendidos ?? 0,
-    fotos: x.imagem ? [x.imagem] : [], link: x.link, queda: x.queda,
+    fotos: x.imagem ? [x.imagem] : [], link: x.link, queda: x.queda, atualizadoEm: x.atualizadoEm ?? null,
   });
 
   app.get("/api/vitrine", (req, res) => {
@@ -381,6 +390,35 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     banco.salvar();
     res.json({ ok: true });
   });
+
+  // ---------- Amazon Afiliados (admin) ----------
+  // As credenciais ficam só no ambiente do servidor; o admin vê se estão configuradas, nunca os valores.
+  const amazonConfigurada = () => Boolean(env.AMAZON_CREDENCIAL_ID && env.AMAZON_CREDENCIAL_SEGREDO && env.AMAZON_PARTNER_TAG);
+  const clienteAmazon = () => criarClienteAmazon({
+    credencialId: env.AMAZON_CREDENCIAL_ID, credencialSegredo: env.AMAZON_CREDENCIAL_SEGREDO,
+    versao: env.AMAZON_CREDENCIAL_VERSAO ?? "3.1", parceiro: env.AMAZON_PARTNER_TAG, fetchImpl,
+  });
+  app.get("/api/admin/amazon", exigirAdmin, (req, res) => {
+    let st = {};
+    try { st = JSON.parse(readFileSync(join(dadosDir, "amazon-status.json"), "utf8")); } catch { /* ainda não rodou */ }
+    res.json({
+      configurada: amazonConfigurada(), marketplace: MARKETPLACE, parceiro: env.AMAZON_PARTNER_TAG ?? null,
+      versao: env.AMAZON_CREDENCIAL_VERSAO ?? "3.1",
+      ultimaSincronizacao: st.ultimaTentativa ?? null, ok: st.ok ?? null, erro: st.erro ?? null, total: st.total ?? 0,
+    });
+  });
+  app.post("/api/admin/amazon/testar", exigirAdmin, a(async (req, res) => {
+    if (!amazonConfigurada()) return erro(res, 400, "Configure AMAZON_CREDENCIAL_ID, AMAZON_CREDENCIAL_SEGREDO e AMAZON_PARTNER_TAG no Coolify.");
+    const asin = String(req.body?.asin ?? "").trim().toUpperCase();
+    if (!/^[A-Z0-9]{10}$/.test(asin)) return erro(res, 400, "Informe um ASIN de 10 caracteres.");
+    try {
+      const [item] = await clienteAmazon().buscarAsins([asin]);
+      if (!item) return res.json({ ok: false, mensagem: "A Amazon não devolveu esse produto." });
+      res.json({ ok: true, titulo: item.itemInfo?.title?.displayValue ?? null, preco: item.offersV2?.listings?.[0]?.price?.money?.displayAmount ?? null });
+    } catch (e) {
+      res.json({ ok: false, mensagem: e.message });
+    }
+  }));
 
   // ---------- páginas ----------
   const semCache = (res) => res.setHeader("Cache-Control", "no-cache");

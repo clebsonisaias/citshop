@@ -150,3 +150,28 @@ test("admin suspende loja e ela sai da vitrine", async () => {
   assert.deepEqual(await (await req("/api/admin/lojas", { cookie })).json(), []);
   assert.equal((await req(foto)).status, 404); // foto apagada do disco
 });
+
+test("admin vê o estado da Amazon sem segredos e o teste pede credenciais", async () => {
+  assert.equal((await req("/api/admin/amazon")).status, 401);
+  const cookie = cookieDe(await req("/api/admin/entrar", json({ senha: "admin123" })));
+  const st = await (await req("/api/admin/amazon", { cookie })).json();
+  assert.deepEqual([st.configurada, st.marketplace, st.ultimaSincronizacao], [false, "www.amazon.com.br", null]);
+  assert.equal(JSON.stringify(st).includes("segredo"), false);
+  const teste = await req("/api/admin/amazon/testar", { ...json({ asin: "B0H3Q1RHD7" }), cookie });
+  assert.equal(teste.status, 400);
+  assert.match((await teste.json()).erro, /AMAZON_CREDENCIAL_ID/);
+});
+
+test("Amazon da API fica na vitrine por até 1 hora e substitui o item manual de mesmo ASIN", async () => {
+  const quando = new Date(relogio).toISOString();
+  writeFileSync(join(dir, "amazon.json"), JSON.stringify({ atualizadoEm: quando, produtos: [
+    { id: "amazon-X", asin: "X", nome: "TV da API", loja: "amazon", categoria: "tec", preco: 90, precoAntigo: null, link: "https://www.amazon.com.br/dp/X?tag=citshop-20", atualizadoEm: quando },
+  ] }));
+  let v = await (await req("/api/vitrine")).json();
+  const tv = v.produtos.filter((p) => p.id === "amazon-X");
+  assert.equal(tv.length, 1);
+  assert.deepEqual([tv[0].nome, tv[0].preco, tv[0].atualizadoEm], ["TV da API", 90, quando]);
+  relogio += 61 * 60_000; // passou de 1 hora: o preço da API não pode mais aparecer
+  v = await (await req("/api/vitrine")).json();
+  assert.deepEqual(v.produtos.filter((p) => p.id === "amazon-X").map((p) => p.nome), ["TV"]);
+});

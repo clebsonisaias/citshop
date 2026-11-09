@@ -59,8 +59,29 @@
   });
   $('sair').onclick = async () => { await api('/api/admin/sair', 'POST').catch(() => {}); location.reload(); };
 
+  // Amazon Afiliados: só mostra o estado. As credenciais ficam no Coolify, nunca nesta tela.
+  async function carregarAmazon() {
+    try {
+      const s = await api('/api/admin/amazon');
+      $('amzStatus').textContent = s.configurada
+        ? `Marketplace ${s.marketplace} · tag ${s.parceiro} · credencial ${s.versao} · última sincronização: ${s.ultimaSincronizacao ? new Date(s.ultimaSincronizacao).toLocaleString('pt-BR') : 'nunca'} · ${s.total} produtos`
+        : 'Não configurada. Defina AMAZON_CREDENCIAL_ID, AMAZON_CREDENCIAL_SEGREDO e AMAZON_PARTNER_TAG no Coolify.';
+      $('amzErro').hidden = !s.erro;
+      $('amzErro').textContent = s.erro ? `Último erro: ${s.erro}` : '';
+    } catch (err) { $('amzStatus').textContent = err.message; }
+  }
+  $('amzTestar').onclick = async () => {
+    $('amzTeste').hidden = true;
+    try {
+      const r = await api('/api/admin/amazon/testar', 'POST', { asin: $('amzAsin').value });
+      $('amzTeste').hidden = false;
+      $('amzTeste').className = `msg ${r.ok ? 'ok' : 'erro'}`;
+      $('amzTeste').textContent = r.ok ? `Conexão ok: ${r.titulo ?? 'produto encontrado'}${r.preco ? ` · ${r.preco}` : ''}` : r.mensagem;
+    } catch (err) { alert(err.message); }
+  };
+
   function iniciar() {
-    carregar().then(() => { $('fEnt').hidden = true; $('vAdm').hidden = false; $('sair').hidden = false; })
+    carregar().then(() => { $('fEnt').hidden = true; $('vAdm').hidden = false; $('sair').hidden = false; carregarAmazon(); })
       .catch(() => { $('fEnt').hidden = false; });
   }
   iniciar();

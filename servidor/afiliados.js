@@ -6,6 +6,7 @@
 import { createHash } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { criarClienteAmazon, produtosAmazon } from "./amazon.js";
 
 // O que o robô procura na Shopee. A categoria precisa existir em DEPTS (dados.js).
 const BUSCAS = [
@@ -92,6 +93,35 @@ async function buscarShopee({ termo, categoria }, credenciais) {
     }
   }
   return produtos;
+}
+
+/**
+ * Amazon pela Creators API, separada do robô da Shopee: a API só permite guardar oferta por 1 hora,
+ * então roda a cada 50 minutos (servidor.js) e grava amazon.json. O resultado ou o erro vai para
+ * amazon-status.json, que o admin mostra. Sem credenciais, não faz nada e devolve null.
+ */
+export async function atualizarAmazon({ env, dadosDir, manual }) {
+  if (!env.AMAZON_CREDENCIAL_ID || !env.AMAZON_CREDENCIAL_SEGREDO || !env.AMAZON_PARTNER_TAG) return null;
+  const status = { ultimaTentativa: new Date().toISOString(), ok: false, erro: null, total: 0 };
+  try {
+    const cliente = criarClienteAmazon({
+      credencialId: env.AMAZON_CREDENCIAL_ID,
+      credencialSegredo: env.AMAZON_CREDENCIAL_SEGREDO,
+      versao: env.AMAZON_CREDENCIAL_VERSAO ?? "3.1",
+      parceiro: env.AMAZON_PARTNER_TAG,
+    });
+    const asins = JSON.parse(await readFile(manual, "utf8")).filter((p) => p.loja === "amazon" && p.asin).map((p) => p.asin);
+    const { produtos, erros } = await produtosAmazon({ cliente, asins });
+    status.ok = erros.length === 0;
+    status.erro = erros[0] ?? null;
+    status.total = produtos.length;
+    // Rodada vazia não apaga a anterior; a vitrine descarta sozinha o que passar de 1 hora.
+    if (produtos.length) await writeFile(join(dadosDir, "amazon.json"), JSON.stringify({ atualizadoEm: status.ultimaTentativa, produtos }));
+  } catch (e) {
+    status.erro = e.message;
+  }
+  await writeFile(join(dadosDir, "amazon-status.json"), JSON.stringify(status));
+  return status;
 }
 
 /** Uma rodada completa. Se a Shopee falhar, lança e o afiliados.json anterior continua valendo. */

@@ -1,7 +1,7 @@
 /** Ponto de entrada: sobe o app e agenda o robô de afiliados (na subida e a cada 8 horas). */
 import { join } from "node:path";
 import { RAIZ, criarApp } from "./app.js";
-import { atualizarAfiliados } from "./afiliados.js";
+import { atualizarAfiliados, atualizarAmazon } from "./afiliados.js";
 
 const PORTA = Number(process.env.PORT ?? 3000);
 
@@ -18,6 +18,13 @@ const rodarRobo = () => atualizarAfiliados({ env: process.env, dadosDir, manual:
   .catch((e) => console.error(`[afiliados] falhou, mantendo a lista anterior: ${e.message}`));
 rodarRobo();
 setInterval(rodarRobo, 8 * 60 * 60 * 1000).unref();
+
+// Amazon separada: a Creators API só permite guardar preço e oferta por 1 hora.
+const rodarAmazon = () => atualizarAmazon({ env: process.env, dadosDir, manual: join(RAIZ, "manual.json") })
+  .then((s) => s && console.log(`[amazon] ${s.total} produtos${s.erro ? ` · erro: ${s.erro}` : ""}`))
+  .catch((e) => console.error(`[amazon] falhou: ${e.message}`));
+rodarAmazon();
+setInterval(rodarAmazon, 50 * 60 * 1000).unref();
 
 const sincronizar = () => sincronizarAssinaturas()
   .then((n) => n && console.log(`[mp] ${n} assinatura(s) mudaram de status`))
