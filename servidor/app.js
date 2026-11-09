@@ -4,15 +4,16 @@
  * para os testes rodarem com pasta temporária e tempo controlado.
  */
 import express from "express";
-import { readFileSync } from "node:fs";
+import { readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { randomBytes, randomUUID } from "node:crypto";
+import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import * as S from "./seguranca.js";
 import { Banco, DEPTS, DIAS_TESTE, lojaVisivel, ordenarVitrine, slugUnico, statusLoja } from "./dados.js";
 import { MAX_FOTOS, apagarFoto, receberFotos, receberLogo, salvarFoto } from "./uploads.js";
 import { criarMercadoPago, statusDoMp, webhookValido } from "./mercadopago.js";
 import { MARKETPLACE, criarClienteAmazon } from "./amazon.js";
+import { atualizarAfiliados } from "./afiliados.js";
 
 export const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const PRECO_PLANO = 49.9;
@@ -65,6 +66,45 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   app.disable("x-powered-by");
   app.use((req, res, next) => { S.aplicarCabecalhos(req, res); next(); });
   app.use("/uploads", express.static(uploadsDir, { index: false, fallthrough: false, immutable: true, maxAge: "30d" }));
+  // Robô de coleta (tarefa agendada do Claude): recebe as ofertas de afiliados já prontas,
+  // grava coleta.json no volume e refaz afiliados.json na hora. Protegido por ROBO_TOKEN.
+  const roboToken = Buffer.from(String(env.ROBO_TOKEN ?? ""));
+  const LOJAS_AF = new Set(["shopee", "amazon", "ml"]);
+  const HOSTS_AF = /^https:\/\/([a-z0-9-]+\.)*(shopee\.com\.br|susercontent\.com|amazon\.com\.br|media-amazon\.com|ssl-images-amazon\.com|mercadolivre\.com|mercadolivre\.com\.br|mlstatic\.com)\//;
+  app.post("/api/robo/afiliados", express.json({ limit: "2mb" }), async (req, res) => {
+    try {
+      const t = Buffer.from(String(req.get("x-robo-token") ?? ""));
+      if (roboToken.length < 32 || t.length !== roboToken.length || !timingSafeEqual(t, roboToken)) return res.status(401).json({ erro: "Token inválido." });
+      const lista = Array.isArray(req.body?.produtos) ? req.body.produtos.slice(0, 1000) : [];
+      const produtos = [];
+      const vistos = new Set();
+      for (const b of lista) {
+        if (!b || typeof b !== "object") continue;
+        const n = Number(b.nota), v = Number(b.vendidos);
+        const p = {
+          id: txt(b.id, 60), nome: txt(b.nome, 160), loja: String(b.loja ?? ""),
+          categoria: DEPTS.includes(b.categoria) ? b.categoria : "casa",
+          preco: valor(b.preco), precoAntigo: b.precoAntigo ? valor(b.precoAntigo) : null,
+          nota: n > 0 && n <= 5 ? n : 0, vendidos: Number.isFinite(v) && v > 0 ? Math.round(v) : 0,
+          imagem: HOSTS_AF.test(String(b.imagem ?? "")) ? String(b.imagem) : null, link: String(b.link ?? ""),
+        };
+        if (/^[A-Z0-9]{10}$/.test(String(b.asin ?? ""))) p.asin = String(b.asin);
+        if (!/^(shopee|amazon|ml)-[A-Za-z0-9_-]+$/.test(p.id) || vistos.has(p.id) || !LOJAS_AF.has(p.loja) || p.nome.length < 3 || !p.preco || !HOSTS_AF.test(p.link)) continue;
+        if (p.precoAntigo && p.precoAntigo <= p.preco) p.precoAntigo = null;
+        vistos.add(p.id);
+        produtos.push(p);
+      }
+      if (produtos.length < 10) return res.status(400).json({ erro: "Lista muito pequena; nada foi alterado.", validos: produtos.length });
+      const arq = join(dadosDir, "coleta.json");
+      writeFileSync(arq + ".tmp", JSON.stringify({ atualizadoEm: iso(), produtos }));
+      renameSync(arq + ".tmp", arq);
+      const r = await atualizarAfiliados({ env, dadosDir, manual: join(RAIZ, "manual.json") });
+      res.json({ ok: true, recebidos: lista.length, validos: produtos.length, ...r });
+    } catch (e) {
+      log.error("[robo] " + e.message);
+      res.status(500).json({ erro: "Falha ao gravar a coleta." });
+    }
+  });
   app.use(express.json({ limit: "50kb" }));
   // Toda escrita na API precisa vir da própria página (junto com SameSite=Lax nos cookies).
   app.use("/api", (req, res, next) => (req.method !== "GET" && !S.origemConfiavel(req) ? erro(res, 403, "Origem não permitida.") : next()));

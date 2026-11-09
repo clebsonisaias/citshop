@@ -136,8 +136,12 @@ export async function atualizarAfiliados({ env, dadosDir, manual }) {
   if (env.SHOPEE_APP_ID && env.SHOPEE_SECRET) {
     for (const b of BUSCAS) shopee.push(...await buscarShopee(b, { appId: env.SHOPEE_APP_ID, segredo: env.SHOPEE_SECRET }));
   }
+  // Ofertas mandadas pelo robô de coleta (POST /api/robo/afiliados). Valem mais que o manual.json.
+  let coleta = [];
+  try { coleta = JSON.parse(await readFile(join(dadosDir, "coleta.json"), "utf8")).produtos ?? []; } catch { /* sem coleta ainda */ }
+  coleta = coleta.map((p) => (p.loja === "amazon" && p.asin && env.AMAZON_TAG ? { ...p, link: carrinhoAmazon(p.asin, env.AMAZON_TAG) } : p));
   const vistos = new Set();
-  const produtos = marcarQuedas([...shopee, ...lista], antigos).filter((p) => !vistos.has(p.id) && vistos.add(p.id));
+  const produtos = marcarQuedas([...shopee, ...coleta, ...lista], antigos).filter((p) => !vistos.has(p.id) && vistos.add(p.id));
   await writeFile(saida, JSON.stringify({ atualizadoEm: new Date().toISOString(), produtos }));
-  return { total: produtos.length, shopee: shopee.length, manuais: lista.length };
+  return { total: produtos.length, shopee: shopee.length, manuais: lista.length, coleta: coleta.length };
 }
