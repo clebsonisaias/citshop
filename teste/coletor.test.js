@@ -49,6 +49,8 @@ test("eBook Kindle vai sem ASIN (o carrinho da Amazon não aceita eBook) e com o
 
 test("categoria reconhece livros e games", () => {
   assert.equal(categoria("Livro de receitas da vovó"), "livros");
+  assert.equal(categoria("Crime e Castigo - Dostoiévski | Luxo Capa Dura"), "livros");
+  assert.equal(categoria("Bíblia NVI, Capa luxo marrom"), "livros");
   assert.equal(categoria("Controle sem fio para PS5 DualSense"), "games");
   assert.equal(categoria("Fone Bluetooth"), "cel");
 });
