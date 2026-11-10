@@ -142,14 +142,37 @@ section.block { padding-block: 18px; }
 .sellerhead .info { flex: 1; min-width: 180px; }
 .sellerhead small { color: var(--muted); }
 /* Página da loja com a cor e o logo dela; --loja-ink é preto ou branco, calculado pelo contraste */
-.sellerhead.loja-cor { background: var(--loja, #036271); color: var(--loja-ink, #FFFFFF); border-color: transparent; padding: 22px; }
-.sellerhead.loja-cor small, .sellerhead.loja-cor p { color: inherit; opacity: .88; }
-.sellerhead.loja-cor .info b { display: block; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
-.sellerhead.loja-cor p { margin: 8px 0 0; max-width: 60ch; }
-.sellerhead.loja-cor .btn { background: var(--loja-ink); color: var(--loja); }
+.sellerhead.loja-cor { position: relative; isolation: isolate; overflow: hidden; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 18px; align-items: center; margin-bottom: 20px; padding: clamp(18px, 3vw, 28px); background: var(--loja, #036271); color: var(--loja-ink, #FFFFFF); border: 0; border-radius: 20px; }
+.sellerhead.loja-cor::after { content: ""; position: absolute; z-index: -1; width: 240px; aspect-ratio: 1; right: -72px; bottom: -164px; border: 1px solid color-mix(in srgb, var(--loja-ink) 18%, transparent); border-radius: 50%; box-shadow: 0 0 0 24px color-mix(in srgb, var(--loja-ink) 5%, transparent), 0 0 0 48px color-mix(in srgb, var(--loja-ink) 4%, transparent); pointer-events: none; }
+.sellerhead.loja-cor .avatar.grande { width: 92px; height: 92px; border-radius: 22px; background: color-mix(in srgb, var(--loja-ink) 14%, transparent); border-color: color-mix(in srgb, var(--loja-ink) 30%, transparent); }
+.store-copy { min-width: 0; }
+.store-kicker { display: block; margin-bottom: 4px; color: inherit; opacity: .76; font-size: 10px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+.sellerhead.loja-cor .store-copy h3 { font-size: clamp(21px, 2.5vw, 28px); font-weight: 800; line-height: 1.1; letter-spacing: -.03em; overflow-wrap: anywhere; }
+.store-meta { display: flex; flex-wrap: wrap; gap: 5px 10px; margin-top: 9px; color: inherit; font-size: 12px; font-weight: 600; opacity: .88; }
+.store-meta span + span::before { content: "·"; margin-right: 10px; opacity: .7; }
+.store-details { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
+.store-detail { display: grid; gap: 2px; max-width: 100%; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--loja-ink) 17%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--loja-ink) 8%, transparent); color: inherit; font-size: 11px; line-height: 1.35; overflow-wrap: anywhere; }
+.store-detail b { color: inherit; font-size: 9px; letter-spacing: .06em; opacity: .74; text-transform: uppercase; }
+.sellerhead.loja-cor p { margin: 12px 0 0; max-width: 60ch; color: inherit; font-size: 13px; line-height: 1.6; opacity: .9; }
+.store-action { position: relative; z-index: 1; }
+.sellerhead.loja-cor .store-action .btn { min-height: 48px; padding-inline: 18px; background: var(--loja-ink); color: var(--loja); white-space: nowrap; }
 .avatar { overflow: hidden; }
 .avatar img { width: 100%; height: 100%; object-fit: cover; }
 .avatar.grande { width: 84px; height: 84px; border-radius: 18px; font-size: 26px; background: rgba(255,255,255,.18); color: inherit; border: 2px solid rgba(255,255,255,.35); }
+
+@media (max-width: 760px) {
+  .sellerhead.loja-cor { grid-template-columns: auto minmax(0, 1fr); gap: 14px; }
+  .store-action { grid-column: 1 / -1; }
+  .sellerhead.loja-cor .store-action .btn { width: 100%; }
+}
+@media (max-width: 480px) {
+  .sellerhead.loja-cor { gap: 12px; padding: 16px; border-radius: 16px; }
+  .sellerhead.loja-cor .avatar.grande { width: 66px; height: 66px; border-radius: 17px; font-size: 20px; }
+  .store-meta { gap: 4px 7px; font-size: 11px; }
+  .store-meta span + span::before { margin-right: 7px; }
+  .store-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 11px; }
+  .store-detail { padding: 7px 8px; font-size: 10px; }
+}
 
 .modal { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 16px; background: rgba(3, 24, 28, .62); }
 .sheet { background: var(--surface); color: var(--ink); border-radius: 20px; width: min(860px, 100%); max-height: calc(100dvh - 32px); overflow: auto; display: grid; grid-template-columns: 1fr 1fr; }

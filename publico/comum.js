@@ -58,13 +58,17 @@ window.CIT = (() => {
     const cor = l.cor || '#036271';
     const avatar = l.logo ? `<img src="${esc(l.logo)}" alt="Logo ${esc(l.nome)}">` : esc(iniciais(l.nome));
     const detalhes = [
-      l.horario && `Horário: ${l.horario}`,
-      l.bairrosAtendidos && `Bairros: ${l.bairrosAtendidos}`,
-      l.prazoEntrega && `Prazo: ${l.prazoEntrega}`,
-    ].filter(Boolean).map(esc).join(' · ');
-    return `<div class="sellerhead loja-cor" style="--loja:${cor};--loja-ink:${textoSobre(cor)}">
+      l.horario && ['Horário', l.horario],
+      l.bairrosAtendidos && ['Atende', l.bairrosAtendidos],
+      l.prazoEntrega && ['Prazo', l.prazoEntrega],
+    ].filter(Boolean).map(([rotulo, valor]) => `<span class="store-detail"><b>${rotulo}</b>${esc(valor)}</span>`).join('');
+    const entrega = ENTREGA[l.entrega];
+    return `<section class="sellerhead loja-cor" aria-label="Perfil da loja" style="--loja:${cor};--loja-ink:${textoSobre(cor)}">
       <span class="avatar grande">${avatar}</span>
-      <div class="info"><b>${esc(l.nome)}</b><small>${esc(l.categoria || 'Loja local')} · ${esc(l.cidade)}${ENTREGA[l.entrega] ? ` · ${ENTREGA[l.entrega]}` : ''}</small>${detalhes ? `<small class="profile-details">${detalhes}</small>` : ''}${l.sobre ? `<p>${esc(l.sobre)}</p>` : ''}</div>${extra}</div>`;
+      <div class="info store-copy"><span class="store-kicker">Loja da região</span><h3>${esc(l.nome)}</h3>
+        <div class="store-meta"><span>${esc(l.categoria || 'Loja local')}</span><span>${esc(l.cidade)}</span>${entrega ? `<span>${entrega}</span>` : ''}</div>
+        ${detalhes ? `<div class="store-details">${detalhes}</div>` : ''}${l.sobre ? `<p>${esc(l.sobre)}</p>` : ''}</div>
+      ${extra ? `<div class="store-action">${extra}</div>` : ''}</section>`;
   }
   return { ICON, DEPTS, D, esc, brl, svg, textoSobre, iniciais, cabecalhoLoja, textoEntrega };
 })();
