@@ -93,6 +93,16 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     urlPublica,
   });
   agendadorOfertas.radar = radarOfertas;
+
+  // Carrega credenciais salvas em motor-config.json no volume persistente
+  monitoramentoMotor.obterConfiguracao().then((cfg) => {
+    if (cfg?.instagram?.accountId && !conectorInstagram.accountId) conectorInstagram.accountId = cfg.instagram.accountId;
+    if (cfg?.instagram?.accessToken && !conectorInstagram.accessToken) {
+      conectorInstagram.accessToken = cfg.instagram.pageAccessToken || cfg.instagram.accessToken;
+    }
+    if (cfg?.telegram?.botToken && !conectorTelegram.botToken) conectorTelegram.botToken = cfg.telegram.botToken;
+    if (cfg?.telegram?.chatId && !conectorTelegram.chatId) conectorTelegram.chatId = cfg.telegram.chatId;
+  }).catch(() => {});
   const geradorCardInstagram = new GeradorCardInstagram({ publicoDir: publico, dadosDir, fetchImpl });
   const mp = criarMercadoPago({ token: env.MP_ACCESS_TOKEN, fetchImpl });
   const limiteLogin = new S.Limitador({ maximo: 8, janelaMs: 10 * 60_000 });
