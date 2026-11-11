@@ -100,9 +100,10 @@ export const BUSCAS_PADRAO_SHOPEE = [
   { termo: "capsula cafe nespresso compativel", categoria: "mercado" },
   { termo: "chocolate importado", categoria: "mercado" },
 
-  // 22. Camping & Sobrevivência
-  { termo: "lanterna tatica militar recarregavel", categoria: "camping" },
-  { termo: "canivete multifuncao", categoria: "camping" },
+  // 22. Camping & Sobrevivência (Kits de Sobrevivência & Táticos)
+  { termo: "lanterna tatica", categoria: "camping" },
+  { termo: "canivete tatica", categoria: "camping" },
+  { termo: "kit sobrevivencia", categoria: "camping" },
 
   // 23. Móveis
   { termo: "sapateira organizadora multiuso", categoria: "moveis" },
@@ -113,8 +114,13 @@ export const BUSCAS_PADRAO_SHOPEE = [
   { termo: "refletor solar led jardim", categoria: "jardim" },
 
   // 25. Instrumentos Musicais
-  { termo: "ukulele acustico soprano", categoria: "musica" },
-  { termo: "afinador digital clip violao", categoria: "musica" },
+  { termo: "ukulele", categoria: "musica" },
+  { termo: "palheta", categoria: "musica" },
+
+  // 26. Especial de Natal (Casa & Decoração Natalina)
+  { termo: "arvore natal", categoria: "casa" },
+  { termo: "pisca pisca natal", categoria: "casa" },
+  { termo: "enfeite natal", categoria: "casa" },
 ];
 
 export function inferirCategoriaShopee(nome = "") {
@@ -130,13 +136,15 @@ export function inferirCategoriaShopee(nome = "") {
   // 5. Games & Consoles
   if (/video game|game retro|ps4|ps5|xbox|nintendo|manete|gamepad|console retro/i.test(n)) return "games";
   // 6. Camping & Sobrevivência
-  if (/lanterna tatica|canivete|barraca|pesca|sobrevivencia|bussola|cantil|saco de dormir|camping/i.test(n)) return "camping";
+  if (/lanterna tatica|canivete|faca de caca|kit sobrevivencia|tatica|tatico|sobrevivencia|barraca|pesca|bussola|cantil|saco de dormir|camping/i.test(n)) return "camping";
   // 7. Móveis
   if (/sapateira|mesa dobravel|cadeira gamer|estante|prateleira|armario|rack|mesa de cabeceira|movel/i.test(n)) return "moveis";
   // 8. Jardim & Piscina
   if (/mangueira|refletor solar|jardim|piscina|tesoura de poda|regador|grama|adubo/i.test(n)) return "jardim";
   // 9. Mercado & Alimentos
   if (/capsula de cafe|capsula nespresso|chocolate|snack|biscoito|bala|tempero|alimento|bombom/i.test(n)) return "mercado";
+  // 10. Natal & Iluminação Festiva
+  if (/natal|arvore natal|pisca pisca|guirlanda|enfeite natal|cascata led/i.test(n)) return "casa";
   // 10. Celulares & Acessórios
   if (/fone|headset|auricular|tws|carregador|cabo tipo c|lightning|iphone|samsung|redmi|xiaomi|celular|smartphone|pelicula|capinha/i.test(n)) return "cel";
   // 11. Eletrônicos & Tecnologia
