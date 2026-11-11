@@ -77,8 +77,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   // Robô de coleta (tarefa agendada do Claude): recebe as ofertas de afiliados já prontas,
   // grava coleta.json no volume e refaz afiliados.json na hora. Protegido por ROBO_TOKEN.
   const roboToken = Buffer.from(String(env.ROBO_TOKEN ?? ""));
-  const LOJAS_AF = new Set(["shopee", "amazon", "ml"]);
-  const HOSTS_AF = /^https:\/\/([a-z0-9-]+\.)*(shopee\.com\.br|susercontent\.com|amazon\.com\.br|media-amazon\.com|ssl-images-amazon\.com|mercadolivre\.com|mercadolivre\.com\.br|mlstatic\.com)\//;
+  const LOJAS_AF = new Set(["shopee", "amazon", "ml", "mercado-livre", "shein"]);
+  const HOSTS_AF = /^https:\/\/([a-z0-9-]+\.)*(shopee\.com\.br|susercontent\.com|amazon\.com\.br|media-amazon\.com|ssl-images-amazon\.com|mercadolivre\.com|mercadolivre\.com\.br|mlstatic\.com|shein\.com|shein\.top|ltwebstatic\.com)\//;
   app.post("/api/robo/afiliados", express.json({ limit: "2mb" }), async (req, res) => {
     try {
       const t = Buffer.from(String(req.get("x-robo-token") ?? ""));
@@ -97,7 +97,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
           imagem: HOSTS_AF.test(String(b.imagem ?? "")) ? String(b.imagem) : null, link: String(b.link ?? ""),
         };
         if (/^[A-Z0-9]{10}$/.test(String(b.asin ?? ""))) p.asin = String(b.asin);
-        if (!/^(shopee|amazon|ml)-[A-Za-z0-9_-]+$/.test(p.id) || vistos.has(p.id) || !LOJAS_AF.has(p.loja) || p.nome.length < 3 || !p.preco || !HOSTS_AF.test(p.link)) continue;
+        if (!/^(shopee|amazon|ml|shein)-[A-Za-z0-9_-]+$/.test(p.id) || vistos.has(p.id) || !LOJAS_AF.has(p.loja) || p.nome.length < 3 || !p.preco || !HOSTS_AF.test(p.link)) continue;
         if (p.precoAntigo && p.precoAntigo <= p.preco) p.precoAntigo = null;
         if (b.destaque === true) p.destaque = true;
         vistos.add(p.id);
@@ -614,7 +614,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
 
   // Página de produto renderizada no servidor: conteúdo, metadados e JSON-LD chegam no HTML inicial.
   const PAGINA_PRODUTO = readFileSync(join(publico, "produto.html"), "utf8");
-  const NOME_LOJA = { amazon: "Amazon", shopee: "Shopee", ml: "Mercado Livre" };
+  const NOME_LOJA = { amazon: "Amazon", shopee: "Shopee", ml: "Mercado Livre", "mercado-livre": "Mercado Livre", shein: "SHEIN" };
   const attr = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   function metaProduto(x) {
     const titulo = `${x.nome} · CITshop`;

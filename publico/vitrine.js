@@ -3,7 +3,7 @@ import { filtrarCatalogo } from './catalogo.js';
 // Vitrine: lê /api/vitrine (lojas locais já vêm na frente dos afiliados) e monta a loja.
 (() => {
   const { DEPTS, D, ICON, esc, brl, svg } = window.CIT;
-  const STORE = { ml: 'Mercado Livre', 'mercado-livre': 'Mercado Livre', shopee: 'Shopee', amazon: 'Amazon', local: 'Lojas da região' };
+  const STORE = { ml: 'Mercado Livre', 'mercado-livre': 'Mercado Livre', shopee: 'Shopee', amazon: 'Amazon', shein: 'SHEIN', local: 'Lojas da região' };
   const DISPONIBILIDADE = { disponivel: 'Disponível, informado pela loja', 'sob-encomenda': 'Sob encomenda', consulte: 'Consulte disponibilidade' };
   const $ = (id) => document.getElementById(id);
   const num = new Intl.NumberFormat('pt-BR');

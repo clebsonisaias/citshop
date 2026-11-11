@@ -12,11 +12,13 @@ export const CONFIG_PADRAO_MOTOR = {
     amazon: 50,
     shopee: 240,
     "mercado-livre": 240,
+    shein: 240,
   },
   termosPorMarketplace: {
     amazon: ["fone bluetooth", "air fryer", "smartwatch", "kindle"],
     shopee: ["fone bluetooth", "smartwatch", "air fryer", "luminaria led", "cama pet"],
     "mercado-livre": ["furadeira parafusadeira", "creatina", "jogo de panelas", "aspirador robo"],
+    shein: ["vestido", "camisa", "bolsa", "tenis", "maquiagem"],
   },
   categoriasMonitoradas: ["tec", "cel", "cozinha", "casa", "ferr", "esporte", "pets"],
 };
@@ -68,7 +70,7 @@ export class MonitoramentoMotor {
       totalPublicados: 0,
       totalDesativados: 0,
       totalDuplicadosIgnorados: 0,
-      porMarketplace: { amazon: 0, shopee: 0, "mercado-livre": 0 },
+      porMarketplace: { amazon: 0, shopee: 0, "mercado-livre": 0, shein: 0 },
       statusPorLoja: {},
       desativadosRecentes: [],
     });
@@ -98,7 +100,7 @@ export class MonitoramentoMotor {
   async obterMetricas() {
     return await this.lerJsonSeguro(this.caminhoMetricas, {
       totalCliques: 0,
-      cliquesPorMarketplace: { amazon: 0, shopee: 0, "mercado-livre": 0 },
+      cliquesPorMarketplace: { amazon: 0, shopee: 0, "mercado-livre": 0, shein: 0 },
       cliquesPorDia: {},
     });
   }

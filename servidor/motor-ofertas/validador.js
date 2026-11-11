@@ -35,6 +35,14 @@ export function validarLinkAfiliado(link, marketplace) {
       return Boolean(u.searchParams.get("matt_tool") || u.searchParams.get("matt_word") || u.searchParams.get("afiliado"));
     }
 
+    if (marketplace === "shein") {
+      const dominiosValidos = ["shein.top", "shein.com", "m.shein.com", "api-shein.shein.com"];
+      const hostValido = dominiosValidos.some((d) => u.hostname === d || u.hostname.endsWith(`.${d}`));
+      if (!hostValido) return false;
+      if (u.hostname === "shein.top" || u.hostname.endsWith(".shein.top")) return true;
+      return Boolean(u.searchParams.get("aff_id") || u.searchParams.get("url_from") === "affiliate" || u.searchParams.get("ref"));
+    }
+
     // Para outros (ex: manuais com tag ou link parametrizado)
     return true;
   } catch {

@@ -75,7 +75,7 @@ export class PublicadorOfertas {
     const consolidado = [...normalizadosManuais];
 
     // Para cada marketplace conhecido, decide se usa a nova rodada ou preserva anterior
-    const marketplaces = ["amazon", "shopee", "mercado-livre"];
+    const marketplaces = ["amazon", "shopee", "mercado-livre", "shein"];
     for (const mp of marketplaces) {
       const status = statusPorLoja[mp];
       const novosDaLoja = porLoja.get(mp) || [];
@@ -127,6 +127,7 @@ export class PublicadorOfertas {
         amazon: finalRanqueados.filter((p) => (p.marketplace || p.loja) === "amazon").length,
         shopee: finalRanqueados.filter((p) => (p.marketplace || p.loja) === "shopee").length,
         "mercado-livre": finalRanqueados.filter((p) => (p.marketplace || p.loja) === "mercado-livre").length,
+        shein: finalRanqueados.filter((p) => (p.marketplace || p.loja) === "shein").length,
       },
       statusPorLoja,
       desativadosRecentes: rejeitados.slice(0, 20).map(({ produto, motivos }) => ({

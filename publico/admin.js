@@ -72,13 +72,14 @@
         <li>Amazon: <b>${porLoja.amazon || 0}</b> ofertas</li>
         <li>Shopee: <b>${porLoja.shopee || 0}</b> ofertas</li>
         <li>Mercado Livre: <b>${porLoja['mercado-livre'] || 0}</b> ofertas</li>
+        <li>SHEIN: <b>${porLoja.shein || 0}</b> ofertas</li>
       `;
 
       const met = s.metricas || {};
       const clq = met.cliquesPorMarketplace || {};
       $('metricasCliques').innerHTML = `
         Total de cliques: <b>${met.totalCliques || 0}</b><br>
-        <small class="note">Amazon: ${clq.amazon || 0} · Shopee: ${clq.shopee || 0} · Mercado Livre: ${clq['mercado-livre'] || 0}</small>
+        <small class="note">Amazon: ${clq.amazon || 0} · Shopee: ${clq.shopee || 0} · Mercado Livre: ${clq['mercado-livre'] || 0} · SHEIN: ${clq.shein || 0}</small>
       `;
 
       const cfg = s.configuracao || {};
@@ -87,6 +88,7 @@
       $('cfgTermosAmazon').value = (cfg.termosPorMarketplace?.amazon || []).join(', ');
       $('cfgTermosShopee').value = (cfg.termosPorMarketplace?.shopee || []).join(', ');
       $('cfgTermosML').value = (cfg.termosPorMarketplace?.['mercado-livre'] || []).join(', ');
+      if ($('cfgTermosShein')) $('cfgTermosShein').value = (cfg.termosPorMarketplace?.shein || []).join(', ');
 
       const desat = s.desativadosRecentes || [];
       if (!desat.length) {
@@ -116,6 +118,7 @@
           amazon: parseTermos($('cfgTermosAmazon').value),
           shopee: parseTermos($('cfgTermosShopee').value),
           'mercado-livre': parseTermos($('cfgTermosML').value),
+          shein: $('cfgTermosShein') ? parseTermos($('cfgTermosShein').value) : [],
         },
       };
       await api('/api/admin/central-ofertas/config', 'PUT', payload);

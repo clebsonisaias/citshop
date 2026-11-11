@@ -5,18 +5,21 @@
 import { ConectorAmazon } from "../integracoes/amazon/conector.js";
 import { ConectorShopee } from "../integracoes/shopee/conector.js";
 import { ConectorMercadoLivre } from "../integracoes/mercado-livre/conector.js";
+import { ConectorShein } from "../integracoes/shein/conector.js";
 
 export class ColetorOfertas {
   constructor({
     conectorAmazon = new ConectorAmazon(),
     conectorShopee = new ConectorShopee(),
     conectorMercadoLivre = new ConectorMercadoLivre(),
+    conectorShein = new ConectorShein(),
     log = console,
   } = {}) {
     this.conectores = {
       amazon: conectorAmazon,
       shopee: conectorShopee,
       "mercado-livre": conectorMercadoLivre,
+      shein: conectorShein,
     };
     this.log = log;
   }

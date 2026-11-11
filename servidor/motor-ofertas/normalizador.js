@@ -49,7 +49,7 @@ export function normalizarProduto(item) {
   const temPrecoAntigoValido = precoAntigo > preco && Number.isFinite(precoAntigo);
 
   const marketplace = item.marketplace || item.loja || "afiliado";
-  const externalId = item.externalId || item.asin || item.id?.replace(/^(amazon-|shopee-|ml-)/, "") || null;
+  const externalId = item.externalId || item.asin || item.id?.replace(/^(amazon-|shopee-|ml-|shein-)/, "") || null;
   const id = item.id || `${marketplace}-${externalId || Math.random().toString(36).slice(2, 9)}`;
 
   const fotos = Array.isArray(item.fotos) && item.fotos.length
