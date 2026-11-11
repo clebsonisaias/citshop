@@ -100,18 +100,20 @@ export const BUSCAS_PADRAO_SHOPEE = [
   { termo: "capsula cafe nespresso compativel", categoria: "mercado" },
   { termo: "chocolate importado", categoria: "mercado" },
 
-  // 22. Camping & Sobrevivência (Kits de Sobrevivência & Táticos)
-  { termo: "lanterna tatica", categoria: "camping" },
-  { termo: "canivete tatica", categoria: "camping" },
-  { termo: "kit sobrevivencia", categoria: "camping" },
+  // 22. Camping & Sobrevivência (Kits de Sobrevivência, Táticos & Energia Portátil)
+  { termo: "canivete", categoria: "camping" },
+  { termo: "lanterna", categoria: "camping" },
+  { termo: "estacao de energia", categoria: "camping" },
+  { termo: "gerador solar", categoria: "camping" },
 
   // 23. Móveis
   { termo: "sapateira organizadora multiuso", categoria: "moveis" },
   { termo: "mesa dobravel para notebook cama", categoria: "moveis" },
 
-  // 24. Jardim & Piscina
+  // 24. Jardim & Piscina (Iluminação Solar & Estação de Luz)
+  { termo: "refletor solar", categoria: "jardim" },
+  { termo: "luminaria solar", categoria: "jardim" },
   { termo: "mangueira magica expansivel", categoria: "jardim" },
-  { termo: "refletor solar led jardim", categoria: "jardim" },
 
   // 25. Instrumentos Musicais
   { termo: "ukulele", categoria: "musica" },
@@ -121,6 +123,11 @@ export const BUSCAS_PADRAO_SHOPEE = [
   { termo: "arvore natal", categoria: "casa" },
   { termo: "pisca pisca natal", categoria: "casa" },
   { termo: "enfeite natal", categoria: "casa" },
+
+  // 27. Energia Solar, Inversores, Placas & Baterias Portáteis
+  { termo: "placa solar", categoria: "ferr" },
+  { termo: "inversor solar", categoria: "ferr" },
+  { termo: "power bank", categoria: "tec" },
 ];
 
 export function inferirCategoriaShopee(nome = "") {
@@ -135,20 +142,20 @@ export function inferirCategoriaShopee(nome = "") {
   if (/livro|e-book|leitura|biblia|literatura|biografia|habitos atomicos/i.test(n)) return "livros";
   // 5. Games & Consoles
   if (/video game|game retro|ps4|ps5|xbox|nintendo|manete|gamepad|console retro/i.test(n)) return "games";
-  // 6. Camping & Sobrevivência
-  if (/lanterna tatica|canivete|faca de caca|kit sobrevivencia|tatica|tatico|sobrevivencia|barraca|pesca|bussola|cantil|saco de dormir|camping/i.test(n)) return "camping";
+  // 6. Camping, Sobrevivência & Estações de Energia Portáteis
+  if (/estacao de energia|gerador portatil|gerador solar|lanterna|canivete|faca de caca|kit sobrevivencia|tatica|tatico|sobrevivencia|barraca|pesca|bussola|cantil|saco de dormir|camping/i.test(n)) return "camping";
   // 7. Móveis
   if (/sapateira|mesa dobravel|cadeira gamer|estante|prateleira|armario|rack|mesa de cabeceira|movel/i.test(n)) return "moveis";
-  // 8. Jardim & Piscina
-  if (/mangueira|refletor solar|jardim|piscina|tesoura de poda|regador|grama|adubo/i.test(n)) return "jardim";
+  // 8. Jardim & Piscina (Refletores e Iluminação Solar)
+  if (/refletor solar|luminaria solar|mangueira|jardim|piscina|tesoura de poda|regador|grama|adubo/i.test(n)) return "jardim";
   // 9. Mercado & Alimentos
   if (/capsula de cafe|capsula nespresso|chocolate|snack|biscoito|bala|tempero|alimento|bombom/i.test(n)) return "mercado";
   // 10. Natal & Iluminação Festiva
   if (/natal|arvore natal|pisca pisca|guirlanda|enfeite natal|cascata led/i.test(n)) return "casa";
   // 10. Celulares & Acessórios
   if (/fone|headset|auricular|tws|carregador|cabo tipo c|lightning|iphone|samsung|redmi|xiaomi|celular|smartphone|pelicula|capinha/i.test(n)) return "cel";
-  // 11. Eletrônicos & Tecnologia
-  if (/smartwatch|relogio inteligente|bluetooth|caixa de som|ring light|tripé|dvr|camera|alexa|smart/i.test(n)) return "tec";
+  // 11. Eletrônicos & Tecnologia (Power Banks e Baterias)
+  if (/power bank|bateria portatil|smartwatch|relogio inteligente|bluetooth|caixa de som|ring light|tripé|dvr|camera|alexa|smart/i.test(n)) return "tec";
   // 12. Informática
   if (/mouse|teclado|notebook|computador|pc|gamer|monitor|gabinete|ssd|memoria ram|hdmi|usb/i.test(n)) return "info";
   // 13. Cozinha
@@ -165,8 +172,8 @@ export function inferirCategoriaShopee(nome = "") {
   if (/maquiagem|pincel|escova|secador|batom|perfume|serum|creme|shampoo|cabelo|barbeador|depilador/i.test(n)) return "beleza";
   // 19. Saúde e Cuidados
   if (/creatina|whey|suplemento|vitamina|termogenico|saude|massageador/i.test(n)) return "saude";
-  // 20. Ferramentas
-  if (/furadeira|parafusadeira|chave|ferramenta|alicate|trena|disco|broca/i.test(n)) return "ferr";
+  // 20. Ferramentas & Energia Solar / Inversores / Placas
+  if (/painel solar|placa solar|inversor solar|inversor|controlador solar|energia solar|bateria lifepo4|furadeira|parafusadeira|chave|ferramenta|alicate|trena|disco|broca/i.test(n)) return "ferr";
   // 21. Automotivo
   if (/automotivo|carro|moto|veicular|pneu|capacete/i.test(n)) return "auto";
   // 22. Pet Shop
