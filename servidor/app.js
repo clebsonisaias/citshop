@@ -74,18 +74,19 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     apiKey: env.WAHA_API_KEY || null,
     fetchImpl,
   });
-  const radarOfertas = new RadarOfertas({
-    dadosDir,
-    waha: conectorWaha,
-    urlPublica,
-  });
-  agendadorOfertas.radar = radarOfertas;
   const conectorInstagram = new ConectorInstagram({
     accountId: env.INSTAGRAM_ACCOUNT_ID,
     accessToken: env.INSTAGRAM_ACCESS_TOKEN,
     fetchImpl,
   });
-  const geradorCardInstagram = new GeradorCardInstagram({ publicoDir: publico, fetchImpl });
+  const radarOfertas = new RadarOfertas({
+    dadosDir,
+    waha: conectorWaha,
+    instagram: conectorInstagram,
+    urlPublica,
+  });
+  agendadorOfertas.radar = radarOfertas;
+  const geradorCardInstagram = new GeradorCardInstagram({ publicoDir: publico, dadosDir, fetchImpl });
   const mp = criarMercadoPago({ token: env.MP_ACCESS_TOKEN, fetchImpl });
   const limiteLogin = new S.Limitador({ maximo: 8, janelaMs: 10 * 60_000 });
   const limiteCadastro = new S.Limitador({ maximo: 5, janelaMs: 60 * 60_000 });
@@ -722,16 +723,23 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       accountId: conectorInstagram.accountId || cfg.instagram?.accountId || null,
       perfil: "@shopcitmax",
       linkBio: `${urlPublica}/bio`,
+      postarAutomatico: Boolean(cfg.instagram?.postarAutomatico ?? cfg.radar?.postarInstagram),
     });
   }));
 
   app.post("/api/admin/instagram/config", exigirAdmin, express.json(), a(async (req, res) => {
     const cfgAtual = await monitoramentoMotor.obterConfiguracao();
+    const postarAuto = req.body?.postarAutomatico !== undefined ? Boolean(req.body.postarAutomatico) : Boolean(cfgAtual.instagram?.postarAutomatico);
     const novaCfg = {
       ...cfgAtual,
       instagram: {
         ...(cfgAtual.instagram || {}),
         ...(req.body || {}),
+        postarAutomatico: postarAuto,
+      },
+      radar: {
+        ...(cfgAtual.radar || {}),
+        postarInstagram: postarAuto,
       },
     };
     if (req.body?.accountId) conectorInstagram.accountId = req.body.accountId;

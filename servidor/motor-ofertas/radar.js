@@ -13,10 +13,12 @@ export class RadarOfertas {
   constructor({
     dadosDir = process.env.DADOS_DIR || "dados",
     waha = new ConectorWaha(),
+    instagram = null,
     urlPublica = process.env.URL_PUBLICA || "https://shop.citmax.com.br",
   } = {}) {
     this.dadosDir = dadosDir;
     this.waha = waha;
+    this.instagram = instagram;
     this.urlPublica = String(urlPublica).replace(/\/+$/, "");
     this.caminhoEnviados = join(this.dadosDir, ARQUIVO_ENVIADOS);
   }
@@ -193,14 +195,10 @@ export class RadarOfertas {
     maxDisparos = 3,
     descontoMinimoPct = 25,
     intervaloHorasRepeticao = 24,
+    postarInstagram = false,
   } = {}) {
-    if (!chatId) {
-      return { executado: false, motivo: "chatId de destino do WhatsApp não configurado." };
-    }
-
-    const statusWaha = await this.waha.verificarStatus();
-    if (!statusWaha.online) {
-      return { executado: false, motivo: `WAHA offline ou desconectado: ${statusWaha.erro || statusWaha.status}` };
+    if (!chatId && !postarInstagram) {
+      return { executado: false, motivo: "Nenhum canal de destino (WhatsApp ou Instagram) configurado." };
     }
 
     const candidatos = this.selecionarCandidatos(produtos, {
@@ -216,46 +214,74 @@ export class RadarOfertas {
     const enviadosHistorico = this.carregarHistoricoEnviados();
     const sucessos = [];
 
-    for (const item of selecionados) {
-      const card = this.formatarMensagem(item);
-      try {
-        if (card.urlImagem) {
+    // Envio para o WhatsApp via WAHA (se chatId estiver definido)
+    if (chatId) {
+      const statusWaha = await this.waha.verificarStatus();
+      if (statusWaha.online) {
+        for (const item of selecionados) {
+          const card = this.formatarMensagem(item);
           try {
-            await this.waha.enviarImagem({
+            if (card.urlImagem) {
+              try {
+                await this.waha.enviarImagem({
+                  chatId,
+                  urlImagem: card.urlImagem,
+                  legenda: card.texto,
+                });
+              } catch {
+                await this.waha.enviarTexto({
+                  chatId,
+                  texto: card.texto,
+                });
+              }
+            } else {
+              await this.waha.enviarTexto({
+                chatId,
+                texto: card.texto,
+              });
+            }
+
+            sucessos.push({
+              id: item.id,
+              nome: item.nome,
+              preco: item.preco,
+              tipo: card.tipo,
+              enviadoEm: new Date().toISOString(),
               chatId,
-              urlImagem: card.urlImagem,
-              legenda: card.texto,
             });
-          } catch {
-            // Fallback para envio em texto se a imagem falhar
-            await this.waha.enviarTexto({
-              chatId,
-              texto: card.texto,
+
+            enviadosHistorico.push({
+              id: item.id,
+              nome: item.nome,
+              enviadoEm: new Date().toISOString(),
             });
+          } catch (errEnvio) {
+            console.error(`[radar] Falha ao enviar produto ${item.id} no WhatsApp:`, errEnvio.message);
           }
-        } else {
-          await this.waha.enviarTexto({
-            chatId,
-            texto: card.texto,
-          });
         }
+      } else {
+        console.warn(`[radar] WAHA indisponível: ${statusWaha.erro || statusWaha.status}`);
+      }
+    }
 
+    // Publicação automática no Feed do Instagram @shopcitmax (se ativo e configurado)
+    let postInstagram = null;
+    if (postarInstagram && this.instagram && this.instagram.estaConfigurado() && selecionados.length > 0) {
+      const topOferta = selecionados[0];
+      try {
+        const urlCard = `${this.urlPublica}/api/instagram/card/${encodeURIComponent(topOferta.id)}`;
+        const legenda = this.instagram.formatarLegenda(topOferta, { urlPublica: this.urlPublica });
+        postInstagram = await this.instagram.publicarFeed({ urlImagem: urlCard, legenda });
         sucessos.push({
-          id: item.id,
-          nome: item.nome,
-          preco: item.preco,
-          tipo: card.tipo,
+          id: topOferta.id,
+          nome: topOferta.nome,
+          preco: topOferta.preco,
+          tipo: "instagram",
           enviadoEm: new Date().toISOString(),
-          chatId,
+          postId: postInstagram.id || postInstagram.postId,
         });
-
-        enviadosHistorico.push({
-          id: item.id,
-          nome: item.nome,
-          enviadoEm: new Date().toISOString(),
-        });
-      } catch (errEnvio) {
-        console.error(`[radar] Falha ao enviar produto ${item.id} no WhatsApp:`, errEnvio.message);
+      } catch (errInsta) {
+        console.error(`[radar] Falha ao postar no Instagram: ${errInsta.message}`);
       }
     }
 

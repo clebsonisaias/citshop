@@ -361,6 +361,9 @@
     try {
       const st = await api('/api/admin/instagram/status');
       if ($('instaAccountId') && st.accountId) $('instaAccountId').value = st.accountId;
+      if ($('instaPostarAutomatico') && st.postarAutomatico !== undefined) {
+        $('instaPostarAutomatico').checked = Boolean(st.postarAutomatico);
+      }
 
       const v = await api('/api/vitrine');
       produtosInsta = v.produtos || [];
@@ -427,8 +430,9 @@
         await api('/api/admin/instagram/config', 'POST', {
           accountId: $('instaAccountId').value.trim(),
           accessToken: $('instaToken').value.trim(),
+          postarAutomatico: $('instaPostarAutomatico')?.checked || false,
         });
-        alert('Configurações da Meta salvas com sucesso!');
+        alert('Configurações do Instagram salvas com sucesso!');
       } catch (err) {
         alert('Erro ao salvar: ' + err.message);
       }

@@ -16,8 +16,9 @@ function escaparXml(str = "") {
 }
 
 export class GeradorCardInstagram {
-  constructor({ publicoDir = "publico", fetchImpl = fetch } = {}) {
+  constructor({ publicoDir = "publico", dadosDir = process.env.DADOS_DIR || "dados", fetchImpl = fetch } = {}) {
     this.publicoDir = publicoDir;
+    this.dadosDir = dadosDir;
     this.fetchImpl = fetchImpl;
   }
 
@@ -27,16 +28,30 @@ export class GeradorCardInstagram {
   async baixarImagemProduto(url) {
     if (!url) return null;
     try {
-      if (url.startsWith("http://") || url.startsWith("https://")) {
-        const res = await this.fetchImpl(url, { signal: AbortSignal.timeout(10_000) });
+      if (typeof url === "string" && url.startsWith("//")) {
+        url = "https:" + url;
+      }
+      if (typeof url === "string" && (url.startsWith("http://") || url.startsWith("https://"))) {
+        const res = await this.fetchImpl(url, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+          },
+          signal: AbortSignal.timeout(10_000),
+        });
         if (!res.ok) return null;
         const arrayBuf = await res.arrayBuffer();
         return Buffer.from(arrayBuf);
       }
+      if (typeof url === "string" && url.startsWith("/uploads/")) {
+        const localPath = join(this.dadosDir, url.replace(/^\//, ""));
+        if (existsSync(localPath)) return readFileSync(localPath);
+      }
       if (existsSync(url)) {
         return readFileSync(url);
       }
-    } catch {
+    } catch (e) {
+      console.error("[gerador-card] Falha ao baixar imagem do produto:", e.message);
       return null;
     }
     return null;
@@ -134,7 +149,7 @@ export class GeradorCardInstagram {
     ];
 
     if (fotoRedimensionada) {
-      compositeList.unshift({
+      compositeList.push({
         input: fotoRedimensionada,
         top: 140,
         left: 200,
