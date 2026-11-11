@@ -59,9 +59,10 @@ export class PublicadorOfertas {
       manuais = (await this.lerJsonSeguro(this.manualPath, [])) || [];
     }
 
-    // 3. Normaliza novos e manuais
+    // 3. Normaliza novos, manuais e catálogo anterior
     const normalizadosNovos = novosColetados.map(normalizarProduto).filter(Boolean);
     const normalizadosManuais = manuais.map(normalizarProduto).filter(Boolean);
+    const normalizadosAnteriores = anterior.map(normalizarProduto).filter(Boolean);
 
     // 4. Regra de preservação do último catálogo válido por marketplace
     const porLoja = new Map();
@@ -83,12 +84,12 @@ export class PublicadorOfertas {
         consolidado.push(...novosDaLoja);
       } else if (status && !status.ok) {
         // Se a loja falhou, preserva as anteriores dela
-        const anterioresDaLoja = anterior.filter((p) => (p.marketplace || p.loja) === mp);
+        const anterioresDaLoja = normalizadosAnteriores.filter((p) => (p.marketplace || p.loja) === mp);
         this.log.warn?.(`[publicador] Preservando ${anterioresDaLoja.length} produtos anteriores de ${mp} devido a falha na coleta.`);
         consolidado.push(...anterioresDaLoja);
       } else if (!status || status.ignorado) {
         // Se estava desligado/ignorado, mantém o que já existia
-        const anterioresDaLoja = anterior.filter((p) => (p.marketplace || p.loja) === mp);
+        const anterioresDaLoja = normalizadosAnteriores.filter((p) => (p.marketplace || p.loja) === mp);
         consolidado.push(...anterioresDaLoja);
       }
     }
