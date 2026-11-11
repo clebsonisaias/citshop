@@ -46,8 +46,10 @@ import { filtrarCatalogo } from './catalogo.js';
     const stock = x.loja === 'local' ? `<div class="availability-tag">${esc(DISPONIBILIDADE[x.disponibilidade] ?? DISPONIBILIDADE.consulte)}</div>` : '';
     const selo = x.selo === '11.11' || x.superOferta ? '<div class="ship" style="color:#e63946;font-weight:700">🔥 Super Oferta 11.11</div>' : (x.menor30 && x.loja !== 'local' ? '<div class="ship"><b>Menor preço em 30 dias</b></div>' : '');
     const tags = [];
-    if (x.freteGratis) tags.push('<span class="tag-frete">🚚 Frete Grátis</span>');
-    if (x.cupom) tags.push('<span class="tag-cupom">🎟️ Cupom Ativo</span>');
+    const temFrete = x.freteGratis || x.preco >= 79 || x.loja === 'local' || /frete gr[aá]tis/i.test(x.nome);
+    const temCupom = x.cupom || (off(x) >= 30) || x.superOferta || x.selo === '11.11';
+    if (temFrete) tags.push('<span class="tag-frete">🚚 Frete Grátis</span>');
+    if (temCupom) tags.push('<span class="tag-cupom">🎟️ Cupom Ativo</span>');
     const tagsHtml = tags.length ? `<div class="tags-row">${tags.join('')}</div>` : '';
 
     return `<button class="card" data-p="${esc(x.id)}">${shot(x)}</div>
