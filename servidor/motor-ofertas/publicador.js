@@ -12,7 +12,7 @@ import { ranquearOfertas } from "./ranking.js";
 import { aplicarHistorico } from "../coletor.js";
 
 export class PublicadorOfertas {
-  constructor({ dadosDir, manualPath, log = console } = {}) {
+  constructor({ dadosDir, manualPath = null, log = console } = {}) {
     this.dadosDir = dadosDir;
     this.manualPath = manualPath;
     this.log = log;
