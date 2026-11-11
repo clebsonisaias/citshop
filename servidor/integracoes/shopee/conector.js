@@ -93,8 +93,8 @@ export const BUSCAS_PADRAO_SHOPEE = [
   { termo: "estojo escolar organizador", categoria: "papel" },
 
   // 20. Livros & Leitura
-  { termo: "livro habitos atomicos", categoria: "livros" },
-  { termo: "livro desenvolvimento pessoal", categoria: "livros" },
+  { termo: "leitura", categoria: "livros" },
+  { termo: "quadrinhos", categoria: "livros" },
 
   // 21. Mercado & Alimentos
   { termo: "capsula cafe nespresso compativel", categoria: "mercado" },
@@ -136,8 +136,9 @@ export const BUSCAS_PADRAO_SHOPEE = [
 
 export function inferirCategoriaShopee(nome = "") {
   const n = String(nome).toLowerCase();
-  // 0. Automotivo prioritário (evita que lanternas de carro/chicotes caiam em camping)
+  // 0. Automotivo e Moda prioritários (evita que peças de carro ou roupas com 'bainha' caiam em camping)
   if (/traseira|dianteira|chicote|scania|reparo lanterna|farol|veicular|lampada automotiva|carro|caminhao|retrovisor|pneu|oleo motor/i.test(n)) return "auto";
+  if (/top|calca|calça|vestido|blusa|saia|shorts|camisa|camiseta|jaqueta|casaco|cropped/i.test(n)) return "moda";
   // 1. Bebês e Crianças pequenas
   if (/mordedor|chupeta|maternidade|berco|fralda|biberon|carrinho de bebe|mamadeira|body bebe|infantil bebe/i.test(n)) return "bebe";
   // 2. Instrumentos Musicais
@@ -145,11 +146,12 @@ export function inferirCategoriaShopee(nome = "") {
   // 3. Papelaria
   if (/caderno|estojo|caneta|papelaria|marca texto|post it|agenda|fichario|lapis de cor|bloco de notas/i.test(n)) return "papel";
   // 4. Livros
-  if (/livro|e-book|leitura|biblia|literatura|biografia|habitos atomicos/i.test(n)) return "livros";
+  if (/livro|e-book|leitura|biblia|literatura|biografia|quadrinhos|gibi/i.test(n)) return "livros";
   // 5. Games & Consoles
   if (/video game|game retro|ps4|ps5|xbox|nintendo|manete|gamepad|console retro/i.test(n)) return "games";
   // 6. Camping, Sobrevivência & Estações de Energia Portáteis
-  if (/faca tatica|canivete|sobrevivencia|camping|saco de dormir|colchonete camping|fogareiro|gerador solar|gerador portatil|estacao de energia|invictus|tatico|tatica|militar|acampamento|bainha|faca esportiva|cantil|bussola|barraca|pesca/i.test(n)) return "camping";
+  if (/faca tatica|canivete|sobrevivencia|camping|saco de dormir|colchonete camping|fogareiro|gerador solar|gerador portatil|estacao de energia|invictus|tatico|tatica|militar|acampamento|faca esportiva|cantil|bussola|barraca|pesca/i.test(n)) return "camping";
+  if (/(faca|canivete|adaga).*bainha|bainha.*(couro|faca|canivete|tatica)/i.test(n)) return "camping";
   if (/lanterna/i.test(n) && !/traseira|dianteira|carro|caminhao|veiculo|reparo/i.test(n)) return "camping";
   // 7. Móveis
   if (/sapateira|mesa dobravel|cadeira gamer|estante|prateleira|armario|rack|mesa de cabeceira|movel/i.test(n)) return "moveis";
