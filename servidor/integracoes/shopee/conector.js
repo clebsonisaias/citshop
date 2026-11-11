@@ -65,6 +65,62 @@ export class ProvedorLinkShopee extends ProvedorLinkAfiliado {
     }
     return j.data?.generateShortLink?.shortLink || null;
   }
+
+  async gerarLinksLote(urlsOriginal = []) {
+    if (!urlsOriginal.length) return new Map();
+    const mapa = new Map();
+    const pendentes = [];
+
+    for (const url of urlsOriginal) {
+      if (!url) continue;
+      if (this.validarLinkAfiliado(url)) {
+        mapa.set(url, url);
+      } else if (this.appId && this.segredo) {
+        pendentes.push(url);
+      }
+    }
+
+    if (!pendentes.length) return mapa;
+
+    const TAM_LOTE = 40;
+    for (let i = 0; i < pendentes.length; i += TAM_LOTE) {
+      const pedaco = pendentes.slice(i, i + TAM_LOTE);
+      const linksInput = pedaco.map((u) => ({ originUrl: u }));
+      const mutation = `mutation { generateBatchShortLink(input: { links: ${JSON.stringify(linksInput).replace(/"originUrl"/g, "originUrl")} }) { links { originUrl shortLink success } } }`;
+      const body = JSON.stringify({ query: mutation });
+      const ts = Math.floor(Date.now() / 1000);
+      const assinatura = createHash("sha256").update(`${this.appId}${ts}${body}${this.segredo}`).digest("hex");
+
+      try {
+        const res = await this.fetchImpl(SHOPEE_API, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `SHA256 Credential=${this.appId}, Timestamp=${ts}, Signature=${assinatura}`,
+          },
+          body,
+          signal: AbortSignal.timeout(20_000),
+        });
+        const j = await res.json().catch(() => ({}));
+        const linksRetornados = j.data?.generateBatchShortLink?.links || [];
+        for (const item of linksRetornados) {
+          if (item.success && item.shortLink) {
+            mapa.set(item.originUrl, item.shortLink);
+          }
+        }
+      } catch {
+        // Fallback individual se o lote falhar
+        for (const u of pedaco) {
+          try {
+            const short = await this.gerarLinkAfiliado({ urlOriginal: u });
+            if (short) mapa.set(u, short);
+          } catch {}
+        }
+      }
+    }
+
+    return mapa;
+  }
 }
 
 export function deShopee(item, categoria, linkAfiliado = null) {
@@ -76,6 +132,11 @@ export function deShopee(item, categoria, linkAfiliado = null) {
     ? Number(item.shopeeCommissionRate) * 100
     : (preco > 0 && comissaoEstimada ? (comissaoEstimada / preco) * 100 : null);
 
+  const desconto = Number(item.priceDiscountRate);
+  const precoAntigo = desconto > 0 && desconto < 90
+    ? Math.round((preco / (1 - desconto / 100)) * 100) / 100
+    : null;
+
   return {
     id: `shopee-${item.itemId}`,
     externalId: String(item.itemId),
@@ -84,7 +145,7 @@ export function deShopee(item, categoria, linkAfiliado = null) {
     nome: item.productName,
     categoria,
     preco,
-    precoAntigo: null, // Shopee não informa De confiável, apenas percentual; não inventar
+    precoAntigo,
     nota: Number(item.ratingStar) || 0,
     vendidos: Number(item.sales) || 0,
     imagem: item.imageUrl,
@@ -153,26 +214,36 @@ export class ConectorShopee extends ConectorMarketplace {
     }
 
     const buscas = termos.length ? termos.map((t, i) => ({ termo: t, categoria: categorias[i] || "casa" })) : BUSCAS_PADRAO_SHOPEE;
-    const resultados = [];
+    const candidatos = [];
 
     for (const { termo, categoria } of buscas) {
       try {
         const itens = await this.buscarPorTermo(termo, limite);
         for (const item of itens) {
-          let linkAfiliado = null;
-          try {
-            linkAfiliado = await this.provedorLink.gerarLinkAfiliado({ urlOriginal: item.productLink });
-          } catch (e) {
-            // Se não conseguiu gerar link de afiliado, produto não pode ser publicado
-            continue;
-          }
-          if (linkAfiliado) {
-            const norm = deShopee(item, categoria, linkAfiliado);
-            if (norm) resultados.push(norm);
+          if (item.productLink) {
+            candidatos.push({ item, categoria });
           }
         }
       } catch (e) {
         this.registrarErro(e);
+      }
+    }
+
+    // Gerar links de afiliados em lote de forma atômica (elimina erro de rate limit 10030)
+    const urlsParaGerar = [...new Set(candidatos.map((c) => c.item.productLink))];
+    const mapaLinks = await this.provedorLink.gerarLinksLote(urlsParaGerar);
+
+    const resultados = [];
+    const vistos = new Set();
+
+    for (const { item, categoria } of candidatos) {
+      if (vistos.has(item.itemId)) continue;
+      vistos.add(item.itemId);
+
+      const linkAfiliado = mapaLinks.get(item.productLink);
+      if (linkAfiliado) {
+        const norm = deShopee(item, categoria, linkAfiliado);
+        if (norm) resultados.push(norm);
       }
     }
 

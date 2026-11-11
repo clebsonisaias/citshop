@@ -123,6 +123,18 @@ test("ConectorShopee: busca ofertas via GraphQL e gera link de afiliado", async 
         }),
       };
     }
+    if (body.query.includes("generateBatchShortLink")) {
+      return {
+        ok: true,
+        json: async () => ({
+          data: {
+            generateBatchShortLink: {
+              links: [{ originUrl: "https://shopee.com.br/product/1/88888", shortLink: "https://s.shopee.com.br/shortLink888", success: true }],
+            },
+          },
+        }),
+      };
+    }
     if (body.query.includes("generateShortLink")) {
       return {
         ok: true,
