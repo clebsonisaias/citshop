@@ -44,7 +44,7 @@ import { filtrarCatalogo } from './catalogo.js';
     const nota = x.nota ? `<div class="rate"><b>★ ${x.nota.toFixed(1).replace('.', ',')}</b>${x.vendidos ? ` · ${num.format(x.vendidos)} vendidos` : ''}</div>` : '';
     const ship = x.loja === 'local' ? `<div class="ship">${esc(window.CIT.textoEntrega(x.entrega))} em ${esc(x.cidade)}</div>` : x.queda ? `<div class="ship">↓ caiu ${brl.format(x.queda)}</div>` : '';
     const stock = x.loja === 'local' ? `<div class="availability-tag">${esc(DISPONIBILIDADE[x.disponibilidade] ?? DISPONIBILIDADE.consulte)}</div>` : '';
-    const selo = x.menor30 && x.loja !== 'local' ? '<div class="ship"><b>Menor preço em 30 dias</b></div>' : '';
+    const selo = x.selo === '11.11' || x.superOferta ? '<div class="ship" style="color:#e63946;font-weight:700">🔥 Super Oferta 11.11</div>' : (x.menor30 && x.loja !== 'local' ? '<div class="ship"><b>Menor preço em 30 dias</b></div>' : '');
     // Loja comum: a marca de quem vende só aparece discreta no produto ("Vendido por X"), igual para todas as lojas.
     // Todo card abre o detalhe aqui no site; a ida para a loja fica no botão "Comprar" do detalhe.
     return `<button class="card" data-p="${esc(x.id)}">${shot(x)}</div>
@@ -201,12 +201,78 @@ import { filtrarCatalogo } from './catalogo.js';
     // Link próprio do produto: o servidor monta a prévia (título, preço e foto) que o WhatsApp mostra.
     const link = `${location.origin}/p/${encodeURIComponent(x.id)}`;
     if (local) {
-      $('mbuy').href = `/contato/${encodeURIComponent(x.id)}`;
+      const baseContato = `/contato/${encodeURIComponent(x.id)}`;
+      $('mbuy').href = baseContato;
       $('mbuy').rel = 'noopener';
       $('mbuy').textContent = 'Pedir pelo WhatsApp da loja ↗';
       const disponibilidade = DISPONIBILIDADE[x.disponibilidade] ?? DISPONIBILIDADE.consulte;
       $('mnote').textContent = `Vendido por ${x.lojaNome}, ${x.cidade}${x.entrega ? ` · ${window.CIT.textoEntrega(x.entrega)}` : ''} · ${disponibilidade}. Combine pagamento e entrega direto com a loja.`;
+
+      const nomeLower = String(x.nome || '').toLowerCase();
+      const ehCalcado = x.dept === 'calc' || /tenis|tênis|sapato|sandalia|sandália|chinelo|bota|chuteira/i.test(nomeLower);
+      const ehVestuario = x.dept === 'moda' || /camiseta|camisa|blusa|cropped|calca|calça|shorts|bermuda|vestido|jaqueta|casaco|conjunto|saia/i.test(nomeLower);
+      const tamanhos = ehCalcado ? ['36', '37', '38', '39', '40', '41', '42', '43', '44'] : (ehVestuario ? ['P', 'M', 'G', 'GG', 'XG'] : ['Padrão / Único']);
+      const modelos = ehVestuario ? ['Tradicional', 'Slim', 'Babylook', 'Oversized'] : ['Padrão'];
+      const cores = ['Preto', 'Branco', 'Azul', 'Vermelho', 'Cinza', 'Verde', 'Rosa', 'Bege'];
+
+      $('mvariants').hidden = false;
+      $('mvariants').innerHTML = `
+        <div class="variant-title">Opções para o pedido</div>
+        ${modelos.length > 1 ? `
+        <div class="variant-group">
+          <span>Modelo / Estilo:</span>
+          <div class="chips">
+            ${modelos.map((m) => `<button type="button" class="chip-opt" data-var="modelo" data-val="${esc(m)}">${esc(m)}</button>`).join('')}
+          </div>
+        </div>` : ''}
+        <div class="variant-group">
+          <span>Tamanho:</span>
+          <div class="chips">
+            ${tamanhos.map((t) => `<button type="button" class="chip-opt" data-var="tamanho" data-val="${esc(t)}">${esc(t)}</button>`).join('')}
+          </div>
+        </div>
+        <div class="variant-group">
+          <span>Cor:</span>
+          <div class="chips">
+            ${cores.map((c) => `<button type="button" class="chip-opt" data-var="cor" data-val="${esc(c)}">${esc(c)}</button>`).join('')}
+          </div>
+        </div>
+        <div class="variant-group">
+          <span>Observação para a loja (opcional):</span>
+          <input type="text" class="variant-obs" id="mvar-obs" placeholder="Ex: detalhes da estampa, número extra...">
+        </div>
+      `;
+
+      function atualizarLinkModal() {
+        const url = new URL(baseContato, location.origin);
+        const mod = $('mvariants').querySelector('.chip-opt[data-var="modelo"].active')?.dataset.val || '';
+        const tam = $('mvariants').querySelector('.chip-opt[data-var="tamanho"].active')?.dataset.val || '';
+        const cor = $('mvariants').querySelector('.chip-opt[data-var="cor"].active')?.dataset.val || '';
+        const obs = $('mvar-obs')?.value?.trim() || '';
+        if (mod) url.searchParams.set('modelo', mod);
+        if (tam) url.searchParams.set('tamanho', tam);
+        if (cor) url.searchParams.set('cor', cor);
+        if (obs) url.searchParams.set('obs', obs);
+        $('mbuy').href = url.pathname + url.search;
+      }
+
+      $('mvariants').onclick = (e) => {
+        const chip = e.target.closest('.chip-opt');
+        if (!chip) return;
+        const g = chip.dataset.var;
+        if (chip.classList.contains('active')) {
+          chip.classList.remove('active');
+        } else {
+          $('mvariants').querySelectorAll(`.chip-opt[data-var="${g}"]`).forEach((c) => c.classList.remove('active'));
+          chip.classList.add('active');
+        }
+        atualizarLinkModal();
+      };
+      const obsInput = $('mvar-obs');
+      if (obsInput) obsInput.oninput = atualizarLinkModal;
     } else {
+      $('mvariants').hidden = true;
+      $('mvariants').innerHTML = '';
       $('mbuy').href = x.link;
       $('mbuy').rel = 'sponsored nofollow noopener';
       $('mbuy').textContent = `Comprar na ${STORE[x.loja]} ↗`;

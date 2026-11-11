@@ -237,6 +237,124 @@
     m.hidden = false;
   });
 
+  // Radar de Ofertas no WhatsApp (WAHA)
+  async function carregarRadar() {
+    try {
+      const r = await api('/api/admin/radar/status');
+      const w = r.waha || {};
+      const cfg = r.config || {};
+
+      if ($('radarStatusDot')) {
+        $('radarStatusDot').style.background = w.online ? '#22c55e' : '#ef4444';
+      }
+      if ($('radarStatusTitulo')) {
+        $('radarStatusTitulo').textContent = w.online ? `WAHA Conectado (${w.nomePerfil || 'Online'})` : 'WAHA Desconectado';
+      }
+      if ($('radarStatusDetalhes')) {
+        $('radarStatusDetalhes').textContent = w.online
+          ? `Sessão: ${w.sessao} · WhatsApp: ${w.numero || 'ativo'} · Endpoint: ${w.apiUrl || 'http://waha:3000'}`
+          : `Status: ${w.status || 'offline'} · Motivo: ${w.erro || 'Não foi possível comunicar com o WAHA'}`;
+      }
+      if ($('radarWahaStatusCard')) {
+        $('radarWahaStatusCard').style.background = w.online ? '#f0fdf4' : '#fef2f2';
+        $('radarWahaStatusCard').style.borderColor = w.online ? '#bbf7d0' : '#fecaca';
+      }
+
+      if ($('radarChatId') && !$('radarChatId').value) $('radarChatId').value = cfg.chatId || '';
+      if ($('radarDescontoMin')) $('radarDescontoMin').value = cfg.descontoMinimoPct || 25;
+      if ($('radarAtivo')) $('radarAtivo').checked = Boolean(cfg.ativo);
+      if ($('radarContador24h')) $('radarContador24h').textContent = r.enviados24h || 0;
+
+      const ultimos = r.ultimosEnviados || [];
+      if ($('linhasRadarEnviados')) {
+        if (!ultimos.length) {
+          $('linhasRadarEnviados').innerHTML = '<tr><td colspan="4" class="note">Nenhum envio recente registrado.</td></tr>';
+        } else {
+          $('linhasRadarEnviados').innerHTML = ultimos.map((it) => `
+            <tr>
+              <td><small class="note">${new Date(it.enviadoEm).toLocaleString('pt-BR')}</small></td>
+              <td><b>${esc(it.nome)}</b></td>
+              <td><b>${brl.format(it.preco)}</b></td>
+              <td><span class="pill ${it.tipo === 'local' ? 'ativa' : 'teste'}" style="font-size:11px">${esc(it.tipo || 'afiliado')}</span></td>
+            </tr>
+          `).join('');
+        }
+      }
+    } catch (e) {
+      if ($('radarStatusDetalhes')) $('radarStatusDetalhes').textContent = `Erro ao checar status do radar: ${e.message}`;
+    }
+  }
+
+  function mostrarRadarMsg(texto, ok = true) {
+    if (!$('radarMsg')) return;
+    $('radarMsg').hidden = false;
+    $('radarMsg').className = `msg ${ok ? 'ok' : 'erro'}`;
+    $('radarMsg').textContent = texto;
+  }
+
+  if ($('btnSalvarRadar')) {
+    $('btnSalvarRadar').onclick = async () => {
+      $('radarMsg').hidden = true;
+      try {
+        const payload = {
+          chatId: $('radarChatId').value.trim(),
+          descontoMinimoPct: Number($('radarDescontoMin').value) || 25,
+          ativo: $('radarAtivo').checked,
+        };
+        await api('/api/admin/radar/config', 'POST', payload);
+        mostrarRadarMsg('Configuração do Radar salva com sucesso!');
+        await carregarRadar();
+      } catch (err) {
+        mostrarRadarMsg(`Falha ao salvar radar: ${err.message}`, false);
+      }
+    };
+  }
+
+  if ($('btnTestarRadar')) {
+    $('btnTestarRadar').onclick = async () => {
+      $('radarMsg').hidden = true;
+      const chatId = $('radarChatId').value.trim();
+      if (!chatId) {
+        mostrarRadarMsg('Informe um ChatID / canal / grupo para enviar o teste.', false);
+        return;
+      }
+      try {
+        mostrarRadarMsg('Enviando mensagem de teste via WAHA...');
+        await api('/api/admin/radar/testar', 'POST', { chatId });
+        mostrarRadarMsg('Mensagem de teste enviada com sucesso no WhatsApp!');
+        await carregarRadar();
+      } catch (err) {
+        mostrarRadarMsg(`Erro no envio de teste: ${err.message}`, false);
+      }
+    };
+  }
+
+  if ($('btnDispararRadar')) {
+    $('btnDispararRadar').onclick = async () => {
+      $('radarMsg').hidden = true;
+      const chatId = $('radarChatId').value.trim();
+      if (!chatId) {
+        mostrarRadarMsg('Informe um ChatID / canal / grupo de destino.', false);
+        return;
+      }
+      try {
+        mostrarRadarMsg('Varrendo ofertas e despachando as melhores oportunidades...');
+        const res = await api('/api/admin/radar/disparar-agora', 'POST', {
+          chatId,
+          descontoMinimoPct: Number($('radarDescontoMin').value) || 25,
+        });
+        if (res.resultado?.enviados > 0) {
+          mostrarRadarMsg(`Sucesso! ${res.resultado.enviados} ofertas despachadas no WhatsApp.`);
+        } else {
+          mostrarRadarMsg(res.resultado?.mensagem || 'Nenhuma oferta elegível encontrada para envio.', false);
+        }
+        await carregarRadar();
+      } catch (err) {
+        mostrarRadarMsg(`Erro ao disparar radar: ${err.message}`, false);
+      }
+    };
+  }
+
   function iniciar() {
     carregar().then(() => {
       $('fEnt').hidden = true;
@@ -245,6 +363,7 @@
       carregarShopeeRelatorio();
       carregarCentralOfertas();
       carregarAmazon();
+      carregarRadar();
     }).catch(() => { $('fEnt').hidden = false; });
   }
   iniciar();

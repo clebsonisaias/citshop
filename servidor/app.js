@@ -17,6 +17,8 @@ import { MARKETPLACE, criarClienteAmazon } from "./amazon.js";
 import { atualizarAfiliados } from "./afiliados.js";
 import { MonitoramentoMotor } from "./tarefas/monitoramento.js";
 import { AgendadorOfertas } from "./tarefas/agendador.js";
+import { ConectorWaha } from "./integracoes/whatsapp/waha.js";
+import { RadarOfertas } from "./motor-ofertas/radar.js";
 
 export const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const PRECO_PLANO = 49.9;
@@ -64,6 +66,18 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   const banco = new Banco(dadosDir);
   const monitoramentoMotor = new MonitoramentoMotor({ dadosDir, log });
   const agendadorOfertas = new AgendadorOfertas({ dadosDir, manualPath: join(RAIZ, "manual.json"), log });
+  const conectorWaha = new ConectorWaha({
+    apiUrl: env.WAHA_API_URL || "http://waha:3000",
+    session: env.WAHA_SESSION || "default",
+    apiKey: env.WAHA_API_KEY || null,
+    fetchImpl,
+  });
+  const radarOfertas = new RadarOfertas({
+    dadosDir,
+    waha: conectorWaha,
+    urlPublica,
+  });
+  agendadorOfertas.radar = radarOfertas;
   const mp = criarMercadoPago({ token: env.MP_ACCESS_TOKEN, fetchImpl });
   const limiteLogin = new S.Limitador({ maximo: 8, janelaMs: 10 * 60_000 });
   const limiteCadastro = new S.Limitador({ maximo: 5, janelaMs: 60 * 60_000 });
@@ -227,7 +241,29 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     if (!x || x.loja !== "local") return res.status(404).sendFile(join(publico, "404.html"));
     banco.registrarCliqueContato(`produto:${req.params.id.slice(2)}`, iso());
     const pagina = `${urlPublica}/p/${encodeURIComponent(req.params.id)}`;
-    const mensagem = `Olá! Vi na CITshop e tenho interesse: ${x.nome} por ${x.preco.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}. ${pagina}`;
+    const precoFormatado = x.preco.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+    const modelo = typeof req.query.modelo === "string" ? req.query.modelo.trim() : "";
+    const tamanho = typeof req.query.tamanho === "string" ? req.query.tamanho.trim() : "";
+    const cor = typeof req.query.cor === "string" ? req.query.cor.trim() : "";
+    const obs = typeof req.query.obs === "string" ? req.query.obs.trim() : "";
+
+    const detalhes = [];
+    if (modelo) detalhes.push(`▫️ *Modelo:* ${modelo}`);
+    if (tamanho) detalhes.push(`▫️ *Tamanho:* ${tamanho}`);
+    if (cor) detalhes.push(`▫️ *Cor:* ${cor}`);
+    if (obs) detalhes.push(`▫️ *Obs:* ${obs}`);
+
+    const linhas = [
+      "Olá! Vi o produto no CITshop e tenho interesse em pedir:",
+      `🛍️ *${x.nome}* (${precoFormatado})`,
+    ];
+    if (detalhes.length) {
+      linhas.push("", "Minhas preferências:", ...detalhes);
+    }
+    linhas.push("", `🔗 ${pagina}`);
+
+    const mensagem = linhas.join("\n");
     const destino = `https://wa.me/${encodeURIComponent(x.whatsapp)}?text=${encodeURIComponent(mensagem)}`;
     res.set("Cache-Control", "no-store").set("X-Robots-Tag", "noindex, nofollow").redirect(302, destino);
   });
@@ -585,6 +621,69 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     res.json(relatorio);
   }));
 
+  // ---------- Radar de Ofertas no WhatsApp via WAHA (admin) ----------
+  app.get("/api/admin/radar/status", exigirAdmin, a(async (req, res) => {
+    const statusWaha = await conectorWaha.verificarStatus();
+    const config = await monitoramentoMotor.obterConfiguracao();
+    const historico = radarOfertas.carregarHistoricoEnviados();
+    const agoraMs = Date.now();
+    const umDiaMs = 24 * 3600 * 1000;
+    const enviados24h = historico.filter((h) => agoraMs - new Date(h.enviadoEm).getTime() < umDiaMs);
+
+    res.json({
+      waha: statusWaha,
+      config: config.radar || {},
+      totalHistorico: historico.length,
+      enviados24h: enviados24h.length,
+      ultimosEnviados: historico.slice(-10).reverse(),
+    });
+  }));
+
+  app.post("/api/admin/radar/config", exigirAdmin, express.json(), a(async (req, res) => {
+    const configAtual = await monitoramentoMotor.obterConfiguracao();
+    const novaConfig = {
+      ...configAtual,
+      radar: {
+        ...(configAtual.radar || {}),
+        ...(req.body || {}),
+      },
+    };
+    const salva = await monitoramentoMotor.salvarConfiguracao(novaConfig);
+    res.json({ ok: true, radar: salva.radar });
+  }));
+
+  app.post("/api/admin/radar/testar", exigirAdmin, express.json(), a(async (req, res) => {
+    const config = await monitoramentoMotor.obterConfiguracao();
+    const chatId = req.body?.chatId || config.radar?.chatId;
+    if (!chatId) return res.status(400).json({ ok: false, erro: "Informe o chatId de destino (número, canal ou grupo do WhatsApp)." });
+
+    try {
+      const envio = await radarOfertas.enviarMensagemTeste({ chatId });
+      res.json({ ok: true, envio });
+    } catch (e) {
+      res.status(500).json({ ok: false, erro: e.message });
+    }
+  }));
+
+  app.post("/api/admin/radar/disparar-agora", exigirAdmin, express.json(), a(async (req, res) => {
+    const config = await monitoramentoMotor.obterConfiguracao();
+    const chatId = req.body?.chatId || config.radar?.chatId;
+    if (!chatId) return res.status(400).json({ ok: false, erro: "Informe o chatId de destino (número, canal ou grupo do WhatsApp)." });
+
+    const maxDisparos = Number(req.body?.maxDisparos) || config.radar?.maxDisparosPorRodada || 3;
+    const descontoMinimoPct = Number(req.body?.descontoMinimoPct) || config.radar?.descontoMinimoPct || 25;
+
+    const catalogo = vitrine().produtos;
+    const resultado = await radarOfertas.executarRodada({
+      produtos: catalogo,
+      chatId,
+      maxDisparos,
+      descontoMinimoPct,
+    });
+
+    res.json({ ok: true, resultado });
+  }));
+
   // Rastreamento de clique / redirecionamento de afiliados
   app.get("/afiliado/:id", (req, res) => {
     const x = produtoPorId(req.params.id);
@@ -653,6 +752,52 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       x.bairrosAtendidos && `Bairros atendidos: ${x.bairrosAtendidos}`,
       x.prazoEntrega && `Prazo de entrega informado: ${x.prazoEntrega}`,
     ].filter(Boolean).map(attr).join(" · ") : "";
+
+    let seletoresVariacoes = "";
+    if (local) {
+      const nomeLower = String(x.nome || "").toLowerCase();
+      const ehCalcado = x.dept === "calc" || /tenis|tênis|sapato|sandalia|sandália|chinelo|bota|chuteira/i.test(nomeLower);
+      const ehVestuario = x.dept === "moda" || /camiseta|camisa|blusa|cropped|calca|calça|shorts|bermuda|vestido|jaqueta|casaco|conjunto|saia/i.test(nomeLower);
+
+      const tamanhos = ehCalcado
+        ? ["36", "37", "38", "39", "40", "41", "42", "43", "44"]
+        : (ehVestuario ? ["P", "M", "G", "GG", "XG"] : ["Padrão / Único"]);
+
+      const modelos = ehVestuario
+        ? ["Tradicional", "Slim", "Babylook", "Oversized"]
+        : ["Padrão", "Especial"];
+
+      const cores = ["Preto", "Branco", "Azul", "Vermelho", "Cinza", "Verde", "Rosa", "Bege"];
+
+      seletoresVariacoes = `
+      <div class="local-variants" id="variacoes-produto">
+        <div class="variant-title">Opções para o pedido</div>
+        ${modelos.length > 1 ? `
+        <div class="variant-group">
+          <span>Modelo / Estilo:</span>
+          <div class="chips">
+            ${modelos.map((m) => `<button type="button" class="chip-opt" data-var="modelo" data-val="${attr(m)}">${attr(m)}</button>`).join("")}
+          </div>
+        </div>` : ""}
+        <div class="variant-group">
+          <span>Tamanho:</span>
+          <div class="chips">
+            ${tamanhos.map((t) => `<button type="button" class="chip-opt" data-var="tamanho" data-val="${attr(t)}">${attr(t)}</button>`).join("")}
+          </div>
+        </div>
+        <div class="variant-group">
+          <span>Cor:</span>
+          <div class="chips">
+            ${cores.map((c) => `<button type="button" class="chip-opt" data-var="cor" data-val="${attr(c)}">${attr(c)}</button>`).join("")}
+          </div>
+        </div>
+        <div class="variant-group">
+          <span>Observação para a loja (opcional):</span>
+          <input type="text" class="variant-obs" name="obs" placeholder="Ex: detalhes da estampa, número extra...">
+        </div>
+      </div>`;
+    }
+
     const descricao = String(x.descricao ?? "").trim();
     const imagemHtml = imagem
       ? `<img src="${attr(imagem)}" alt="${attr(x.nome)}" width="720" height="720" fetchpriority="high">`
@@ -679,6 +824,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       LOCAL_INFO: infoLocal, AVALIACAO: avaliacao, DESCRICAO: descricao ? `<p class="product-highlights">${attr(descricao)}</p>` : "",
       DISPONIBILIDADE: local ? `<p class="product-availability">${attr(({ disponivel: "Disponível, conforme informado pela loja", "sob-encomenda": "Sob encomenda", consulte: "Consulte a disponibilidade com a loja" })[disponibilidade] ?? "Consulte a disponibilidade com a loja")}</p>` : "",
       LOCAL_DETALHES: localDetalhes ? `<p class="product-local-details">${localDetalhes}</p>` : "",
+      SELETORES_VARIACOES: seletoresVariacoes,
       IMAGEM: imagemHtml, PRECO_ANTIGO: x.precoAntigo > x.preco ? `<del>${attr(x.precoAntigo.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }))}</del>` : "",
       PRECO: attr(x.preco.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })),
       DESCONTO: x.precoAntigo > x.preco ? `<span class="pct">${Math.round((1 - x.preco / x.precoAntigo) * 100)}% OFF</span>` : "",

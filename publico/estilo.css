@@ -318,6 +318,77 @@ footer.site a:hover { text-decoration: underline; }
 .product-prices del { color: var(--muted); font-size: 14px; }
 .product-prices strong { font-size: clamp(28px, 4vw, 36px); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
 .product-buy { width: 100%; justify-content: center; }
+.local-variants {
+  background: var(--bg-soft, #f7fafc);
+  border: 1px solid var(--line, #e2e8f0);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 14px 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.local-variants .variant-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--deep);
+}
+.local-variants .variant-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.local-variants .variant-group > span {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--txt);
+}
+.local-variants .chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.local-variants .chip-opt {
+  background: #ffffff;
+  border: 1.5px solid var(--line, #cbd5e1);
+  color: var(--txt);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s ease;
+  user-select: none;
+  font-family: inherit;
+}
+.local-variants .chip-opt:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.local-variants .chip-opt.active {
+  background: var(--accent, #008b87);
+  color: #ffffff;
+  border-color: var(--accent, #008b87);
+  box-shadow: 0 2px 6px rgba(0, 139, 135, .25);
+}
+.local-variants input.variant-obs {
+  width: 100%;
+  border: 1px solid var(--line, #cbd5e1);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  background: #ffffff;
+  color: var(--txt);
+  box-sizing: border-box;
+  font-family: inherit;
+}
+.local-variants input.variant-obs:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(0, 139, 135, .2);
+}
 .product-note { color: var(--muted); font-size: 12px; line-height: 1.6; }
 .product-share { display: inline-flex; min-height: 44px; align-items: center; color: var(--deep); font-weight: 700; }
 .product-description { max-width: 760px; margin-top: 42px; border-top: 1px solid var(--line); padding-top: 22px; }

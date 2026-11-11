@@ -25,6 +25,13 @@ export const CONFIG_PADRAO_MOTOR = {
     "brinq", "esporte", "ferr", "auto", "pets", "papel", "livros", "games", "bebe",
     "saude", "mercado", "camping", "moveis", "jardim", "musica"
   ],
+  radar: {
+    ativo: false,
+    chatId: "",
+    descontoMinimoPct: 25,
+    maxDisparosPorRodada: 3,
+    intervaloHorasRepeticao: 24,
+  },
 };
 
 export class MonitoramentoMotor {

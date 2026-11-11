@@ -13,6 +13,7 @@ export class AgendadorOfertas {
     coletor = new ColetorOfertas(),
     publicador = null,
     monitoramento = null,
+    radar = null,
     log = console,
   } = {}) {
     this.dadosDir = dadosDir;
@@ -20,6 +21,7 @@ export class AgendadorOfertas {
     this.coletor = coletor;
     this.publicador = publicador || new PublicadorOfertas({ dadosDir, manualPath, log });
     this.monitoramento = monitoramento || new MonitoramentoMotor({ dadosDir, log });
+    this.radar = radar;
     this.log = log;
 
     // Mutex por marketplace para impedir coletas sobrepostas
@@ -95,6 +97,23 @@ export class AgendadorOfertas {
       });
 
       this.log.info?.(`[agendador] Coleta ${lockKey} finalizada. ${statusFinal.totalPublicados} ofertas na vitrine.`);
+
+      // Aciona o Radar de Preços Baixos no WhatsApp se estiver ativo
+      if (this.radar && config.radar?.ativo && config.radar?.chatId) {
+        try {
+          const resultadoRadar = await this.radar.executarRodada({
+            produtos: statusFinal.produtosPublicados || itensColetados,
+            chatId: config.radar.chatId,
+            descontoMinimoPct: config.radar.descontoMinimoPct || 25,
+            maxDisparos: config.radar.maxDisparosPorRodada || 3,
+            intervaloHorasRepeticao: config.radar.intervaloHorasRepeticao || 24,
+          });
+          this.log.info?.(`[agendador] Radar WhatsApp disparado: ${resultadoRadar.enviados || 0} produtos enviados.`);
+        } catch (eRadar) {
+          this.log.error?.(`[agendador] Falha ao despachar radar no WhatsApp: ${eRadar.message}`);
+        }
+      }
+
       return statusFinal;
     } catch (e) {
       this.log.error?.(`[agendador] Falha geral na execução do motor: ${e.message}`);

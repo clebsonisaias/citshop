@@ -127,11 +127,18 @@ export const BUSCAS_PADRAO_SHOPEE = [
   { termo: "arvore natal", categoria: "casa" },
   { termo: "pisca pisca natal", categoria: "casa" },
   { termo: "enfeite natal", categoria: "casa" },
+  { termo: "cascata led", categoria: "casa" },
 
   // 27. Energia Solar, Inversores, Placas & Baterias Portáteis
   { termo: "placa solar", categoria: "ferr" },
   { termo: "inversor solar", categoria: "ferr" },
   { termo: "power bank", categoria: "tec" },
+
+  // 28. Destaques 11.11 / Super Ofertas
+  { termo: "smartwatch prova dagua", categoria: "tec" },
+  { termo: "fone sem fio tws", categoria: "cel" },
+  { termo: "kit ferramentas maleta", categoria: "ferr" },
+  { termo: "aspirador portatil sem fio", categoria: "casa" },
 ];
 
 export function inferirCategoriaShopee(nome = "") {
@@ -318,6 +325,9 @@ export function deShopee(item, categoria, linkAfiliado = null) {
     ? Math.round((preco / (1 - desconto / 100)) * 100) / 100
     : null;
 
+  const ehSuperOferta = Boolean(desconto >= 35);
+  const selo = ehSuperOferta ? "11.11" : null;
+
   return {
     id: `shopee-${item.itemId}`,
     externalId: String(item.itemId),
@@ -327,6 +337,9 @@ export function deShopee(item, categoria, linkAfiliado = null) {
     categoria: categoria || inferirCategoriaShopee(item.productName),
     preco,
     precoAntigo,
+    descontoPct: desconto > 0 ? Math.round(desconto) : null,
+    superOferta: ehSuperOferta,
+    selo,
     nota: Number(item.ratingStar) || 0,
     vendidos: Number(item.sales) || 0,
     imagem: item.imageUrl,
@@ -396,7 +409,7 @@ export class ConectorShopee extends ConectorMarketplace {
     }
   }
 
-  async buscarOfertas({ termos = [], categorias = [], limite = 12, paginasGerais = 6 } = {}) {
+  async buscarOfertas({ termos = [], categorias = [], limite = 12, paginasGerais = 10 } = {}) {
     if (!this.estaConfigurado()) {
       throw new ErroConector("shopee", "Credenciais da Shopee Open API não configuradas.", 400);
     }

@@ -124,6 +124,62 @@
       </div>
     </div>
 
+    <h1 style="margin-top:32px">Radar de Ofertas no WhatsApp (WAHA)</h1>
+    <div class="box form">
+      <div id="radarWahaStatusCard" style="padding:14px;border-radius:8px;background:#f0fdf4;border:1px solid #bbf7d0;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span id="radarStatusDot" style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#22c55e"></span>
+          <b id="radarStatusTitulo">WAHA Conectado</b>
+        </div>
+        <p class="note" id="radarStatusDetalhes" style="margin:6px 0 0">Verificando status da sessão...</p>
+      </div>
+
+      <div class="dois">
+        <label>
+          Destino no WhatsApp (ChatID / Canal / Grupo / Número)
+          <input id="radarChatId" placeholder="ex: 120363xxx@newsletter, grupo@g.us ou 5584999999999" autocomplete="off">
+          <small class="note">Canais terminam em @newsletter, grupos em @g.us e números em @c.us</small>
+        </label>
+        <label>
+          Desconto mínimo para disparar (%)
+          <input id="radarDescontoMin" type="number" min="10" max="90" value="25">
+        </label>
+      </div>
+
+      <div style="margin:12px 0">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input id="radarAtivo" type="checkbox" style="width:auto">
+          <b>Ativar envio automático no canal/grupo após cada coleta</b>
+        </label>
+      </div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+        <button class="btn" id="btnSalvarRadar" type="button">Salvar Configuração do Radar</button>
+        <button class="btn sec" id="btnTestarRadar" type="button">Enviar Mensagem de Teste</button>
+        <button class="btn sec" id="btnDispararRadar" type="button" style="background:#0284c7;color:#fff;border-color:#0284c7">Disparar Melhores Ofertas Agora</button>
+      </div>
+      <div class="msg" id="radarMsg" hidden role="status"></div>
+
+      <div style="margin-top:20px">
+        <b>Ofertas Despachadas Recentemente (<span id="radarContador24h">0</span> nas últimas 24h):</b>
+        <div class="box rolar" style="margin-top:8px;max-height:220px">
+          <table class="tabela">
+            <thead>
+              <tr>
+                <th>Data/Hora</th>
+                <th>Produto</th>
+                <th>Preço</th>
+                <th>Tipo</th>
+              </tr>
+            </thead>
+            <tbody id="linhasRadarEnviados">
+              <tr><td colspan="4" class="note">Nenhum envio recente registrado.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <h1 style="margin-top:32px">Amazon Afiliados</h1>
     <div class="box form">
       <p class="note" id="amzStatus">Carregando…</p>

@@ -6,8 +6,9 @@
 export function calcularScore(produto) {
   let score = 0;
 
-  // 0. Curadoria editorial / Destaque manual (prioridade garantida na vitrine)
+  // 0. Curadoria editorial / Destaque manual ou Super Oferta 11.11
   if (produto.destaque || produto.fixo) score += 30;
+  if (produto.selo === "11.11" || produto.superOferta) score += 20;
 
   // 1. Desconto real comprovado (até 40 pontos)
   if (produto.precoAntigo && produto.precoAntigo > produto.preco) {
