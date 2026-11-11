@@ -8,57 +8,167 @@ import { ConectorMarketplace, ErroConector, ProvedorLinkAfiliado, executarComRet
 const SHOPEE_API = "https://open-api.affiliate.shopee.com.br/graphql";
 
 export const BUSCAS_PADRAO_SHOPEE = [
-  // Tecnologia & Celulares
+  // 1. Celulares & Acessórios
   { termo: "fone bluetooth", categoria: "cel" },
   { termo: "carregador celular rapido", categoria: "cel" },
+  { termo: "suporte celular", categoria: "cel" },
+
+  // 2. Eletrônicos & Tecnologia
   { termo: "smartwatch", categoria: "tec" },
   { termo: "caixa de som bluetooth", categoria: "tec" },
   { termo: "ring light tripe", categoria: "tec" },
 
-  // Informática & Games
+  // 3. Informática
   { termo: "mouse gamer", categoria: "info" },
   { termo: "teclado mecanico", categoria: "info" },
+  { termo: "suporte articulado notebook", categoria: "info" },
+
+  // 4. Games & Consoles
+  { termo: "video game portatil retro", categoria: "games" },
+  { termo: "controle para pc sem fio", categoria: "games" },
   { termo: "headset gamer", categoria: "games" },
 
-  // Cozinha & Casa
+  // 5. Cozinha
   { termo: "air fryer fritadeira", categoria: "cozinha" },
-  { termo: "garrafa termica", categoria: "cozinha" },
-  { termo: "luminaria led", categoria: "casa" },
-  { termo: "mop giratorio", categoria: "casa" },
+  { termo: "garrafa termica inox", categoria: "cozinha" },
+  { termo: "mini processador triturador eletrico", categoria: "cozinha" },
+
+  // 6. Casa & Decoração
+  { termo: "luminaria led sensor", categoria: "casa" },
+  { termo: "mop giratorio limpeza", categoria: "casa" },
   { termo: "organizador gaveta", categoria: "casa" },
 
-  // Moda, Calçados & Beleza
-  { termo: "tenis esportivo", categoria: "calc" },
-  { termo: "chinelo nuvem", categoria: "calc" },
-  { termo: "mochila impermeavel", categoria: "moda" },
-  { termo: "bolsa feminina", categoria: "moda" },
-  { termo: "escova secadora", categoria: "beleza" },
-  { termo: "maquina cortar cabelo", categoria: "beleza" },
+  // 7. Cama, Mesa e Banho
+  { termo: "jogo lencol casal 400 fios", categoria: "cama" },
+  { termo: "travesseiro ortopedico", categoria: "cama" },
 
-  // Ferramentas, Auto & Pets
-  { termo: "parafusadeira furadeira", categoria: "ferr" },
-  { termo: "suporte celular veicular", categoria: "auto" },
-  { termo: "cama pet cachorro", categoria: "pets" },
+  // 8. Eletrodomésticos
+  { termo: "ventilador portatil", categoria: "eletro" },
+  { termo: "mini ferro passar vapor", categoria: "eletro" },
+
+  // 9. Moda
+  { termo: "mochila impermeavel notebook", categoria: "moda" },
+  { termo: "bolsa feminina transversal", categoria: "moda" },
+  { termo: "relogio masculino esportivo", categoria: "moda" },
+
+  // 10. Calçados
+  { termo: "tenis esportivo corrida", categoria: "calc" },
+  { termo: "chinelo slide nuvem", categoria: "calc" },
+
+  // 11. Beleza e Perfumaria
+  { termo: "escova secadora modeladora", categoria: "beleza" },
+  { termo: "maquina cortar cabelo dragao", categoria: "beleza" },
+  { termo: "kit pinceis maquiagem profissional", categoria: "beleza" },
+
+  // 12. Brinquedos
+  { termo: "brinquedo educativo montessori", categoria: "brinq" },
+  { termo: "pop it eletronico game", categoria: "brinq" },
+
+  // 13. Bebês
+  { termo: "bolsa maternidade impermeavel", categoria: "bebe" },
+  { termo: "mordedor bebe silicone", categoria: "bebe" },
+
+  // 14. Saúde e Cuidados
+  { termo: "creatina monohidratada pura", categoria: "saude" },
+  { termo: "massageador eletrico corporal", categoria: "saude" },
+
+  // 15. Esporte e Lazer
+  { termo: "corda pular com rolamento", categoria: "esporte" },
+  { termo: "faixa elastica kit treino funcional", categoria: "esporte" },
+
+  // 16. Ferramentas
+  { termo: "parafusadeira furadeira bateria", categoria: "ferr" },
+  { termo: "kit chave catraca maleta", categoria: "ferr" },
+
+  // 17. Automotivo
+  { termo: "suporte celular veicular trava", categoria: "auto" },
+  { termo: "aspirador de po automotivo", categoria: "auto" },
+
+  // 18. Pet Shop
+  { termo: "fonte bebedouro pet gato", categoria: "pets" },
+  { termo: "cama pet almofada cachorro gato", categoria: "pets" },
+
+  // 19. Papelaria & Escritório
+  { termo: "caderno inteligente", categoria: "papel" },
+  { termo: "estojo escolar organizador", categoria: "papel" },
+
+  // 20. Livros & Leitura
+  { termo: "livro habitos atomicos", categoria: "livros" },
+  { termo: "livro desenvolvimento pessoal", categoria: "livros" },
+
+  // 21. Mercado & Alimentos
+  { termo: "capsula cafe nespresso compativel", categoria: "mercado" },
+  { termo: "chocolate importado", categoria: "mercado" },
+
+  // 22. Camping & Sobrevivência
+  { termo: "lanterna tatica militar recarregavel", categoria: "camping" },
+  { termo: "canivete multifuncao", categoria: "camping" },
+
+  // 23. Móveis
+  { termo: "sapateira organizadora multiuso", categoria: "moveis" },
+  { termo: "mesa dobravel para notebook cama", categoria: "moveis" },
+
+  // 24. Jardim & Piscina
+  { termo: "mangueira magica expansivel", categoria: "jardim" },
+  { termo: "refletor solar led jardim", categoria: "jardim" },
+
+  // 25. Instrumentos Musicais
+  { termo: "ukulele acustico soprano", categoria: "musica" },
+  { termo: "afinador digital clip violao", categoria: "musica" },
 ];
 
 export function inferirCategoriaShopee(nome = "") {
   const n = String(nome).toLowerCase();
+  // 1. Bebês e Crianças pequenas
+  if (/mordedor|chupeta|maternidade|berco|fralda|biberon|carrinho de bebe|mamadeira|body bebe|infantil bebe/i.test(n)) return "bebe";
+  // 2. Instrumentos Musicais
+  if (/ukulele|violao|guitarra|afinador|palheta|teclado musical|cordas violao|cavaquinho|flauta|instrumento musical/i.test(n)) return "musica";
+  // 3. Papelaria
+  if (/caderno|estojo|caneta|papelaria|marca texto|post it|agenda|fichario|lapis de cor|bloco de notas/i.test(n)) return "papel";
+  // 4. Livros
+  if (/livro|e-book|leitura|biblia|literatura|biografia|habitos atomicos/i.test(n)) return "livros";
+  // 5. Games & Consoles
+  if (/video game|game retro|ps4|ps5|xbox|nintendo|manete|gamepad|console retro/i.test(n)) return "games";
+  // 6. Camping & Sobrevivência
+  if (/lanterna tatica|canivete|barraca|pesca|sobrevivencia|bussola|cantil|saco de dormir|camping/i.test(n)) return "camping";
+  // 7. Móveis
+  if (/sapateira|mesa dobravel|cadeira gamer|estante|prateleira|armario|rack|mesa de cabeceira|movel/i.test(n)) return "moveis";
+  // 8. Jardim & Piscina
+  if (/mangueira|refletor solar|jardim|piscina|tesoura de poda|regador|grama|adubo/i.test(n)) return "jardim";
+  // 9. Mercado & Alimentos
+  if (/capsula de cafe|capsula nespresso|chocolate|snack|biscoito|bala|tempero|alimento|bombom/i.test(n)) return "mercado";
+  // 10. Celulares & Acessórios
   if (/fone|headset|auricular|tws|carregador|cabo tipo c|lightning|iphone|samsung|redmi|xiaomi|celular|smartphone|pelicula|capinha/i.test(n)) return "cel";
+  // 11. Eletrônicos & Tecnologia
   if (/smartwatch|relogio inteligente|bluetooth|caixa de som|ring light|tripé|dvr|camera|alexa|smart/i.test(n)) return "tec";
+  // 12. Informática
   if (/mouse|teclado|notebook|computador|pc|gamer|monitor|gabinete|ssd|memoria ram|hdmi|usb/i.test(n)) return "info";
-  if (/air fryer|fritadeira|liquidificador|batedeira|cafeteira|panela|garrafa termica|cozinha|pote|faca|forma/i.test(n)) return "cozinha";
+  // 13. Cozinha
+  if (/air fryer|fritadeira|liquidificador|batedeira|cafeteira|panela|garrafa termica|cozinha|pote|faca|forma|omeleteira/i.test(n)) return "cozinha";
+  // 14. Eletrodomésticos
   if (/aspirador|ventilador|ferro de passar|umidificador|eletrodomestico/i.test(n)) return "eletro";
-  if (/luminaria|led|cortina|tapete|organizador|almofada|decoracao|quadro|prateleira|sala|espelho/i.test(n)) return "casa";
-  if (/lencol|travesseiro|edredom|cobertor|colchao|cama/i.test(n)) return "cama";
+  // 15. Cama, Mesa e Banho
+  if (/lencol|travesseiro|edredom|cobertor|colchao|toalha banho|cama/i.test(n)) return "cama";
+  // 16. Calçados
   if (/tenis|sapato|sandalia|chinelo|bota|calcado/i.test(n)) return "calc";
+  // 17. Moda
   if (/vestido|blusa|camisa|camiseta|shorts|calca|mochila|bolsa|carteira|relogio|oculos/i.test(n)) return "moda";
+  // 18. Beleza e Perfumaria
   if (/maquiagem|pincel|escova|secador|batom|perfume|serum|creme|shampoo|cabelo|barbeador|depilador/i.test(n)) return "beleza";
-  if (/creatina|whey|suplemento|vitamina|termogenico|saude/i.test(n)) return "saude";
+  // 19. Saúde e Cuidados
+  if (/creatina|whey|suplemento|vitamina|termogenico|saude|massageador/i.test(n)) return "saude";
+  // 20. Ferramentas
   if (/furadeira|parafusadeira|chave|ferramenta|alicate|trena|disco|broca/i.test(n)) return "ferr";
+  // 21. Automotivo
   if (/automotivo|carro|moto|veicular|pneu|capacete/i.test(n)) return "auto";
+  // 22. Pet Shop
   if (/pet|cachorro|gato|racao|coleira|arranhador|bebedouro/i.test(n)) return "pets";
+  // 23. Esporte e Lazer
   if (/treino|academia|corda|elastico|esporte|bicicleta|bola/i.test(n)) return "esporte";
-  if (/brinquedo|bebe|boneca|carrinho|jogos/i.test(n)) return "brinq";
+  // 24. Brinquedos
+  if (/brinquedo|boneca|carrinho|jogos|pop it/i.test(n)) return "brinq";
+  // 25. Casa e Decoração (fallback padrão)
+  if (/luminaria|led|cortina|tapete|organizador|almofada|decoracao|quadro|prateleira|sala|espelho/i.test(n)) return "casa";
   return "casa";
 }
 

@@ -114,10 +114,10 @@ export class PublicadorOfertas {
     let historico = (await this.lerJsonSeguro(caminhoHistorico, {})) || {};
     const { produtos: comHistorico, historico: novoHistorico } = aplicarHistorico(aprovados, historico);
 
-    // 8. Ranquear e aplicar limites (vitrine ampla para puxar todo o catálogo Shopee)
+    // 8. Ranquear e aplicar limites (vitrine ampla cobrindo todas as 25 categorias)
     const finalRanqueados = ranquearOfertas(comHistorico, {
-      limitePorCategoria: configuracao.limitePorCategoria || 35,
-      limiteTotal: configuracao.limiteTotal || 350,
+      limitePorCategoria: configuracao.limitePorCategoria || 25,
+      limiteTotal: configuracao.limiteTotal || 400,
     });
 
     // 9. Gravação atômica dos dados

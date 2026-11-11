@@ -40,7 +40,7 @@ export function calcularScore(produto) {
 /**
  * Ordena e aplica limites de ofertas por categoria e total geral com representatividade justa.
  */
-export function ranquearOfertas(produtos = [], { limitePorCategoria = 35, limiteTotal = 350 } = {}) {
+export function ranquearOfertas(produtos = [], { limitePorCategoria = 25, limiteTotal = 400 } = {}) {
   const comScore = produtos.map((p) => ({
     ...p,
     score: calcularScore(p),
@@ -54,7 +54,7 @@ export function ranquearOfertas(produtos = [], { limitePorCategoria = 35, limite
   const selecionadosIds = new Set();
   const contagemPorCat = new Map();
   const marketplaces = ["shopee", "mercado-livre", "shein"];
-  const cotaPorMp = { shopee: 300, "mercado-livre": 30, shein: 30 };
+  const cotaPorMp = { shopee: 350, "mercado-livre": 30, shein: 30 };
 
   for (const mp of marketplaces) {
     let countMp = 0;
