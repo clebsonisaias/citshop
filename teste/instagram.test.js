@@ -43,6 +43,24 @@ test("GeradorCardInstagram gera imagem JPEG 1080x1080 válida", async () => {
   assert.ok(buffer.length > 1000, "Buffer JPEG gerado com dados");
 });
 
+test("GeradorCardInstagram gera imagem vertical JPEG 1080x1920 para Stories", async () => {
+  const gerador = new GeradorCardInstagram({
+    fetchImpl: async () => ({ ok: false }),
+  });
+
+  const produto = {
+    id: "shopee-123",
+    nome: "Pistola de Massagem Muscular Elétrica",
+    preco: 31.49,
+    precoAntigo: 224.93,
+    selo: "11.11",
+  };
+
+  const buffer = await gerador.gerarCardStories(produto);
+  assert.ok(buffer instanceof Buffer);
+  assert.ok(buffer.length > 1000, "Buffer Stories gerado com dados");
+});
+
 test("Rotas /bio e /api/instagram/card/:id respondem corretamente", async () => {
   const { criarApp } = await import("../servidor/app.js");
   const dir = mkdtempSync(join(tmpdir(), "insta-teste-"));
@@ -95,6 +113,36 @@ test("Rotas /bio e /api/instagram/card/:id respondem corretamente", async () => 
     assert.equal(resCard.headers.get("content-type"), "image/jpeg");
     const bytes = await resCard.arrayBuffer();
     assert.ok(bytes.byteLength > 1000);
+
+    // 3. Testa rota /api/instagram/card-stories/l-p1
+    const resStories = await fetch(`${base}/api/instagram/card-stories/l-p1`);
+    assert.equal(resStories.status, 200);
+    assert.equal(resStories.headers.get("content-type"), "image/jpeg");
+    const bytesStories = await resStories.arrayBuffer();
+    assert.ok(bytesStories.byteLength > 1000);
+
+    // 4. Testa webhook de verificação da Meta
+    const resHookGet = await fetch(`${base}/api/webhook/instagram?hub.mode=subscribe&hub.verify_token=citshop-ig-secret&hub.challenge=115599`);
+    assert.equal(resHookGet.status, 200);
+    const bodyChallenge = await resHookGet.text();
+    assert.equal(bodyChallenge, "115599");
+
+    // 5. Testa webhook POST
+    const resHookPost = await fetch(`${base}/api/webhook/instagram`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        entry: [{
+          changes: [{
+            field: "comments",
+            value: { id: "c1", text: "EU QUERO o link por favor!" },
+          }],
+        }],
+      }),
+    });
+    assert.equal(resHookPost.status, 200);
+    const textHook = await resHookPost.text();
+    assert.equal(textHook, "EVENT_RECEIVED");
   } finally {
     servidor?.close();
     rmSync(dir, { recursive: true, force: true });

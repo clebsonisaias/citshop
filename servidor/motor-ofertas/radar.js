@@ -14,11 +14,13 @@ export class RadarOfertas {
     dadosDir = process.env.DADOS_DIR || "dados",
     waha = new ConectorWaha(),
     instagram = null,
+    telegram = null,
     urlPublica = process.env.URL_PUBLICA || "https://shop.citmax.com.br",
   } = {}) {
     this.dadosDir = dadosDir;
     this.waha = waha;
     this.instagram = instagram;
+    this.telegram = telegram;
     this.urlPublica = String(urlPublica).replace(/\/+$/, "");
     this.caminhoEnviados = join(this.dadosDir, ARQUIVO_ENVIADOS);
   }
@@ -196,9 +198,10 @@ export class RadarOfertas {
     descontoMinimoPct = 25,
     intervaloHorasRepeticao = 24,
     postarInstagram = false,
+    postarTelegram = false,
   } = {}) {
-    if (!chatId && !postarInstagram) {
-      return { executado: false, motivo: "Nenhum canal de destino (WhatsApp ou Instagram) configurado." };
+    if (!chatId && !postarInstagram && !postarTelegram) {
+      return { executado: false, motivo: "Nenhum canal de destino (WhatsApp, Instagram ou Telegram) configurado." };
     }
 
     const candidatos = this.selecionarCandidatos(produtos, {
@@ -282,6 +285,25 @@ export class RadarOfertas {
         });
       } catch (errInsta) {
         console.error(`[radar] Falha ao postar no Instagram: ${errInsta.message}`);
+      }
+    }
+
+    // Publicação automática no canal do Telegram (se ativo e configurado)
+    let postTelegram = null;
+    if (postarTelegram && this.telegram && this.telegram.estaConfigurado() && selecionados.length > 0) {
+      const topOferta = selecionados[0];
+      try {
+        postTelegram = await this.telegram.enviarOferta({ produto: topOferta, urlPublica: this.urlPublica });
+        sucessos.push({
+          id: topOferta.id,
+          nome: topOferta.nome,
+          preco: topOferta.preco,
+          tipo: "telegram",
+          enviadoEm: new Date().toISOString(),
+          messageId: postTelegram.messageId,
+        });
+      } catch (errTg) {
+        console.error(`[radar] Falha ao postar no Telegram: ${errTg.message}`);
       }
     }
 

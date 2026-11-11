@@ -190,7 +190,7 @@
         <button class="btn sec" type="button" onclick="navigator.clipboard.writeText('https://shop.citmax.com.br/bio');alert('Link copiado: https://shop.citmax.com.br/bio');">Copiar Link da Bio</button>
       </div>
 
-      <b style="font-size:14px">Gerador de Posts e Legendas para o Feed:</b>
+      <b style="font-size:14px">Gerador de Posts e Legendas:</b>
       <div class="dois" style="margin-top:8px">
         <label>
           Selecione a Oferta para Postar
@@ -198,15 +198,22 @@
             <option value="">Carregando produtos...</option>
           </select>
         </label>
-        <div style="display:flex;align-items:flex-end;gap:8px">
-          <button class="btn" id="btnGerarCardInsta" type="button">Gerar Card e Legenda</button>
-        </div>
+        <label>
+          Formato do Card
+          <select id="instaFormatoCard">
+            <option value="feed">Feed Quadrado (1080x1080)</option>
+            <option value="stories">Stories Vertical (1080x1920)</option>
+          </select>
+        </label>
+      </div>
+      <div style="margin-top:10px">
+        <button class="btn" id="btnGerarCardInsta" type="button">Gerar Card e Legenda</button>
       </div>
 
       <div id="instaPreviaBox" hidden style="margin-top:16px;padding:16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px">
         <div style="display:flex;gap:20px;flex-wrap:wrap">
           <div style="max-width:320px;text-align:center">
-            <b>Card Gerado (1080x1080):</b>
+            <b id="instaCardTitulo">Card Gerado:</b>
             <img id="instaCardImg" src="" alt="Previa" style="width:100%;height:auto;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);margin-top:8px;display:block">
             <a id="btnBaixarCard" href="" download="post-citshop.jpg" class="btn sec" style="margin-top:8px;display:inline-block">Baixar Imagem HD</a>
           </div>
@@ -223,7 +230,7 @@
       </div>
 
       <details style="margin-top:20px">
-        <summary style="font-weight:700;cursor:pointer">Configurações da Meta Instagram Graph API (Para postagem 100% automática)</summary>
+        <summary style="font-weight:700;cursor:pointer">Configurações da Meta Instagram Graph API (Para postagem 100% automática e Direct "EU QUERO")</summary>
         <div class="dois" style="margin-top:10px">
           <label>Instagram Account ID<input id="instaAccountId" placeholder="ex: 17841400000000000"></label>
           <label>Meta Access Token<input id="instaToken" type="password" placeholder="EAA..."></label>
@@ -232,8 +239,31 @@
           <input type="checkbox" id="instaPostarAutomatico">
           <span><b>Piloto Automático:</b> Postar automaticamente as melhores ofertas no Feed do Instagram a cada rodada do Radar</span>
         </label>
+        <div style="margin-top:12px;padding:10px;background:#f1f5f9;border-radius:8px;font-size:13px">
+          <b>URL do Webhook para resposta "EU QUERO" no Direct:</b><br>
+          <code>https://shop.citmax.com.br/api/webhook/instagram</code><br>
+          <small class="note">Verify Token: <code>citshop-ig-secret</code></small>
+        </div>
         <button class="btn sec" id="btnSalvarInstaConfig" type="button" style="margin-top:12px">Salvar Configurações do Instagram</button>
       </details>
+    </div>
+
+    <h1 style="margin-top:32px">Canal Oficial do Telegram</h1>
+    <div class="box form">
+      <p class="note">O robô do Radar pode despachar ofertas automaticamente para o canal público ou grupo VIP do CITshop no Telegram.</p>
+      <div class="dois">
+        <label>Bot Token (do @BotFather)<input id="tgBotToken" type="password" placeholder="123456789:ABCdef..."></label>
+        <label>Chat ID ou @Canal<input id="tgChatId" placeholder="ex: @shopcitmax ou -100..."></label>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer">
+        <input type="checkbox" id="tgAtivo">
+        <span><b>Ativar disparos do Radar no Telegram</b></span>
+      </label>
+      <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
+        <button class="btn" id="btnSalvarTgConfig" type="button">Salvar Configurações do Telegram</button>
+        <button class="btn sec" id="btnTestarTg" type="button">Enviar Mensagem de Teste</button>
+      </div>
+      <div class="msg" id="tgMsg" hidden role="status"></div>
     </div>
 
     <h1 style="margin-top:32px">Amazon Afiliados</h1>

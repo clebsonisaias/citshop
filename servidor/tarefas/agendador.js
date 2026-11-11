@@ -98,8 +98,8 @@ export class AgendadorOfertas {
 
       this.log.info?.(`[agendador] Coleta ${lockKey} finalizada. ${statusFinal.totalPublicados} ofertas na vitrine.`);
 
-      // Aciona o Radar de Preços Baixos no WhatsApp e Instagram se estiver ativo
-      if (this.radar && config.radar?.ativo && (config.radar?.chatId || config.radar?.postarInstagram)) {
+      // Aciona o Radar de Preços Baixos no WhatsApp, Instagram e Telegram se estiver ativo
+      if (this.radar && config.radar?.ativo && (config.radar?.chatId || config.radar?.postarInstagram || config.radar?.postarTelegram)) {
         try {
           const resultadoRadar = await this.radar.executarRodada({
             produtos: statusFinal.produtosPublicados || itensColetados,
@@ -108,6 +108,7 @@ export class AgendadorOfertas {
             maxDisparos: config.radar.maxDisparosPorRodada || 3,
             intervaloHorasRepeticao: config.radar.intervaloHorasRepeticao || 24,
             postarInstagram: Boolean(config.radar.postarInstagram ?? config.instagram?.postarAutomatico),
+            postarTelegram: Boolean(config.radar.postarTelegram ?? config.telegram?.ativo),
           });
           this.log.info?.(`[agendador] Radar disparado: ${resultadoRadar.enviados || 0} produtos enviados.`);
         } catch (eRadar) {

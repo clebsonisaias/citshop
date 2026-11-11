@@ -128,6 +128,31 @@ export class ConectorInstagram {
   }
 
   /**
+   * Envia uma mensagem no Direct (Private Reply) respondendo automaticamente
+   * a um seguidor que comentou "EU QUERO" em um post do @shopcitmax.
+   */
+  async responderComentarioDirect({ commentId, texto }) {
+    if (!this.accessToken) {
+      throw new Error("Instagram accessToken necessário para responder direct.");
+    }
+    const url = `${GRAPH_API}/me/messages`;
+    const res = await this.fetchImpl(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        recipient: { comment_id: commentId },
+        message: { text: texto },
+        access_token: this.accessToken,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error?.message || `Erro HTTP ${res.status} ao responder direct.`);
+    }
+    return { sucesso: true, messageId: data.message_id || data.recipient_id };
+  }
+
+  /**
    * Publica uma imagem nos Stories do Instagram.
    */
   async publicarStory({ urlImagem }) {

@@ -21,6 +21,7 @@ import { ConectorWaha } from "./integracoes/whatsapp/waha.js";
 import { RadarOfertas } from "./motor-ofertas/radar.js";
 import { ConectorInstagram } from "./integracoes/instagram/conector.js";
 import { GeradorCardInstagram } from "./integracoes/instagram/gerador-card.js";
+import { ConectorTelegram } from "./integracoes/telegram/conector.js";
 
 export const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const PRECO_PLANO = 49.9;
@@ -79,10 +80,16 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     accessToken: env.INSTAGRAM_ACCESS_TOKEN,
     fetchImpl,
   });
+  const conectorTelegram = new ConectorTelegram({
+    botToken: env.TELEGRAM_BOT_TOKEN,
+    chatId: env.TELEGRAM_CHAT_ID,
+    fetchImpl,
+  });
   const radarOfertas = new RadarOfertas({
     dadosDir,
     waha: conectorWaha,
     instagram: conectorInstagram,
+    telegram: conectorTelegram,
     urlPublica,
   });
   agendadorOfertas.radar = radarOfertas;
@@ -709,6 +716,48 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     }
   }));
 
+  app.get("/api/instagram/card-stories/:id", a(async (req, res) => {
+    const x = produtoPorId(req.params.id);
+    if (!x) return res.status(404).json({ erro: "Produto não encontrado." });
+    try {
+      const buffer = await geradorCardInstagram.gerarCardStories(x);
+      res.set("Content-Type", "image/jpeg").set("Cache-Control", "public, max-age=3600").send(buffer);
+    } catch (e) {
+      res.status(500).json({ erro: e.message });
+    }
+  }));
+
+  // Webhook da Meta / Instagram para resposta automática ao "EU QUERO"
+  const IG_VERIFY_TOKEN = env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN || "citshop-ig-secret";
+  app.get("/api/webhook/instagram", (req, res) => {
+    const mode = req.query["hub.mode"];
+    const token = req.query["hub.verify_token"];
+    const challenge = req.query["hub.challenge"];
+    if (mode === "subscribe" && token === IG_VERIFY_TOKEN) {
+      return res.status(200).send(challenge);
+    }
+    return res.status(403).send("Forbidden");
+  });
+
+  app.post("/api/webhook/instagram", express.json(), a(async (req, res) => {
+    res.status(200).send("EVENT_RECEIVED");
+    try {
+      const entry = req.body?.entry?.[0];
+      const change = entry?.changes?.[0];
+      const val = change?.value;
+      if (change?.field === "comments" && val?.id && val?.text) {
+        const texto = String(val.text).toLowerCase();
+        if (/quero|link|preço|preco|comprar|valor|onde|site/i.test(texto)) {
+          const commentId = val.id;
+          const resposta = `Olá! 🛍️ Aqui está o seu link com desconto no CITshop: ${urlPublica}/bio\n\nOu no nosso canal VIP: https://whatsapp.com/channel/0029VbDyNjvIyPtZGJ6HTs3i`;
+          await conectorInstagram.responderComentarioDirect({ commentId, texto: resposta }).catch(() => {});
+        }
+      }
+    } catch (e) {
+      log.error?.("[webhook-instagram] Erro ao processar comentário:", e.message);
+    }
+  }));
+
   app.get("/api/admin/instagram/legenda/:id", exigirAdmin, (req, res) => {
     const x = produtoPorId(req.params.id);
     if (!x) return res.status(404).json({ erro: "Produto não encontrado." });
@@ -759,6 +808,49 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     try {
       const resPub = await conectorInstagram.publicarFeed({ urlImagem: urlCard, legenda });
       res.json({ ok: true, publicacao: resPub });
+    } catch (e) {
+      res.status(500).json({ ok: false, erro: e.message });
+    }
+  }));
+
+  // ---------- Telegram Oficial ----------
+  app.get("/api/admin/telegram/status", exigirAdmin, a(async (req, res) => {
+    const cfg = await monitoramentoMotor.obterConfiguracao();
+    res.json({
+      configurado: conectorTelegram.estaConfigurado(),
+      chatId: conectorTelegram.chatId || cfg.telegram?.chatId || null,
+      ativo: Boolean(cfg.telegram?.ativo ?? cfg.radar?.postarTelegram),
+    });
+  }));
+
+  app.post("/api/admin/telegram/config", exigirAdmin, express.json(), a(async (req, res) => {
+    const cfgAtual = await monitoramentoMotor.obterConfiguracao();
+    const ativo = req.body?.ativo !== undefined ? Boolean(req.body.ativo) : Boolean(cfgAtual.telegram?.ativo);
+    const novaCfg = {
+      ...cfgAtual,
+      telegram: {
+        ...(cfgAtual.telegram || {}),
+        ...(req.body || {}),
+        ativo,
+      },
+      radar: {
+        ...(cfgAtual.radar || {}),
+        postarTelegram: ativo,
+      },
+    };
+    if (req.body?.botToken) conectorTelegram.botToken = req.body.botToken;
+    if (req.body?.chatId) conectorTelegram.chatId = req.body.chatId;
+    await monitoramentoMotor.salvarConfiguracao(novaCfg);
+    res.json({ ok: true, telegram: novaCfg.telegram });
+  }));
+
+  app.post("/api/admin/telegram/testar", exigirAdmin, express.json(), a(async (req, res) => {
+    const todos = [...produtosAfiliadosMemoria, ...produtosLocaisParaVitrine()];
+    if (!todos.length) return res.status(400).json({ erro: "Nenhum produto disponível para teste." });
+    const p = todos[0];
+    try {
+      const envio = await conectorTelegram.enviarOferta({ produto: p, urlPublica });
+      res.json({ ok: true, envio });
     } catch (e) {
       res.status(500).json({ ok: false, erro: e.message });
     }

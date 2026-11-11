@@ -168,4 +168,128 @@ export class GeradorCardInstagram {
       .jpeg({ quality: 90 })
       .toBuffer();
   }
+
+  /**
+   * Gera um card vertical 1080x1920 para os Stories do Instagram @shopcitmax.
+   * Otimizado com espaço dedicado para a figurinha de link oficial (Link Sticker).
+   */
+  async gerarCardStories(produto) {
+    const W = 1080;
+    const H = 1920;
+
+    const nome = escaparXml(produto.nome || "Super Oferta");
+    const preco = Number(produto.preco || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    const temDesconto = produto.precoAntigo > produto.preco;
+    const precoAntigo = temDesconto
+      ? Number(produto.precoAntigo).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+      : "";
+    const descPct = temDesconto ? Math.round(((produto.precoAntigo - produto.preco) / produto.precoAntigo) * 100) : 0;
+    const eh1111 = produto.selo === "11.11" || produto.superOferta || descPct >= 30;
+
+    // Baixa e redimensiona foto para 800x800
+    const urlFoto = produto.fotos?.[0] || produto.imagem || null;
+    const fotoRaw = await this.baixarImagemProduto(urlFoto);
+    let fotoRedimensionada = null;
+
+    if (fotoRaw) {
+      try {
+        fotoRedimensionada = await sharp(fotoRaw)
+          .resize(800, 800, { fit: "contain", background: "#ffffff" })
+          .png()
+          .toBuffer();
+      } catch {
+        fotoRedimensionada = null;
+      }
+    }
+
+    const badgeTexto = eh1111 ? "SUPER OFERTA 11.11" : "RADAR DE OFERTAS";
+    const badgeCor = eh1111 ? "#e63946" : "#008b87";
+
+    const svgOverlay = `
+    <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="bgGradStories" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#036271"/>
+          <stop offset="60%" stop-color="#004d57"/>
+          <stop offset="100%" stop-color="#022d33"/>
+        </linearGradient>
+        <filter id="shadowStories" x="-5%" y="-5%" width="110%" height="110%">
+          <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#000" flood-opacity="0.35"/>
+        </filter>
+      </defs>
+
+      <!-- Fundo -->
+      <rect width="${W}" height="${H}" fill="url(#bgGradStories)"/>
+
+      <!-- Topo: Header com Logo & Tag -->
+      <rect x="70" y="100" width="240" height="50" rx="25" fill="rgba(255,255,255,0.18)"/>
+      <text x="190" y="133" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle">CITshop</text>
+
+      <rect x="730" y="100" width="280" height="50" rx="25" fill="${badgeCor}"/>
+      <text x="870" y="132" font-family="Helvetica, Arial, sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">${badgeTexto}</text>
+
+      <!-- Moldura branca do produto -->
+      <rect x="60" y="180" width="960" height="920" rx="36" fill="#ffffff" filter="url(#shadowStories)"/>
+
+      <!-- Cartão com dados de preço e loja -->
+      <rect x="60" y="1130" width="960" height="340" rx="32" fill="#ffffff" filter="url(#shadowStories)"/>
+
+      <!-- Título do Produto -->
+      <text x="100" y="1190" font-family="Helvetica, Arial, sans-serif" font-size="32" font-weight="bold" fill="#0f172a">
+        ${nome.slice(0, 42)}${nome.length > 42 ? "..." : ""}
+      </text>
+
+      <!-- Preço Antigo e Selo % OFF -->
+      ${temDesconto ? `<text x="100" y="1245" font-family="Helvetica, Arial, sans-serif" font-size="24" fill="#64748b" text-decoration="line-through">De ${escaparXml(precoAntigo)}</text>` : ""}
+      ${descPct >= 20 ? `
+      <rect x="${temDesconto ? "380" : "100"}" y="1215" width="160" height="44" rx="12" fill="#e63946"/>
+      <text x="${temDesconto ? "460" : "180"}" y="1245" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle">${descPct}% OFF</text>
+      ` : ""}
+
+      <!-- Preço Atual em Destaque -->
+      <text x="100" y="1320" font-family="Helvetica, Arial, sans-serif" font-size="56" font-weight="bold" fill="#036271">
+        Por ${escaparXml(preco)}
+      </text>
+
+      <!-- Loja / Vendedor -->
+      <text x="100" y="1380" font-family="Helvetica, Arial, sans-serif" font-size="20" fill="#64748b">
+        Vendido por: <tspan font-weight="bold" fill="#0f172a">${escaparXml(produto.lojaNome || produto.loja || "Loja Parceira")}</tspan>
+      </text>
+
+      <!-- Área de Chamada da Figurinha de Link do Stories -->
+      <rect x="60" y="1510" width="960" height="230" rx="32" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-dasharray="10 10"/>
+      <circle cx="540" cy="1580" r="32" fill="#25d366"/>
+      <text x="540" y="1590" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">👆</text>
+      <text x="540" y="1650" font-family="Helvetica, Arial, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">TOQUE NO LINK ACIMA PARA COMPRAR</text>
+      <text x="540" y="1695" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="rgba(255,255,255,0.8)" text-anchor="middle">Ou acesse: shop.citmax.com.br/bio</text>
+
+      <!-- Rodapé -->
+      <text x="540" y="1860" font-family="Helvetica, Arial, sans-serif" font-size="20" font-weight="bold" fill="rgba(255,255,255,0.6)" text-anchor="middle">@shopcitmax · CITshop</text>
+    </svg>
+    `;
+
+    const compositeList = [
+      { input: Buffer.from(svgOverlay), top: 0, left: 0 },
+    ];
+
+    if (fotoRedimensionada) {
+      compositeList.push({
+        input: fotoRedimensionada,
+        top: 240,
+        left: 140,
+      });
+    }
+
+    return sharp({
+      create: {
+        width: W,
+        height: H,
+        channels: 4,
+        background: { r: 3, g: 98, b: 113, alpha: 1 },
+      },
+    })
+      .composite(compositeList)
+      .jpeg({ quality: 90 })
+      .toBuffer();
+  }
 }

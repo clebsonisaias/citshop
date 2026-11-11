@@ -382,9 +382,15 @@
     $('btnGerarCardInsta').onclick = async () => {
       const id = $('instaSelectProduto')?.value;
       if (!id) return alert('Selecione um produto.');
-      const cardUrl = `/api/instagram/card/${encodeURIComponent(id)}?t=${Date.now()}`;
+      const formato = $('instaFormatoCard')?.value || 'feed';
+      const endpoint = formato === 'stories' ? '/api/instagram/card-stories/' : '/api/instagram/card/';
+      const cardUrl = `${endpoint}${encodeURIComponent(id)}?t=${Date.now()}`;
       $('instaCardImg').src = cardUrl;
       $('btnBaixarCard').href = cardUrl;
+      $('btnBaixarCard').download = formato === 'stories' ? 'stories-citshop.jpg' : 'post-citshop.jpg';
+      if ($('instaCardTitulo')) {
+        $('instaCardTitulo').textContent = formato === 'stories' ? 'Card Stories (1080x1920 HD):' : 'Card Feed (1080x1080 HD):';
+      }
       $('instaPreviaBox').hidden = false;
 
       try {
@@ -439,6 +445,48 @@
     };
   }
 
+  // Telegram Oficial
+  async function carregarTelegram() {
+    try {
+      const st = await api('/api/admin/telegram/status');
+      if ($('tgChatId') && st.chatId) $('tgChatId').value = st.chatId;
+      if ($('tgAtivo') && st.ativo !== undefined) $('tgAtivo').checked = Boolean(st.ativo);
+    } catch (e) {
+      console.error('Erro ao carregar Telegram:', e.message);
+    }
+  }
+
+  if ($('btnSalvarTgConfig')) {
+    $('btnSalvarTgConfig').onclick = async () => {
+      try {
+        await api('/api/admin/telegram/config', 'POST', {
+          botToken: $('tgBotToken').value.trim(),
+          chatId: $('tgChatId').value.trim(),
+          ativo: $('tgAtivo')?.checked || false,
+        });
+        alert('Configurações do Telegram salvas com sucesso!');
+      } catch (err) {
+        alert('Erro ao salvar: ' + err.message);
+      }
+    };
+  }
+
+  if ($('btnTestarTg')) {
+    $('btnTestarTg').onclick = async () => {
+      $('tgMsg').hidden = false;
+      $('tgMsg').className = 'msg';
+      $('tgMsg').textContent = 'Disparando oferta de teste no Telegram...';
+      try {
+        const res = await api('/api/admin/telegram/testar', 'POST');
+        $('tgMsg').className = 'msg ok';
+        $('tgMsg').textContent = `Enviado com sucesso no Telegram! ID da mensagem: ${res.envio?.messageId || 'OK'}`;
+      } catch (err) {
+        $('tgMsg').className = 'msg erro';
+        $('tgMsg').textContent = `Erro ao enviar teste: ${err.message}`;
+      }
+    };
+  }
+
   function iniciar() {
     carregar().then(() => {
       $('fEnt').hidden = true;
@@ -449,6 +497,7 @@
       carregarAmazon();
       carregarRadar();
       carregarInstagram();
+      carregarTelegram();
     }).catch(() => { $('fEnt').hidden = false; });
   }
   iniciar();

@@ -45,11 +45,14 @@ import { filtrarCatalogo } from './catalogo.js';
     const ship = x.loja === 'local' ? `<div class="ship">${esc(window.CIT.textoEntrega(x.entrega))} em ${esc(x.cidade)}</div>` : x.queda ? `<div class="ship">↓ caiu ${brl.format(x.queda)}</div>` : '';
     const stock = x.loja === 'local' ? `<div class="availability-tag">${esc(DISPONIBILIDADE[x.disponibilidade] ?? DISPONIBILIDADE.consulte)}</div>` : '';
     const selo = x.selo === '11.11' || x.superOferta ? '<div class="ship" style="color:#e63946;font-weight:700">🔥 Super Oferta 11.11</div>' : (x.menor30 && x.loja !== 'local' ? '<div class="ship"><b>Menor preço em 30 dias</b></div>' : '');
-    // Loja comum: a marca de quem vende só aparece discreta no produto ("Vendido por X"), igual para todas as lojas.
-    // Todo card abre o detalhe aqui no site; a ida para a loja fica no botão "Comprar" do detalhe.
+    const tags = [];
+    if (x.freteGratis) tags.push('<span class="tag-frete">🚚 Frete Grátis</span>');
+    if (x.cupom) tags.push('<span class="tag-cupom">🎟️ Cupom Ativo</span>');
+    const tagsHtml = tags.length ? `<div class="tags-row">${tags.join('')}</div>` : '';
+
     return `<button class="card" data-p="${esc(x.id)}">${shot(x)}</div>
       <div class="body"><h3>${esc(x.nome)}</h3>${nota}${off(x) ? `<div class="old">${brl.format(x.precoAntigo)}</div>` : ''}
-      <div class="price">${preco(x)}</div>${ship}${stock}${selo}<div class="vendido">Vendido por ${esc(label(x))}</div></div></button>`;
+      <div class="price">${preco(x)}</div>${tagsHtml}${ship}${stock}${selo}<div class="vendido">Vendido por ${esc(label(x))}</div></div></button>`;
   }
   function rail(id, list) {
     const el = $(id);
