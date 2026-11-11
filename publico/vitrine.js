@@ -36,7 +36,7 @@ import { filtrarCatalogo } from './catalogo.js';
   // O desconto aparece ao lado do preço ("33% OFF"), como no Mercado Livre, e não em cima da foto.
   function shot(x, foto = x.fotos?.[0]) {
     return foto
-      ? `<div class="shot foto"><img src="${esc(foto)}" alt="" loading="lazy">`
+      ? `<div class="shot foto"><img src="${esc(foto)}" alt="" loading="lazy" referrerpolicy="no-referrer">`
       : `<div class="shot" style="--hue:${hue(x)}">${svg(x.dept)}`;
   }
   const preco = (x) => `${brl.format(x.preco)}${off(x) ? ` <span class="pct">${off(x)}% OFF</span>` : ''}`;
@@ -181,7 +181,7 @@ import { filtrarCatalogo } from './catalogo.js';
       $('mshot').outerHTML = `${shot(x, fotos[i])}</div>`.replace('class="shot', 'id="mshot" class="shot');
       $('mthumbs').querySelectorAll('button').forEach((b, j) => b.setAttribute('aria-current', i === j));
     };
-    $('mthumbs').innerHTML = fotos.length > 1 ? fotos.map((f, i) => `<button aria-label="Foto ${i + 1}"><img src="${esc(f)}" alt=""></button>`).join('') : '';
+    $('mthumbs').innerHTML = fotos.length > 1 ? fotos.map((f, i) => `<button aria-label="Foto ${i + 1}"><img src="${esc(f)}" alt="" referrerpolicy="no-referrer"></button>`).join('') : '';
     $('mthumbs').querySelectorAll('button').forEach((b, i) => (b.onclick = () => mostrar(i)));
     mostrar(0);
     $('mstore').textContent = `Vendido por ${label(x)}`;
