@@ -6,6 +6,9 @@
 export function calcularScore(produto) {
   let score = 0;
 
+  // 0. Curadoria editorial / Destaque manual (prioridade garantida na vitrine)
+  if (produto.destaque || produto.fixo) score += 30;
+
   // 1. Desconto real comprovado (até 40 pontos)
   if (produto.precoAntigo && produto.precoAntigo > produto.preco) {
     const descPct = Math.min(70, Math.round(((produto.precoAntigo - produto.preco) / produto.precoAntigo) * 100));
