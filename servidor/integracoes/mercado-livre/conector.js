@@ -128,23 +128,38 @@ export class ConectorMercadoLivre extends ConectorMarketplace {
     provedorLink = null,
     fetchImpl = fetch,
     base = ML_API_BASE,
+    accessToken = process.env.MERCADO_LIVRE_ACCESS_TOKEN || null,
   } = {}) {
     super("mercado-livre");
     this.fetchImpl = fetchImpl;
     this.base = base;
+    this.accessToken = accessToken;
     this.provedorLink = provedorLink || new ProvedorLinkMercadoLivre();
   }
 
   estaConfigurado() {
-    // A descoberta de catálogo público funciona sem chaves; a publicação como afiliado requer o provedor de links
-    return true;
+    return Boolean(this.provedorLink?.tagAfiliado);
+  }
+
+  obterHeaders() {
+    const h = { Accept: "application/json" };
+    if (this.accessToken) {
+      h.Authorization = `Bearer ${this.accessToken}`;
+    }
+    return h;
   }
 
   async buscarCatalogo(termo, limite = 10) {
     const url = `${this.base}/sites/${SITE_ID}/search?q=${encodeURIComponent(termo)}&limit=${limite}`;
     return executarComRetry(async () => {
-      const res = await this.fetchImpl(url, { signal: AbortSignal.timeout(15_000) });
+      const res = await this.fetchImpl(url, {
+        headers: this.obterHeaders(),
+        signal: AbortSignal.timeout(15_000),
+      });
       if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          throw new ErroConector("mercado-livre", `Mercado Livre requer MERCADO_LIVRE_ACCESS_TOKEN (Developers) para busca automática no catálogo (HTTP ${res.status})`, res.status);
+        }
         throw new ErroConector("mercado-livre", `Erro HTTP ${res.status} na busca de catálogo`, res.status);
       }
       const json = await res.json().catch(() => ({}));
@@ -155,7 +170,10 @@ export class ConectorMercadoLivre extends ConectorMarketplace {
   async obterDetalhes(itemId) {
     const url = `${this.base}/items/${encodeURIComponent(itemId)}`;
     return executarComRetry(async () => {
-      const res = await this.fetchImpl(url, { signal: AbortSignal.timeout(15_000) });
+      const res = await this.fetchImpl(url, {
+        headers: this.obterHeaders(),
+        signal: AbortSignal.timeout(15_000),
+      });
       if (!res.ok) {
         throw new ErroConector("mercado-livre", `Erro HTTP ${res.status} ao consultar item ${itemId}`, res.status);
       }
