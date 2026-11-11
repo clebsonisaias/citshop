@@ -341,10 +341,10 @@ export class ConectorShopee extends ConectorMarketplace {
 
   async chamarGraphQL(query) {
     const body = JSON.stringify({ query });
-    const ts = Math.floor(Date.now() / 1000);
-    const assinatura = createHash("sha256").update(`${this.appId}${ts}${body}${this.segredo}`).digest("hex");
 
     return executarComRetry(async () => {
+      const ts = Math.floor(Date.now() / 1000);
+      const assinatura = createHash("sha256").update(`${this.appId}${ts}${body}${this.segredo}`).digest("hex");
       const res = await this.fetchImpl(SHOPEE_API, {
         method: "POST",
         headers: {
@@ -367,7 +367,7 @@ export class ConectorShopee extends ConectorMarketplace {
   }
 
   async buscarPorTermo(termo, limite = 12) {
-    const query = `{ productOfferV2(keyword: ${JSON.stringify(termo)}, page: 1, limit: ${limite}) {
+    const query = `{ productOfferV2(keyword: ${JSON.stringify(termo)}, listType: 2, page: 1, limit: ${limite}) {
       nodes { itemId productName priceMax priceDiscountRate sales imageUrl productLink offerLink commission sellerCommissionRate } } }`;
     const data = await this.chamarGraphQL(query);
     return data?.productOfferV2?.nodes ?? [];
