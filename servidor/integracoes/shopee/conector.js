@@ -389,10 +389,12 @@ export class ConectorShopee extends ConectorMarketplace {
         throw new ErroConector("shopee", `Erro HTTP ${res.status}`, res.status);
       }
       if (json.errors?.length) {
-        throw new ErroConector("shopee", json.errors[0].message || "Erro GraphQL Shopee", 400);
+        const msg = json.errors[0].message || "Erro GraphQL Shopee";
+        const ehRateLimit = /10030|rate limit/i.test(msg);
+        throw new ErroConector("shopee", msg, ehRateLimit ? 429 : 400);
       }
       return json.data;
-    }, { maxTentativas: 2, esperaInicialMs: 400 });
+    }, { maxTentativas: 3, esperaInicialMs: 1000 });
   }
 
   async buscarPorTermo(termo, limite = 12) {
@@ -419,6 +421,7 @@ export class ConectorShopee extends ConectorMarketplace {
     // 1. Puxar páginas de melhores ofertas em destaque da Shopee Brasil
     for (let p = 1; p <= paginasGerais; p++) {
       try {
+        if (p > 1) await new Promise((r) => setTimeout(r, 250));
         const query = `{ productOfferV2(page: ${p}, limit: 50) {
           nodes { itemId productName priceMax priceDiscountRate sales imageUrl productLink offerLink commission sellerCommissionRate } } }`;
         const data = await this.chamarGraphQL(query);
@@ -437,6 +440,7 @@ export class ConectorShopee extends ConectorMarketplace {
     const buscas = termos.length ? termos.map((t, i) => ({ termo: t, categoria: categorias[i] || "casa" })) : BUSCAS_PADRAO_SHOPEE;
     for (const { termo, categoria } of buscas) {
       try {
+        await new Promise((r) => setTimeout(r, 200));
         const itens = await this.buscarPorTermo(termo, limite);
         for (const item of itens) {
           if (item.productLink || item.offerLink) {
