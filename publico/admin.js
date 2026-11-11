@@ -382,7 +382,7 @@
     $('btnGerarCardInsta').onclick = async () => {
       const id = $('instaSelectProduto')?.value;
       if (!id) return alert('Selecione um produto.');
-      const cardUrl = `/api/instagram/card/${encodeURIComponent(id)}`;
+      const cardUrl = `/api/instagram/card/${encodeURIComponent(id)}?t=${Date.now()}`;
       $('instaCardImg').src = cardUrl;
       $('btnBaixarCard').href = cardUrl;
       $('instaPreviaBox').hidden = false;
