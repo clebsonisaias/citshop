@@ -19,6 +19,8 @@ import { MonitoramentoMotor } from "./tarefas/monitoramento.js";
 import { AgendadorOfertas } from "./tarefas/agendador.js";
 import { ConectorWaha } from "./integracoes/whatsapp/waha.js";
 import { RadarOfertas } from "./motor-ofertas/radar.js";
+import { ConectorInstagram } from "./integracoes/instagram/conector.js";
+import { GeradorCardInstagram } from "./integracoes/instagram/gerador-card.js";
 
 export const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const PRECO_PLANO = 49.9;
@@ -78,6 +80,12 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     urlPublica,
   });
   agendadorOfertas.radar = radarOfertas;
+  const conectorInstagram = new ConectorInstagram({
+    accountId: env.INSTAGRAM_ACCOUNT_ID,
+    accessToken: env.INSTAGRAM_ACCESS_TOKEN,
+    fetchImpl,
+  });
+  const geradorCardInstagram = new GeradorCardInstagram({ publicoDir: publico, fetchImpl });
   const mp = criarMercadoPago({ token: env.MP_ACCESS_TOKEN, fetchImpl });
   const limiteLogin = new S.Limitador({ maximo: 8, janelaMs: 10 * 60_000 });
   const limiteCadastro = new S.Limitador({ maximo: 5, janelaMs: 60 * 60_000 });
@@ -682,6 +690,70 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     });
 
     res.json({ ok: true, resultado });
+  }));
+
+  // ---------- Instagram @shopcitmax ----------
+  app.get("/bio", (req, res) => { semCache(res); res.sendFile(join(publico, "bio.html")); });
+  app.get("/instagram", (req, res) => { semCache(res); res.sendFile(join(publico, "bio.html")); });
+  app.get("/links", (req, res) => { semCache(res); res.sendFile(join(publico, "bio.html")); });
+
+  app.get("/api/instagram/card/:id", a(async (req, res) => {
+    const x = produtoPorId(req.params.id);
+    if (!x) return res.status(404).json({ erro: "Produto não encontrado." });
+    try {
+      const buffer = await geradorCardInstagram.gerarCardFeed(x);
+      res.set("Content-Type", "image/jpeg").set("Cache-Control", "public, max-age=3600").send(buffer);
+    } catch (e) {
+      res.status(500).json({ erro: e.message });
+    }
+  }));
+
+  app.get("/api/admin/instagram/legenda/:id", exigirAdmin, (req, res) => {
+    const x = produtoPorId(req.params.id);
+    if (!x) return res.status(404).json({ erro: "Produto não encontrado." });
+    const legenda = conectorInstagram.formatarLegenda(x, { urlPublica });
+    res.json({ ok: true, legenda });
+  });
+
+  app.get("/api/admin/instagram/status", exigirAdmin, a(async (req, res) => {
+    const cfg = await monitoramentoMotor.obterConfiguracao();
+    res.json({
+      configurado: conectorInstagram.estaConfigurado(),
+      accountId: conectorInstagram.accountId || cfg.instagram?.accountId || null,
+      perfil: "@shopcitmax",
+      linkBio: `${urlPublica}/bio`,
+    });
+  }));
+
+  app.post("/api/admin/instagram/config", exigirAdmin, express.json(), a(async (req, res) => {
+    const cfgAtual = await monitoramentoMotor.obterConfiguracao();
+    const novaCfg = {
+      ...cfgAtual,
+      instagram: {
+        ...(cfgAtual.instagram || {}),
+        ...(req.body || {}),
+      },
+    };
+    if (req.body?.accountId) conectorInstagram.accountId = req.body.accountId;
+    if (req.body?.accessToken) conectorInstagram.accessToken = req.body.accessToken;
+    await monitoramentoMotor.salvarConfiguracao(novaCfg);
+    res.json({ ok: true, instagram: novaCfg.instagram });
+  }));
+
+  app.post("/api/admin/instagram/publicar", exigirAdmin, express.json(), a(async (req, res) => {
+    const id = req.body?.produtoId;
+    const x = id && produtoPorId(id);
+    if (!x) return res.status(400).json({ erro: "produtoId inválido ou não encontrado." });
+
+    const urlCard = `${urlPublica}/api/instagram/card/${encodeURIComponent(x.id)}`;
+    const legenda = req.body?.legenda || conectorInstagram.formatarLegenda(x, { urlPublica });
+
+    try {
+      const resPub = await conectorInstagram.publicarFeed({ urlImagem: urlCard, legenda });
+      res.json({ ok: true, publicacao: resPub });
+    } catch (e) {
+      res.status(500).json({ ok: false, erro: e.message });
+    }
   }));
 
   // Rastreamento de clique / redirecionamento de afiliados

@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CITshop · Links e Ofertas do Instagram @shopcitmax</title>
+<meta name="description" content="Acesse o canal do WhatsApp, produtos postados no Instagram @shopcitmax e as maiores promoções do 11.11 e lojas locais.">
+<meta name="robots" content="index,follow">
+<link rel="canonical" href="https://shop.citmax.com.br/bio">
+<meta property="og:title" content="CITshop · Links e Ofertas @shopcitmax">
+<meta property="og:description" content="Seu radar de ofertas baixas, achados do 11.11 e lojas da nossa região.">
+<meta property="og:image" content="https://shop.citmax.com.br/logo.png">
+<meta property="og:url" content="https://shop.citmax.com.br/bio">
+<meta name="theme-color" content="#036271">
+<link rel="icon" href="/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400..800&display=swap">
+<style>
+  :root {
+    --deep: #036271;
+    --accent: #008b87;
+    --zap: #25d366;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --txt: #0f172a;
+    --muted: #64748b;
+    --line: #e2e8f0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Montserrat', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--txt);
+    line-height: 1.5;
+    padding: 24px 16px 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .container {
+    width: 100%;
+    max-width: 520px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+  .profile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 10px;
+  }
+  .avatar {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    background: var(--deep);
+    padding: 3px;
+    box-shadow: 0 4px 16px rgba(3, 98, 113, 0.25);
+    position: relative;
+  }
+  .avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    background: #fff;
+  }
+  .handle {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--deep);
+    letter-spacing: -.02em;
+  }
+  .bio-text {
+    font-size: 13.5px;
+    color: var(--muted);
+    max-width: 380px;
+  }
+  .links-list {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .btn-bio {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 14px 20px;
+    border-radius: 14px;
+    font-size: 14.5px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all .15s ease;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    border: 1px solid transparent;
+  }
+  .btn-bio.whatsapp {
+    background: #25d366;
+    color: #ffffff;
+    box-shadow: 0 4px 14px rgba(37, 211, 102, 0.35);
+    animation: pulsoBtn 3s ease-in-out infinite;
+  }
+  .btn-bio.whatsapp:hover {
+    background: #20ba59;
+    transform: translateY(-2px);
+  }
+  .btn-bio.primary {
+    background: var(--deep);
+    color: #ffffff;
+  }
+  .btn-bio.primary:hover {
+    background: #024b57;
+    transform: translateY(-2px);
+  }
+  .btn-bio.secondary {
+    background: #ffffff;
+    color: var(--deep);
+    border-color: var(--line);
+  }
+  .btn-bio.secondary:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+  @keyframes pulsoBtn {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+  }
+  .section-title {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 10px;
+  }
+  .section-title h2 {
+    font-size: 15px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--deep);
+  }
+  .search-box {
+    width: 100%;
+    position: relative;
+  }
+  .search-box input {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1.5px solid var(--line);
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    background: #fff;
+  }
+  .search-box input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0, 139, 135, 0.15);
+  }
+  .products-grid {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .product-card {
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 12px;
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    text-decoration: none;
+    color: inherit;
+    transition: all .15s ease;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  }
+  .product-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+  }
+  .product-card img {
+    width: 76px;
+    height: 76px;
+    object-fit: cover;
+    border-radius: 10px;
+    background: #f1f5f9;
+    flex-shrink: 0;
+  }
+  .product-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .product-info .store {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .product-info h3 {
+    font-size: 13.5px;
+    font-weight: 700;
+    line-height: 1.35;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 2px 0 4px;
+  }
+  .product-prices {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .product-prices del {
+    font-size: 11.5px;
+    color: var(--muted);
+  }
+  .product-prices strong {
+    font-size: 15px;
+    color: var(--txt);
+    font-weight: 800;
+  }
+  .product-prices .off {
+    font-size: 10.5px;
+    font-weight: 800;
+    color: #e63946;
+    background: #ffe3e3;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .footer-bio {
+    margin-top: 24px;
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header class="profile">
+    <div class="avatar">
+      <img src="/logo.png" alt="CITshop Logo">
+    </div>
+    <h1 class="handle">@shopcitmax</h1>
+    <p class="bio-text">Seu radar de preços baixos, super promoções do 11.11 e achados das lojas da nossa região! 🛍️⚡</p>
+  </header>
+
+  <nav class="links-list">
+    <a href="https://whatsapp.com/channel/0029VbDyNjvIyPtZGJ6HTs3i" target="_blank" rel="noopener" class="btn-bio whatsapp">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
+      Canal VIP no WhatsApp (Quedas de Preço) ↗
+    </a>
+    <a href="/" class="btn-bio primary">
+      🌐 Visitar Vitrine Completa (shop.citmax.com.br)
+    </a>
+    <a href="/#sellers" class="btn-bio secondary">
+      🏪 Lojas Locais (Macaíba, Parnamirim e Região)
+    </a>
+  </nav>
+
+  <div class="section-title">
+    <h2>Produtos do Feed & Destaques</h2>
+  </div>
+
+  <div class="search-box">
+    <input type="text" id="buscaInput" placeholder="Buscar produto postado no Instagram...">
+  </div>
+
+  <div class="products-grid" id="produtosBio">
+    <p style="text-align:center;color:var(--muted);padding:20px;">Carregando ofertas...</p>
+  </div>
+
+  <footer class="footer-bio">
+    CITshop · Um serviço da CITmax Telecom · Parnamirim/RN
+  </footer>
+</div>
+
+<script>
+(async () => {
+  const grid = document.getElementById('produtosBio');
+  const input = document.getElementById('buscaInput');
+  const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  let todosProdutos = [];
+
+  try {
+    const res = await fetch('/api/vitrine');
+    const data = await res.json();
+    todosProdutos = data.produtos || [];
+    renderizar(todosProdutos);
+  } catch {
+    grid.innerHTML = '<p style="text-align:center;color:var(--muted);padding:20px;">Erro ao carregar ofertas. <a href="/">Clique aqui para ir à vitrine</a>.</p>';
+  }
+
+  function renderizar(lista) {
+    if (!lista.length) {
+      grid.innerHTML = '<p style="text-align:center;color:var(--muted);padding:20px;">Nenhum produto encontrado.</p>';
+      return;
+    }
+
+    grid.innerHTML = lista.slice(0, 24).map(p => {
+      const temDesconto = p.precoAntigo > p.preco;
+      const descPct = temDesconto ? Math.round(((p.precoAntigo - p.preco) / p.precoAntigo) * 100) : 0;
+      const foto = p.fotos?.[0] || p.imagem || '/logo.png';
+      const link = `/p/${encodeURIComponent(p.id)}`;
+      const nomeLoja = p.loja === 'local' ? (p.lojaNome || 'Loja Local') : (p.loja || 'Afiliado');
+
+      return `
+        <a href="${link}" class="product-card">
+          <img src="${foto}" alt="${p.nome}" loading="lazy">
+          <div class="product-info">
+            <span class="store">${nomeLoja}</span>
+            <h3>${p.nome}</h3>
+            <div class="product-prices">
+              ${temDesconto ? `<del>${brl.format(p.precoAntigo)}</del>` : ''}
+              <strong>${brl.format(p.preco)}</strong>
+              ${descPct >= 20 ? `<span class="off">${descPct}% OFF</span>` : ''}
+            </div>
+          </div>
+        </a>
+      `;
+    }).join('');
+  }
+
+  input.addEventListener('input', (e) => {
+    const termo = e.target.value.toLowerCase().trim();
+    if (!termo) return renderizar(todosProdutos);
+    const filtrados = todosProdutos.filter(p => p.nome.toLowerCase().includes(termo) || (p.lojaNome && p.lojaNome.toLowerCase().includes(termo)));
+    renderizar(filtrados);
+  });
+})();
+</script>
+</body>
+</html>

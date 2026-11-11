@@ -180,6 +180,58 @@
       </div>
     </div>
 
+    <h1 style="margin-top:32px">Instagram Oficial @shopcitmax</h1>
+    <div class="box form">
+      <div style="padding:14px;border-radius:8px;background:#fdf2f8;border:1px solid #fbcfe8;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div>
+          <b style="color:#be185d;font-size:16px">📸 Perfil Oficial: @shopcitmax</b>
+          <p class="note" style="margin:4px 0 0">Página de Links da Bio: <a href="/bio" target="_blank"><b>https://shop.citmax.com.br/bio</b></a></p>
+        </div>
+        <button class="btn sec" type="button" onclick="navigator.clipboard.writeText('https://shop.citmax.com.br/bio');alert('Link copiado: https://shop.citmax.com.br/bio');">Copiar Link da Bio</button>
+      </div>
+
+      <b style="font-size:14px">Gerador de Posts e Legendas para o Feed:</b>
+      <div class="dois" style="margin-top:8px">
+        <label>
+          Selecione a Oferta para Postar
+          <select id="instaSelectProduto">
+            <option value="">Carregando produtos...</option>
+          </select>
+        </label>
+        <div style="display:flex;align-items:flex-end;gap:8px">
+          <button class="btn" id="btnGerarCardInsta" type="button">Gerar Card e Legenda</button>
+        </div>
+      </div>
+
+      <div id="instaPreviaBox" hidden style="margin-top:16px;padding:16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px">
+        <div style="display:flex;gap:20px;flex-wrap:wrap">
+          <div style="max-width:320px;text-align:center">
+            <b>Card Gerado (1080x1080):</b>
+            <img id="instaCardImg" src="" alt="Previa" style="width:100%;height:auto;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);margin-top:8px;display:block">
+            <a id="btnBaixarCard" href="" download="post-citshop.jpg" class="btn sec" style="margin-top:8px;display:inline-block">Baixar Imagem HD</a>
+          </div>
+          <div style="flex:1;min-width:280px">
+            <b>Legenda Pronta para o Post:</b>
+            <textarea id="instaLegendaTxt" rows="10" style="width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:10px;font-family:inherit;font-size:13px;margin-top:8px"></textarea>
+            <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap">
+              <button class="btn sec" type="button" id="btnCopiarLegenda">Copiar Legenda</button>
+              <button class="btn" type="button" id="btnPublicarInsta" style="background:#be185d;border-color:#be185d">Publicar Direto no Feed (Meta API)</button>
+            </div>
+            <div class="msg" id="instaMsg" hidden role="status"></div>
+          </div>
+        </div>
+      </div>
+
+      <details style="margin-top:20px">
+        <summary style="font-weight:700;cursor:pointer">Configurações da Meta Instagram Graph API (Opcional para postagem 100% automática)</summary>
+        <div class="dois" style="margin-top:10px">
+          <label>Instagram Account ID<input id="instaAccountId" placeholder="ex: 17841400000000000"></label>
+          <label>Meta Access Token<input id="instaToken" type="password" placeholder="EAA..."></label>
+        </div>
+        <button class="btn sec" id="btnSalvarInstaConfig" type="button" style="margin-top:8px">Salvar Credenciais da Meta</button>
+      </details>
+    </div>
+
     <h1 style="margin-top:32px">Amazon Afiliados</h1>
     <div class="box form">
       <p class="note" id="amzStatus">Carregando…</p>

@@ -355,6 +355,86 @@
     };
   }
 
+  // Instagram @shopcitmax
+  let produtosInsta = [];
+  async function carregarInstagram() {
+    try {
+      const st = await api('/api/admin/instagram/status');
+      if ($('instaAccountId') && st.accountId) $('instaAccountId').value = st.accountId;
+
+      const v = await api('/api/vitrine');
+      produtosInsta = v.produtos || [];
+      if ($('instaSelectProduto')) {
+        $('instaSelectProduto').innerHTML = produtosInsta.map((p) => {
+          const desc = p.precoAntigo > p.preco ? ` (${Math.round((1 - p.preco / p.precoAntigo) * 100)}% OFF)` : '';
+          return `<option value="${esc(p.id)}">[${esc(p.loja)}] ${esc(p.nome.slice(0, 50))} - ${brl.format(p.preco)}${desc}</option>`;
+        }).join('');
+      }
+    } catch (e) {
+      console.error('Erro ao carregar Instagram:', e.message);
+    }
+  }
+
+  if ($('btnGerarCardInsta')) {
+    $('btnGerarCardInsta').onclick = async () => {
+      const id = $('instaSelectProduto')?.value;
+      if (!id) return alert('Selecione um produto.');
+      const cardUrl = `/api/instagram/card/${encodeURIComponent(id)}`;
+      $('instaCardImg').src = cardUrl;
+      $('btnBaixarCard').href = cardUrl;
+      $('instaPreviaBox').hidden = false;
+
+      try {
+        const leg = await api(`/api/admin/instagram/legenda/${encodeURIComponent(id)}`);
+        $('instaLegendaTxt').value = leg.legenda || '';
+      } catch (err) {
+        $('instaLegendaTxt').value = 'Erro ao gerar legenda: ' + err.message;
+      }
+    };
+  }
+
+  if ($('btnCopiarLegenda')) {
+    $('btnCopiarLegenda').onclick = () => {
+      const txt = $('instaLegendaTxt').value;
+      navigator.clipboard.writeText(txt);
+      alert('Legenda copiada para a área de transferência!');
+    };
+  }
+
+  if ($('btnPublicarInsta')) {
+    $('btnPublicarInsta').onclick = async () => {
+      const id = $('instaSelectProduto')?.value;
+      const legenda = $('instaLegendaTxt')?.value;
+      if (!id) return;
+      $('instaMsg').hidden = false;
+      $('instaMsg').className = 'msg';
+      $('instaMsg').textContent = 'Publicando no feed do @shopcitmax via Meta Graph API...';
+
+      try {
+        const res = await api('/api/admin/instagram/publicar', 'POST', { produtoId: id, legenda });
+        $('instaMsg').className = 'msg ok';
+        $('instaMsg').textContent = `Publicado com sucesso no Instagram! ID da Mídia: ${res.publicacao?.mediaId || ''}`;
+      } catch (err) {
+        $('instaMsg').className = 'msg erro';
+        $('instaMsg').textContent = `Falha ao publicar: ${err.message}`;
+      }
+    };
+  }
+
+  if ($('btnSalvarInstaConfig')) {
+    $('btnSalvarInstaConfig').onclick = async () => {
+      try {
+        await api('/api/admin/instagram/config', 'POST', {
+          accountId: $('instaAccountId').value.trim(),
+          accessToken: $('instaToken').value.trim(),
+        });
+        alert('Configurações da Meta salvas com sucesso!');
+      } catch (err) {
+        alert('Erro ao salvar: ' + err.message);
+      }
+    };
+  }
+
   function iniciar() {
     carregar().then(() => {
       $('fEnt').hidden = true;
@@ -364,6 +444,7 @@
       carregarCentralOfertas();
       carregarAmazon();
       carregarRadar();
+      carregarInstagram();
     }).catch(() => { $('fEnt').hidden = false; });
   }
   iniciar();
