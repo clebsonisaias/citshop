@@ -63,8 +63,9 @@ export class AgendadorOfertas {
         const conector = this.coletor.conectores[marketplace];
         if (conector.estaConfigurado()) {
           try {
-            const termos = config.termosPorMarketplace?.[marketplace] || [];
-            const itens = await conector.buscarOfertas({ termos, limite: config.limitePorCategoria || 10 });
+            const rawTermos = config.termosPorMarketplace?.[marketplace] || [];
+            const termos = marketplace === "shopee" && rawTermos.length < 10 ? [] : rawTermos;
+            const itens = await conector.buscarOfertas({ termos, limite: config.limitePorCategoria || 25 });
             itensColetados.push(...itens);
             statusPorLoja[marketplace] = { ok: true, total: itens.length };
           } catch (e) {
@@ -75,10 +76,12 @@ export class AgendadorOfertas {
         }
       } else {
         // Coleta todos
+        const shopeeRaw = config.termosPorMarketplace?.shopee || [];
+        const termosShopee = shopeeRaw.length >= 10 ? shopeeRaw : [];
         const res = await this.coletor.coletarTodos({
-          amazon: { termos: config.termosPorMarketplace?.amazon, limite: config.limitePorCategoria },
-          shopee: { termos: config.termosPorMarketplace?.shopee, limite: config.limitePorCategoria },
-          "mercado-livre": { termos: config.termosPorMarketplace?.["mercado-livre"], limite: config.limitePorCategoria },
+          amazon: { termos: config.termosPorMarketplace?.amazon, limite: config.limitePorCategoria || 25 },
+          shopee: { termos: termosShopee, limite: config.limitePorCategoria || 25 },
+          "mercado-livre": { termos: config.termosPorMarketplace?.["mercado-livre"], limite: config.limitePorCategoria || 25 },
         });
         itensColetados = res.itens;
         statusPorLoja = res.statusPorLoja;

@@ -6,21 +6,25 @@ import { readFile, writeFile, rename } from "node:fs/promises";
 import { join } from "node:path";
 
 export const CONFIG_PADRAO_MOTOR = {
-  limitePorCategoria: 12,
-  limiteTotal: 180,
+  limitePorCategoria: 25,
+  limiteTotal: 400,
   intervaloMinutos: {
     amazon: 50,
-    shopee: 240,
-    "mercado-livre": 240,
-    shein: 240,
+    shopee: 120,
+    "mercado-livre": 120,
+    shein: 120,
   },
   termosPorMarketplace: {
-    amazon: ["fone bluetooth", "air fryer", "smartwatch", "kindle"],
-    shopee: ["fone bluetooth", "smartwatch", "air fryer", "luminaria led", "cama pet"],
-    "mercado-livre": ["furadeira parafusadeira", "creatina", "jogo de panelas", "aspirador robo"],
+    amazon: [],
+    shopee: [], // Vazio para executar o catálogo completo de 25 departamentos, camping e natal
+    "mercado-livre": ["furadeira parafusadeira", "creatina", "jogo de panelas", "aspirador robo", "colchao camping"],
     shein: ["vestido", "camisa", "bolsa", "tenis", "maquiagem"],
   },
-  categoriasMonitoradas: ["tec", "cel", "cozinha", "casa", "ferr", "esporte", "pets"],
+  categoriasMonitoradas: [
+    "tec", "cel", "info", "eletro", "cozinha", "casa", "cama", "moda", "calc", "beleza",
+    "brinq", "esporte", "ferr", "auto", "pets", "papel", "livros", "games", "bebe",
+    "saude", "mercado", "camping", "moveis", "jardim", "musica"
+  ],
 };
 
 export class MonitoramentoMotor {
