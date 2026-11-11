@@ -43,8 +43,15 @@ export class PublicadorOfertas {
     const caminhoHistorico = join(this.dadosDir, "historico.json");
     const caminhoStatus = join(this.dadosDir, "motor-status.json");
 
-    // 1. Lê catálogo anterior
-    const anterior = (await this.lerJsonSeguro(caminhoAfiliados, { produtos: [] }))?.produtos || [];
+    // 1. Lê catálogo anterior (com fallback para coleta.json se afiliados.json ainda não estiver populado)
+    let anterior = (await this.lerJsonSeguro(caminhoAfiliados, { produtos: [] }))?.produtos || [];
+    if (anterior.length < 10) {
+      const caminhoColeta = join(this.dadosDir, "coleta.json");
+      const coleta = await this.lerJsonSeguro(caminhoColeta, { produtos: [] });
+      if (Array.isArray(coleta?.produtos) && coleta.produtos.length) {
+        anterior = [...anterior, ...coleta.produtos];
+      }
+    }
 
     // 2. Lê itens do manual.json (se existirem)
     let manuais = [];
