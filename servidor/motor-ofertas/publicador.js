@@ -38,10 +38,12 @@ export class PublicadorOfertas {
    * Aplica a REGRA DO ÚLTIMO CATÁLOGO VÁLIDO: se um marketplace falhar na rodada,
    * os produtos válidos anteriores dele continuam preservados na vitrine.
    */
-  async publicar({ novosColetados = [], statusPorLoja = {}, configuracao = {} } = {}) {
+  async publicar({ novosColetados = [], ofertasColetadas = [], statusPorLoja = {}, configuracao = {} } = {}) {
     const caminhoAfiliados = join(this.dadosDir, "afiliados.json");
     const caminhoHistorico = join(this.dadosDir, "historico.json");
     const caminhoStatus = join(this.dadosDir, "motor-status.json");
+
+    const itensNovos = (novosColetados && novosColetados.length) ? novosColetados : ofertasColetadas;
 
     // 1. Lê catálogo anterior (com fallback para coleta.json se afiliados.json ainda não estiver populado)
     let anterior = (await this.lerJsonSeguro(caminhoAfiliados, { produtos: [] }))?.produtos || [];
@@ -60,7 +62,7 @@ export class PublicadorOfertas {
     }
 
     // 3. Normaliza novos, manuais e catálogo anterior
-    const normalizadosNovos = novosColetados.map(normalizarProduto).filter(Boolean);
+    const normalizadosNovos = itensNovos.map(normalizarProduto).filter(Boolean);
     const normalizadosManuais = manuais.map(normalizarProduto).filter(Boolean);
     const normalizadosAnteriores = anterior.map(normalizarProduto).filter(Boolean);
 
