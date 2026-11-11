@@ -367,10 +367,17 @@ export class ConectorShopee extends ConectorMarketplace {
   }
 
   async buscarPorTermo(termo, limite = 12) {
-    const query = `{ productOfferV2(keyword: ${JSON.stringify(termo)}, listType: 2, page: 1, limit: ${limite}) {
-      nodes { itemId productName priceMax priceDiscountRate sales imageUrl productLink offerLink commission sellerCommissionRate } } }`;
-    const data = await this.chamarGraphQL(query);
-    return data?.productOfferV2?.nodes ?? [];
+    try {
+      const query = `{ productOfferV2(keyword: ${JSON.stringify(termo)}, listType: 2, page: 1, limit: ${limite}) {
+        nodes { itemId productName priceMax priceDiscountRate sales imageUrl productLink offerLink commission sellerCommissionRate } } }`;
+      const data = await this.chamarGraphQL(query);
+      return data?.productOfferV2?.nodes ?? [];
+    } catch (e) {
+      if (e.message?.includes("10000") || e.message?.includes("System Error")) {
+        return [];
+      }
+      throw e;
+    }
   }
 
   async buscarOfertas({ termos = [], categorias = [], limite = 12, paginasGerais = 6 } = {}) {
