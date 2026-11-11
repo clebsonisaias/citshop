@@ -40,7 +40,7 @@ export function calcularScore(produto) {
 /**
  * Ordena e aplica limites de ofertas por categoria e total geral com representatividade justa.
  */
-export function ranquearOfertas(produtos = [], { limitePorCategoria = 15, limiteTotal = 200 } = {}) {
+export function ranquearOfertas(produtos = [], { limitePorCategoria = 35, limiteTotal = 350 } = {}) {
   const comScore = produtos.map((p) => ({
     ...p,
     score: calcularScore(p),
@@ -49,22 +49,22 @@ export function ranquearOfertas(produtos = [], { limitePorCategoria = 15, limite
   // Ordena decrescente por score
   comScore.sort((a, b) => b.score - a.score || a.preco - b.preco);
 
-  // Garantir representatividade justa para cada marketplace ativo (Shopee, Mercado Livre, SHEIN, Amazon)
-  // Cada marketplace tem uma cota inicial reservada para garantir variedade e não ser esmagado por outro
+  // Garantir representatividade justa para cada marketplace ativo (Shopee, Mercado Livre, SHEIN)
   const selecionados = [];
   const selecionadosIds = new Set();
   const contagemPorCat = new Map();
-  const marketplaces = ["shopee", "mercado-livre", "shein", "amazon"];
-  const cotaPorMp = 25;
+  const marketplaces = ["shopee", "mercado-livre", "shein"];
+  const cotaPorMp = { shopee: 300, "mercado-livre": 30, shein: 30 };
 
   for (const mp of marketplaces) {
     let countMp = 0;
+    const maxMp = cotaPorMp[mp] || 25;
     for (const p of comScore) {
       if ((p.marketplace || p.loja) !== mp) continue;
       if (selecionadosIds.has(p.id)) continue;
       const cat = p.categoria || p.dept || "casa";
       const qtdCat = contagemPorCat.get(cat) || 0;
-      if (qtdCat < limitePorCategoria && countMp < cotaPorMp) {
+      if (qtdCat < limitePorCategoria && countMp < maxMp) {
         selecionados.push(p);
         selecionadosIds.add(p.id);
         contagemPorCat.set(cat, qtdCat + 1);

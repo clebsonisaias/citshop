@@ -164,6 +164,11 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   const IDADE_MAXIMA_AMAZON = 60 * 60_000;
   function afiliados() {
     const af = ler("afiliados.json", { produtos: [] });
+    const amazonDesativada = process.env.AMAZON_DESATIVADA === "true" || process.env.DESATIVAR_AMAZON === "true";
+    if (amazonDesativada) {
+      const semAmazon = (af.produtos || []).filter((p) => (p.loja || p.marketplace) !== "amazon" && !p.id?.startsWith("amazon-"));
+      return { atualizadoEm: af.atualizadoEm, produtos: semAmazon };
+    }
     const amz = ler("amazon.json", { produtos: [] });
     const frescos = amz.atualizadoEm && agora() - Date.parse(amz.atualizadoEm) <= IDADE_MAXIMA_AMAZON ? amz.produtos : [];
     const ids = new Set(frescos.map((p) => p.id));

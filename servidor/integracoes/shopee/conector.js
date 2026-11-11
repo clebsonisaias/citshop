@@ -8,14 +8,59 @@ import { ConectorMarketplace, ErroConector, ProvedorLinkAfiliado, executarComRet
 const SHOPEE_API = "https://open-api.affiliate.shopee.com.br/graphql";
 
 export const BUSCAS_PADRAO_SHOPEE = [
+  // Tecnologia & Celulares
   { termo: "fone bluetooth", categoria: "cel" },
+  { termo: "carregador celular rapido", categoria: "cel" },
   { termo: "smartwatch", categoria: "tec" },
-  { termo: "air fryer", categoria: "cozinha" },
+  { termo: "caixa de som bluetooth", categoria: "tec" },
+  { termo: "ring light tripe", categoria: "tec" },
+
+  // Informática & Games
+  { termo: "mouse gamer", categoria: "info" },
+  { termo: "teclado mecanico", categoria: "info" },
+  { termo: "headset gamer", categoria: "games" },
+
+  // Cozinha & Casa
+  { termo: "air fryer fritadeira", categoria: "cozinha" },
+  { termo: "garrafa termica", categoria: "cozinha" },
   { termo: "luminaria led", categoria: "casa" },
-  { termo: "pincel maquiagem", categoria: "beleza" },
-  { termo: "controle gamer", categoria: "tec" },
-  { termo: "cama pet", categoria: "pets" },
+  { termo: "mop giratorio", categoria: "casa" },
+  { termo: "organizador gaveta", categoria: "casa" },
+
+  // Moda, Calçados & Beleza
+  { termo: "tenis esportivo", categoria: "calc" },
+  { termo: "chinelo nuvem", categoria: "calc" },
+  { termo: "mochila impermeavel", categoria: "moda" },
+  { termo: "bolsa feminina", categoria: "moda" },
+  { termo: "escova secadora", categoria: "beleza" },
+  { termo: "maquina cortar cabelo", categoria: "beleza" },
+
+  // Ferramentas, Auto & Pets
+  { termo: "parafusadeira furadeira", categoria: "ferr" },
+  { termo: "suporte celular veicular", categoria: "auto" },
+  { termo: "cama pet cachorro", categoria: "pets" },
 ];
+
+export function inferirCategoriaShopee(nome = "") {
+  const n = String(nome).toLowerCase();
+  if (/fone|headset|auricular|tws|carregador|cabo tipo c|lightning|iphone|samsung|redmi|xiaomi|celular|smartphone|pelicula|capinha/i.test(n)) return "cel";
+  if (/smartwatch|relogio inteligente|bluetooth|caixa de som|ring light|tripé|dvr|camera|alexa|smart/i.test(n)) return "tec";
+  if (/mouse|teclado|notebook|computador|pc|gamer|monitor|gabinete|ssd|memoria ram|hdmi|usb/i.test(n)) return "info";
+  if (/air fryer|fritadeira|liquidificador|batedeira|cafeteira|panela|garrafa termica|cozinha|pote|faca|forma/i.test(n)) return "cozinha";
+  if (/aspirador|ventilador|ferro de passar|umidificador|eletrodomestico/i.test(n)) return "eletro";
+  if (/luminaria|led|cortina|tapete|organizador|almofada|decoracao|quadro|prateleira|sala|espelho/i.test(n)) return "casa";
+  if (/lencol|travesseiro|edredom|cobertor|colchao|cama/i.test(n)) return "cama";
+  if (/tenis|sapato|sandalia|chinelo|bota|calcado/i.test(n)) return "calc";
+  if (/vestido|blusa|camisa|camiseta|shorts|calca|mochila|bolsa|carteira|relogio|oculos/i.test(n)) return "moda";
+  if (/maquiagem|pincel|escova|secador|batom|perfume|serum|creme|shampoo|cabelo|barbeador|depilador/i.test(n)) return "beleza";
+  if (/creatina|whey|suplemento|vitamina|termogenico|saude/i.test(n)) return "saude";
+  if (/furadeira|parafusadeira|chave|ferramenta|alicate|trena|disco|broca/i.test(n)) return "ferr";
+  if (/automotivo|carro|moto|veicular|pneu|capacete/i.test(n)) return "auto";
+  if (/pet|cachorro|gato|racao|coleira|arranhador|bebedouro/i.test(n)) return "pets";
+  if (/treino|academia|corda|elastico|esporte|bicicleta|bola/i.test(n)) return "esporte";
+  if (/brinquedo|bebe|boneca|carrinho|jogos/i.test(n)) return "brinq";
+  return "casa";
+}
 
 export class ProvedorLinkShopee extends ProvedorLinkAfiliado {
   constructor({ appId, segredo, fetchImpl = fetch } = {}) {
@@ -124,13 +169,15 @@ export class ProvedorLinkShopee extends ProvedorLinkAfiliado {
 }
 
 export function deShopee(item, categoria, linkAfiliado = null) {
-  const preco = Number(item.priceMin ?? item.price);
+  const preco = Number(item.priceMax ?? item.priceMin ?? item.price);
   if (!(preco > 0) || !item.productName) return null;
 
   const comissaoEstimada = Number(item.commission) || null;
   const comissaoPct = item.shopeeCommissionRate
     ? Number(item.shopeeCommissionRate) * 100
-    : (preco > 0 && comissaoEstimada ? (comissaoEstimada / preco) * 100 : null);
+    : item.sellerCommissionRate
+      ? Number(item.sellerCommissionRate) * 100
+      : (preco > 0 && comissaoEstimada ? (comissaoEstimada / preco) * 100 : null);
 
   const desconto = Number(item.priceDiscountRate);
   const precoAntigo = desconto > 0 && desconto < 90
@@ -143,13 +190,13 @@ export function deShopee(item, categoria, linkAfiliado = null) {
     marketplace: "shopee",
     loja: "shopee",
     nome: item.productName,
-    categoria,
+    categoria: categoria || inferirCategoriaShopee(item.productName),
     preco,
     precoAntigo,
     nota: Number(item.ratingStar) || 0,
     vendidos: Number(item.sales) || 0,
     imagem: item.imageUrl,
-    link: linkAfiliado || item.productLink || null,
+    link: item.offerLink || linkAfiliado || item.productLink || null,
     comissaoPct: comissaoPct ? Math.round(comissaoPct * 10) / 10 : null,
     comissaoEstimada,
     atualizadoEm: new Date().toISOString(),
@@ -195,33 +242,36 @@ export class ConectorShopee extends ConectorMarketplace {
         throw new ErroConector("shopee", `Erro HTTP ${res.status}`, res.status);
       }
       if (json.errors?.length) {
-        throw new ErroConector("shopee", json.errors[0].message || "Erro GraphQL Shopee");
+        throw new ErroConector("shopee", json.errors[0].message || "Erro GraphQL Shopee", 400);
       }
       return json.data;
     }, { maxTentativas: 2, esperaInicialMs: 400 });
   }
 
-  async buscarPorTermo(termo, limite = 10) {
-    const query = `{ productOfferV2(keyword: ${JSON.stringify(termo)}, sortType: 2, page: 1, limit: ${limite}) {
-      nodes { itemId productName price priceMin priceDiscountRate ratingStar sales imageUrl shopName productLink commission shopeeCommissionRate } } }`;
+  async buscarPorTermo(termo, limite = 12) {
+    const query = `{ productOfferV2(keyword: ${JSON.stringify(termo)}, page: 1, limit: ${limite}) {
+      nodes { itemId productName priceMax priceDiscountRate sales imageUrl productLink offerLink commission sellerCommissionRate } } }`;
     const data = await this.chamarGraphQL(query);
     return data?.productOfferV2?.nodes ?? [];
   }
 
-  async buscarOfertas({ termos = [], categorias = [], limite = 8 } = {}) {
+  async buscarOfertas({ termos = [], categorias = [], limite = 12, paginasGerais = 6 } = {}) {
     if (!this.estaConfigurado()) {
       throw new ErroConector("shopee", "Credenciais da Shopee Open API não configuradas.", 400);
     }
 
-    const buscas = termos.length ? termos.map((t, i) => ({ termo: t, categoria: categorias[i] || "casa" })) : BUSCAS_PADRAO_SHOPEE;
     const candidatos = [];
 
-    for (const { termo, categoria } of buscas) {
+    // 1. Puxar páginas de melhores ofertas em destaque da Shopee Brasil
+    for (let p = 1; p <= paginasGerais; p++) {
       try {
-        const itens = await this.buscarPorTermo(termo, limite);
-        for (const item of itens) {
-          if (item.productLink) {
-            candidatos.push({ item, categoria });
+        const query = `{ productOfferV2(page: ${p}, limit: 50) {
+          nodes { itemId productName priceMax priceDiscountRate sales imageUrl productLink offerLink commission sellerCommissionRate } } }`;
+        const data = await this.chamarGraphQL(query);
+        const nodes = data?.productOfferV2?.nodes ?? [];
+        for (const item of nodes) {
+          if (item.productLink || item.offerLink) {
+            candidatos.push({ item, categoria: inferirCategoriaShopee(item.productName) });
           }
         }
       } catch (e) {
@@ -229,9 +279,25 @@ export class ConectorShopee extends ConectorMarketplace {
       }
     }
 
-    // Gerar links de afiliados em lote de forma atômica (elimina erro de rate limit 10030)
-    const urlsParaGerar = [...new Set(candidatos.map((c) => c.item.productLink))];
-    const mapaLinks = await this.provedorLink.gerarLinksLote(urlsParaGerar);
+    // 2. Buscas específicas por categoria/termo para garantir variedade
+    const buscas = termos.length ? termos.map((t, i) => ({ termo: t, categoria: categorias[i] || "casa" })) : BUSCAS_PADRAO_SHOPEE;
+    for (const { termo, categoria } of buscas) {
+      try {
+        const itens = await this.buscarPorTermo(termo, limite);
+        for (const item of itens) {
+          if (item.productLink || item.offerLink) {
+            candidatos.push({ item, categoria: categoria || inferirCategoriaShopee(item.productName) });
+          }
+        }
+      } catch (e) {
+        this.registrarErro(e);
+      }
+    }
+
+    // 3. Gerar links para itens que ainda não tenham link curto de afiliado
+    const semLinkCurto = candidatos.filter((c) => !c.item.offerLink && c.item.productLink).map((c) => c.item.productLink);
+    const urlsParaGerar = [...new Set(semLinkCurto)];
+    const mapaLinks = urlsParaGerar.length ? await this.provedorLink.gerarLinksLote(urlsParaGerar) : new Map();
 
     const resultados = [];
     const vistos = new Set();
@@ -240,8 +306,8 @@ export class ConectorShopee extends ConectorMarketplace {
       if (vistos.has(item.itemId)) continue;
       vistos.add(item.itemId);
 
-      const linkAfiliado = mapaLinks.get(item.productLink);
-      if (linkAfiliado) {
+      const linkAfiliado = item.offerLink || mapaLinks.get(item.productLink) || item.productLink;
+      if (linkAfiliado && this.provedorLink.validarLinkAfiliado(linkAfiliado)) {
         const norm = deShopee(item, categoria, linkAfiliado);
         if (norm) resultados.push(norm);
       }

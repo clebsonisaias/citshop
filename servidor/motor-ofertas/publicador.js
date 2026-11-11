@@ -62,9 +62,17 @@ export class PublicadorOfertas {
     }
 
     // 3. Normaliza novos, manuais e catálogo anterior
-    const normalizadosNovos = itensNovos.map(normalizarProduto).filter(Boolean);
-    const normalizadosManuais = manuais.map(normalizarProduto).filter(Boolean);
-    const normalizadosAnteriores = anterior.map(normalizarProduto).filter(Boolean);
+    const lojasDesativadas = new Set(
+      (configuracao.lojasDesativadas || (process.env.AMAZON_DESATIVADA === "true" ? ["amazon"] : [])).map((s) => String(s).toLowerCase())
+    );
+    const ehDesativado = (p) => {
+      const loja = p.marketplace || p.loja;
+      return lojasDesativadas.has(loja) || (lojasDesativadas.has("amazon") && p.id?.startsWith("amazon-"));
+    };
+
+    const normalizadosNovos = itensNovos.map(normalizarProduto).filter(Boolean).filter((p) => !ehDesativado(p));
+    const normalizadosManuais = manuais.map(normalizarProduto).filter(Boolean).filter((p) => !ehDesativado(p));
+    const normalizadosAnteriores = anterior.map(normalizarProduto).filter(Boolean).filter((p) => !ehDesativado(p));
 
     // 4. Regra de preservação do último catálogo válido por marketplace
     const porLoja = new Map();
@@ -77,7 +85,7 @@ export class PublicadorOfertas {
     const consolidado = [...normalizadosManuais];
 
     // Para cada marketplace conhecido, decide se usa a nova rodada ou preserva anterior
-    const marketplaces = ["amazon", "shopee", "mercado-livre", "shein"];
+    const marketplaces = ["amazon", "shopee", "mercado-livre", "shein"].filter((mp) => !lojasDesativadas.has(mp));
     for (const mp of marketplaces) {
       const status = statusPorLoja[mp];
       const novosDaLoja = porLoja.get(mp) || [];
@@ -106,10 +114,10 @@ export class PublicadorOfertas {
     let historico = (await this.lerJsonSeguro(caminhoHistorico, {})) || {};
     const { produtos: comHistorico, historico: novoHistorico } = aplicarHistorico(aprovados, historico);
 
-    // 8. Ranquear e aplicar limites
+    // 8. Ranquear e aplicar limites (vitrine ampla para puxar todo o catálogo Shopee)
     const finalRanqueados = ranquearOfertas(comHistorico, {
-      limitePorCategoria: configuracao.limitePorCategoria || 15,
-      limiteTotal: configuracao.limiteTotal || 200,
+      limitePorCategoria: configuracao.limitePorCategoria || 35,
+      limiteTotal: configuracao.limiteTotal || 350,
     });
 
     // 9. Gravação atômica dos dados
