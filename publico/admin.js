@@ -60,6 +60,93 @@
   });
   $('sair').onclick = async () => { await api('/api/admin/sair', 'POST').catch(() => {}); location.reload(); };
 
+  // Central de Ofertas: status consolidado, métricas de cliques, configuração e desativados
+  async function carregarCentralOfertas() {
+    try {
+      const s = await api('/api/admin/central-ofertas');
+      const ult = s.ultimaExecucao ? new Date(s.ultimaExecucao).toLocaleString('pt-BR') : 'nunca';
+      $('centralStatus').textContent = `Última execução: ${ult} · ${s.totalPublicados || 0} produtos ativos na vitrine · ${s.totalDesativados || 0} desativados/rejeitados`;
+
+      const porLoja = s.porMarketplace || {};
+      $('listaPorLoja').innerHTML = `
+        <li>Amazon: <b>${porLoja.amazon || 0}</b> ofertas</li>
+        <li>Shopee: <b>${porLoja.shopee || 0}</b> ofertas</li>
+        <li>Mercado Livre: <b>${porLoja['mercado-livre'] || 0}</b> ofertas</li>
+      `;
+
+      const met = s.metricas || {};
+      const clq = met.cliquesPorMarketplace || {};
+      $('metricasCliques').innerHTML = `
+        Total de cliques: <b>${met.totalCliques || 0}</b><br>
+        <small class="note">Amazon: ${clq.amazon || 0} · Shopee: ${clq.shopee || 0} · Mercado Livre: ${clq['mercado-livre'] || 0}</small>
+      `;
+
+      const cfg = s.configuracao || {};
+      $('cfgLimitePorCat').value = cfg.limitePorCategoria || 12;
+      $('cfgLimiteTotal').value = cfg.limiteTotal || 180;
+      $('cfgTermosAmazon').value = (cfg.termosPorMarketplace?.amazon || []).join(', ');
+      $('cfgTermosShopee').value = (cfg.termosPorMarketplace?.shopee || []).join(', ');
+      $('cfgTermosML').value = (cfg.termosPorMarketplace?.['mercado-livre'] || []).join(', ');
+
+      const desat = s.desativadosRecentes || [];
+      if (!desat.length) {
+        $('listaDesativados').innerHTML = '<p class="note">Nenhum produto desativado recentemente.</p>';
+      } else {
+        $('listaDesativados').innerHTML = desat.map((d) => `
+          <div style="border-bottom:1px solid #eee;padding:4px 0">
+            <b>[${esc(d.loja)}] ${esc(d.nome || d.id)}</b><br>
+            <span style="color:#d9534f">Motivo: ${esc(d.motivos?.join(', '))}</span>
+          </div>
+        `).join('');
+      }
+    } catch (err) {
+      $('centralStatus').textContent = `Falha ao carregar central: ${err.message}`;
+    }
+  }
+
+  $('btnSalvarConfig').onclick = async () => {
+    $('centralAviso').hidden = true;
+    $('centralErro').hidden = true;
+    try {
+      const parseTermos = (v) => v.split(',').map((t) => t.trim()).filter(Boolean);
+      const payload = {
+        limitePorCategoria: Number($('cfgLimitePorCat').value) || 12,
+        limiteTotal: Number($('cfgLimiteTotal').value) || 180,
+        termosPorMarketplace: {
+          amazon: parseTermos($('cfgTermosAmazon').value),
+          shopee: parseTermos($('cfgTermosShopee').value),
+          'mercado-livre': parseTermos($('cfgTermosML').value),
+        },
+      };
+      await api('/api/admin/central-ofertas/config', 'PUT', payload);
+      $('centralAviso').hidden = false;
+      $('centralAviso').textContent = 'Configurações do motor salvas com sucesso!';
+      await carregarCentralOfertas();
+    } catch (err) {
+      $('centralErro').hidden = false;
+      $('centralErro').textContent = err.message;
+    }
+  };
+
+  $('btnExecutarGeral').onclick = async () => {
+    $('centralAviso').hidden = true;
+    $('centralErro').hidden = true;
+    $('btnExecutarGeral').disabled = true;
+    $('btnExecutarGeral').textContent = 'Executando coleta…';
+    try {
+      await api('/api/admin/central-ofertas/executar', 'POST', {});
+      $('centralAviso').hidden = false;
+      $('centralAviso').textContent = 'Coleta finalizada e vitrine atualizada com sucesso!';
+      await carregarCentralOfertas();
+    } catch (err) {
+      $('centralErro').hidden = false;
+      $('centralErro').textContent = err.message;
+    } finally {
+      $('btnExecutarGeral').disabled = false;
+      $('btnExecutarGeral').textContent = 'Executar Coleta Agora';
+    }
+  };
+
   // Amazon Afiliados: só mostra o estado. As credenciais ficam no Coolify, nunca nesta tela.
   async function carregarAmazon() {
     try {
@@ -94,7 +181,7 @@
   });
 
   function iniciar() {
-    carregar().then(() => { $('fEnt').hidden = true; $('vAdm').hidden = false; $('sair').hidden = false; carregarAmazon(); })
+    carregar().then(() => { $('fEnt').hidden = true; $('vAdm').hidden = false; $('sair').hidden = false; carregarAmazon(); carregarCentralOfertas(); })
       .catch(() => { $('fEnt').hidden = false; });
   }
   iniciar();

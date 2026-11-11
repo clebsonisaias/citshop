@@ -6,12 +6,17 @@ import { rodarColeta } from "./coletor.js";
 
 const PORTA = Number(process.env.PORT ?? 3000);
 
-let app, dadosDir, sincronizarAssinaturas;
+let app, dadosDir, sincronizarAssinaturas, agendadorOfertas;
 try {
-  ({ app, dadosDir, sincronizarAssinaturas } = criarApp({ log: { info: console.log, warn: console.warn, error: console.error } }));
+  ({ app, dadosDir, sincronizarAssinaturas, agendadorOfertas } = criarApp({ log: { info: console.log, warn: console.warn, error: console.error } }));
 } catch (e) {
   console.error(`[fatal] ${e.message}`);
   process.exit(1);
+}
+
+// Inicia a central de agendamentos automatizada e coordenada
+if (agendadorOfertas) {
+  agendadorOfertas.iniciarAgendamentos();
 }
 
 const rodarRobo = () => atualizarAfiliados({ env: process.env, dadosDir, manual: join(RAIZ, "manual.json") })

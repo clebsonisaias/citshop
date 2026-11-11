@@ -34,6 +34,49 @@
         <tbody id="linhas"></tbody>
       </table>
     </div>
+    <h1 style="margin-top:32px">Central de Ofertas (Automação de Afiliados)</h1>
+    <div class="box form">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <p class="note" id="centralStatus">Carregando status da central…</p>
+        <div style="display:flex;gap:6px">
+          <button class="btn sec" id="btnExecutarGeral" type="button">Executar Coleta Agora</button>
+          <button class="btn sec" id="btnSalvarConfig" type="button">Salvar Configurações</button>
+        </div>
+      </div>
+
+      <div class="msg ok" id="centralAviso" hidden role="status"></div>
+      <div class="msg erro" id="centralErro" hidden role="alert"></div>
+
+      <div class="dois" style="margin-top:12px;margin-bottom:12px">
+        <div class="box" style="padding:12px;background:#f9fafb">
+          <b>Ofertas Publicadas por Loja:</b>
+          <ul id="listaPorLoja" style="margin:6px 0 0 16px;padding:0"></ul>
+        </div>
+        <div class="box" style="padding:12px;background:#f9fafb">
+          <b>Cliques em Links de Afiliados:</b>
+          <p class="note" id="metricasCliques" style="margin-top:6px">Nenhum clique registrado ainda.</p>
+        </div>
+      </div>
+
+      <details style="margin-top:12px">
+        <summary style="font-weight:700;cursor:pointer;padding:6px 0">Configurações do Motor (Limites e Palavras-chave)</summary>
+        <div style="margin-top:12px;display:grid;gap:12px">
+          <div class="dois">
+            <label>Limite de produtos por categoria<input id="cfgLimitePorCat" type="number" min="1" max="50"></label>
+            <label>Limite total de ofertas na vitrine<input id="cfgLimiteTotal" type="number" min="10" max="500"></label>
+          </div>
+          <label>Palavras-chave Amazon (separadas por vírgula)<input id="cfgTermosAmazon" placeholder="fone bluetooth, air fryer, smartwatch"></label>
+          <label>Palavras-chave Shopee (separadas por vírgula)<input id="cfgTermosShopee" placeholder="fone bluetooth, smartwatch, air fryer"></label>
+          <label>Palavras-chave Mercado Livre (separadas por vírgula)<input id="cfgTermosML" placeholder="parafusadeira, creatina, panelas"></label>
+        </div>
+      </details>
+
+      <details style="margin-top:12px">
+        <summary style="font-weight:700;cursor:pointer;padding:6px 0">Produtos Desativados / Rejeitados pelo Motor</summary>
+        <div id="listaDesativados" style="margin-top:8px;font-size:12px"></div>
+      </details>
+    </div>
+
     <h1 style="margin-top:32px">Amazon Afiliados</h1>
     <div class="box form">
       <p class="note" id="amzStatus">Carregando…</p>

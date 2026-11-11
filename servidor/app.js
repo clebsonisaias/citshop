@@ -15,6 +15,8 @@ import { MAX_FOTOS, apagarFoto, receberFotos, receberLogo, salvarFoto } from "./
 import { criarMercadoPago, statusDoMp, webhookValido } from "./mercadopago.js";
 import { MARKETPLACE, criarClienteAmazon } from "./amazon.js";
 import { atualizarAfiliados } from "./afiliados.js";
+import { MonitoramentoMotor } from "./tarefas/monitoramento.js";
+import { AgendadorOfertas } from "./tarefas/agendador.js";
 
 export const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const PRECO_PLANO = 49.9;
@@ -60,6 +62,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   const publico = join(RAIZ, "publico");
   const urlPublica = String(env.URL_PUBLICA ?? "http://localhost:3000").replace(/\/$/, "");
   const banco = new Banco(dadosDir);
+  const monitoramentoMotor = new MonitoramentoMotor({ dadosDir, log });
+  const agendadorOfertas = new AgendadorOfertas({ dadosDir, manualPath: join(RAIZ, "manual.json"), log });
   const mp = criarMercadoPago({ token: env.MP_ACCESS_TOKEN, fetchImpl });
   const limiteLogin = new S.Limitador({ maximo: 8, janelaMs: 10 * 60_000 });
   const limiteCadastro = new S.Limitador({ maximo: 5, janelaMs: 60 * 60_000 });
@@ -546,6 +550,37 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     }
   }));
 
+  // ---------- Central de Ofertas (admin) ----------
+  app.get("/api/admin/central-ofertas", exigirAdmin, a(async (req, res) => {
+    const st = await monitoramentoMotor.obterStatus();
+    const af = ler("afiliados.json", { produtos: [] });
+    res.json({
+      ...st,
+      produtosPublicados: af.produtos || [],
+    });
+  }));
+
+  app.put("/api/admin/central-ofertas/config", exigirAdmin, express.json(), a(async (req, res) => {
+    const salva = await monitoramentoMotor.salvarConfiguracao(req.body || {});
+    res.json({ ok: true, configuracao: salva });
+  }));
+
+  app.post("/api/admin/central-ofertas/executar", exigirAdmin, express.json(), a(async (req, res) => {
+    const marketplace = req.body?.marketplace || null;
+    const resultado = await agendadorOfertas.executarRodada({ marketplace });
+    res.json({ ok: true, resultado });
+  }));
+
+  // Rastreamento de clique / redirecionamento de afiliados
+  app.get("/afiliado/:id", (req, res) => {
+    const x = produtoPorId(req.params.id);
+    if (!x || x.loja === "local" || !x.link) {
+      return res.status(404).sendFile(join(publico, "404.html"));
+    }
+    monitoramentoMotor.registrarClique(x.id, x.loja).catch(() => {});
+    res.set("Cache-Control", "no-store").set("X-Robots-Tag", "noindex, nofollow").redirect(302, x.link);
+  });
+
   // ---------- páginas ----------
   const semCache = (res) => res.setHeader("Cache-Control", "no-cache");
   app.use(express.static(publico, { extensions: ["html"], setHeaders: semCache }));
@@ -658,5 +693,5 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     erro(res, 500, "Algo deu errado do nosso lado. Tente de novo.");
   });
 
-  return { app, banco, dadosDir, sincronizarAssinaturas };
+  return { app, banco, dadosDir, sincronizarAssinaturas, monitoramentoMotor, agendadorOfertas };
 }
