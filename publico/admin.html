@@ -78,6 +78,52 @@
       </details>
     </div>
 
+    <h1 style="margin-top:32px">Shopee Afiliados · Vendas e Comissões</h1>
+    <div class="box form">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <p class="note" id="shopeeStatus">Consultando dados de vendas na Shopee…</p>
+        <div style="display:flex;gap:6px;align-items:center">
+          <select id="shopeePeriodo" style="padding:6px;border-radius:6px;border:1px solid #ccc;background:#fff">
+            <option value="7">Últimos 7 dias</option>
+            <option value="30" selected>Últimos 30 dias</option>
+            <option value="90">Últimos 90 dias</option>
+          </select>
+          <button class="btn sec" id="btnAtualizarShopee" type="button">Atualizar Vendas Shopee</button>
+        </div>
+      </div>
+
+      <div class="dois" style="margin-top:12px;margin-bottom:12px">
+        <div class="box" style="padding:16px;background:#fff5f0;border-left:4px solid #ee4d2d">
+          <small style="color:#666;font-weight:600;text-transform:uppercase">Comissão Estimada</small>
+          <h2 id="shopeeTotalComissao" style="margin:4px 0 0;color:#ee4d2d;font-size:24px">R$ 0,00</h2>
+          <small class="note" id="shopeeTotalVendas">Volume transacionado: R$ 0,00</small>
+        </div>
+        <div class="box" style="padding:16px;background:#f9fafb;border-left:4px solid #2b825b">
+          <small style="color:#666;font-weight:600;text-transform:uppercase">Pedidos Gerados</small>
+          <h2 id="shopeeTotalPedidos" style="margin:4px 0 0;color:#2b825b;font-size:24px">0 pedidos</h2>
+          <small class="note" id="shopeeAppInfo">Rastreamento oficial via Shopee Affiliate Open API</small>
+        </div>
+      </div>
+
+      <b>Vendas e Conversões Recentes:</b>
+      <div class="box rolar" style="margin-top:8px;max-height:360px">
+        <table class="tabela">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Produto</th>
+              <th>Valor Pago</th>
+              <th>Comissão</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="linhasShopeeConversoes">
+            <tr><td colspan="5" class="note">Nenhuma venda registrada no período selecionado.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <h1 style="margin-top:32px">Amazon Afiliados</h1>
     <div class="box form">
       <p class="note" id="amzStatus">Carregando…</p>

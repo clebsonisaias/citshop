@@ -66,6 +66,19 @@ test("Rotas da Central de Ofertas no Admin exigem autenticação e funcionam cor
     assert.equal(execRes.status, 200);
     const execData = await execRes.json();
     assert.equal(execData.ok, true);
+
+    // 6. Relatório de vendas e conversões da Shopee
+    const resSemLoginShopee = await fetch(`${base}/api/admin/shopee/relatorio`);
+    assert.equal(resSemLoginShopee.status, 401);
+
+    const shopeeRes = await fetch(`${base}/api/admin/shopee/relatorio?dias=30`, {
+      headers: { cookie },
+    });
+    assert.equal(shopeeRes.status, 200);
+    const shopeeData = await shopeeRes.json();
+    assert.equal(typeof shopeeData.totalPedidos, "number");
+    assert.equal(typeof shopeeData.totalComissao, "number");
+    assert.ok(Array.isArray(shopeeData.conversoes));
   } finally {
     servidor.close();
     rmSync(dir, { recursive: true, force: true });

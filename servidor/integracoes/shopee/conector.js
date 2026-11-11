@@ -320,4 +320,103 @@ export class ConectorShopee extends ConectorMarketplace {
   normalizarItem(item, categoria = "casa") {
     return deShopee(item, categoria);
   }
+
+  /**
+   * Consulta os relatórios de conversões e pedidos de vendas gerados pelo afiliado na Shopee Brasil.
+   * Utiliza a query oficial conversionReport do GraphQL.
+   * @param {object} opcoes - { dias: 30, limite: 50 }
+   * @returns {Promise<{ configurado: boolean, totalPedidos: number, totalVendas: number, totalComissao: number, conversoes: object[] }>}
+   */
+  async obterRelatorioVendas({ dias = 30, limite = 50 } = {}) {
+    if (!this.estaConfigurado()) {
+      return { configurado: false, totalPedidos: 0, totalVendas: 0, totalComissao: 0, conversoes: [], motivo: "Shopee Open API não configurada." };
+    }
+
+    const agora = Math.floor(Date.now() / 1000);
+    const inicio = agora - (Math.max(1, Number(dias) || 30) * 24 * 3600);
+
+    const query = `{
+      conversionReport(purchaseTimeStart: ${inicio}, purchaseTimeEnd: ${agora}, limit: ${limite}) {
+        nodes {
+          purchaseTime
+          clickTime
+          conversionId
+          conversionStatus
+          totalCommission
+          estimatedTotalCommission
+          orders {
+            orderId
+            orderStatus
+            items {
+              itemId
+              itemName
+              itemPrice
+              actualAmount
+              qty
+              itemTotalCommission
+              imageUrl
+              shopName
+            }
+          }
+        }
+      }
+    }`;
+
+    try {
+      const data = await this.chamarGraphQL(query);
+      const nodes = data?.conversionReport?.nodes || [];
+
+      let totalComissao = 0;
+      let totalVendas = 0;
+      let totalPedidos = 0;
+      const conversoes = [];
+
+      for (const conv of nodes) {
+        const comissaoConv = Number(conv.totalCommission || conv.estimatedTotalCommission || 0);
+        totalComissao += comissaoConv;
+
+        for (const ord of (conv.orders || [])) {
+          totalPedidos++;
+          for (const item of (ord.items || [])) {
+            const valorVenda = Number(item.actualAmount || item.itemPrice || 0);
+            totalVendas += valorVenda;
+            conversoes.push({
+              pedidoId: ord.orderId,
+              statusPedido: ord.orderStatus || conv.conversionStatus,
+              dataCompra: conv.purchaseTime ? new Date(conv.purchaseTime * 1000).toISOString() : null,
+              itemId: item.itemId,
+              nome: item.itemName,
+              preco: Number(item.itemPrice || 0),
+              valorPago: valorVenda,
+              quantidade: item.qty || 1,
+              comissao: Number(item.itemTotalCommission || 0),
+              imagem: item.imageUrl,
+              loja: item.shopName,
+            });
+          }
+        }
+      }
+
+      return {
+        configurado: true,
+        appId: this.appId,
+        dias: Number(dias) || 30,
+        totalPedidos,
+        totalVendas: Math.round(totalVendas * 100) / 100,
+        totalComissao: Math.round(totalComissao * 100) / 100,
+        conversoes,
+      };
+    } catch (e) {
+      return {
+        configurado: true,
+        appId: this.appId,
+        erro: e.message,
+        dias: Number(dias) || 30,
+        totalPedidos: 0,
+        totalVendas: 0,
+        totalComissao: 0,
+        conversoes: [],
+      };
+    }
+  }
 }

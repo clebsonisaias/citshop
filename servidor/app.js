@@ -576,6 +576,15 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     res.json({ ok: true, resultado });
   }));
 
+  // Relatório de Vendas e Conversões da Shopee Open API (admin)
+  app.get("/api/admin/shopee/relatorio", exigirAdmin, a(async (req, res) => {
+    const dias = Number(req.query.dias) || 30;
+    const conector = agendadorOfertas.coletor?.conectores?.shopee;
+    if (!conector) return res.json({ configurado: false, erro: "Conector Shopee não inicializado." });
+    const relatorio = await conector.obterRelatorioVendas({ dias });
+    res.json(relatorio);
+  }));
+
   // Rastreamento de clique / redirecionamento de afiliados
   app.get("/afiliado/:id", (req, res) => {
     const x = produtoPorId(req.params.id);

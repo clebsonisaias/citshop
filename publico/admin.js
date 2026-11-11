@@ -150,6 +150,60 @@
     }
   };
 
+  // Shopee Afiliados: relatório de pedidos, vendas e comissões via Affiliate Open API
+  async function carregarShopeeRelatorio() {
+    const periodo = $('shopeePeriodo') ? Number($('shopeePeriodo').value) || 30 : 30;
+    try {
+      if ($('shopeeStatus')) $('shopeeStatus').textContent = `Consultando API da Shopee (últimos ${periodo} dias)…`;
+      const r = await api(`/api/admin/shopee/relatorio?dias=${periodo}`);
+      if (!r.configurado) {
+        if ($('shopeeStatus')) $('shopeeStatus').textContent = 'API Shopee não configurada.';
+        return;
+      }
+      if (r.erro) {
+        if ($('shopeeStatus')) $('shopeeStatus').textContent = `Aviso da API Shopee: ${r.erro}`;
+      } else {
+        if ($('shopeeStatus')) $('shopeeStatus').textContent = `Conexão ativa · AppID: ${r.appId || 'OK'} · Últimos ${r.dias} dias analisados`;
+      }
+
+      if ($('shopeeTotalComissao')) $('shopeeTotalComissao').textContent = brl.format(r.totalComissao || 0);
+      if ($('shopeeTotalVendas')) $('shopeeTotalVendas').textContent = `Volume transacionado: ${brl.format(r.totalVendas || 0)}`;
+      if ($('shopeeTotalPedidos')) $('shopeeTotalPedidos').textContent = `${r.totalPedidos || 0} pedidos`;
+      if ($('shopeeAppInfo')) $('shopeeAppInfo').textContent = `Rastreamento via conversionReport (AppID: ${r.appId || 'OK'})`;
+
+      const convs = r.conversoes || [];
+      const tbody = $('linhasShopeeConversoes');
+      if (tbody) {
+        if (!convs.length) {
+          tbody.innerHTML = `<tr><td colspan="5" class="note" style="text-align:center;padding:16px">Nenhum pedido de venda registrado na Shopee nos últimos ${periodo} dias. Conforme as compras forem concluídas através dos links da vitrine, elas aparecerão aqui automaticamente.</td></tr>`;
+        } else {
+          tbody.innerHTML = convs.map((c) => `
+            <tr>
+              <td><small>${c.dataCompra ? new Date(c.dataCompra).toLocaleDateString('pt-BR') : 'recente'}</small></td>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px">
+                  ${c.imagem ? `<img src="${esc(c.imagem)}" alt="" style="width:36px;height:36px;object-fit:cover;border-radius:4px">` : ''}
+                  <div>
+                    <b>${esc(c.nome || 'Produto')}</b><br>
+                    <small class="note">${esc(c.loja || 'Loja Shopee')} · Qtd: ${c.quantidade || 1}</small>
+                  </div>
+                </div>
+              </td>
+              <td><b>${brl.format(c.valorPago || c.preco || 0)}</b></td>
+              <td style="color:#2b825b;font-weight:700">${brl.format(c.comissao || 0)}</td>
+              <td><span class="pill ativa" style="font-size:11px">${esc(c.statusPedido || 'Concluído')}</span></td>
+            </tr>
+          `).join('');
+        }
+      }
+    } catch (err) {
+      if ($('shopeeStatus')) $('shopeeStatus').textContent = `Erro ao carregar dados da Shopee: ${err.message}`;
+    }
+  }
+
+  if ($('btnAtualizarShopee')) $('btnAtualizarShopee').onclick = () => carregarShopeeRelatorio();
+  if ($('shopeePeriodo')) $('shopeePeriodo').onchange = () => carregarShopeeRelatorio();
+
   // Amazon Afiliados: só mostra o estado. As credenciais ficam no Coolify, nunca nesta tela.
   async function carregarAmazon() {
     try {
@@ -184,8 +238,14 @@
   });
 
   function iniciar() {
-    carregar().then(() => { $('fEnt').hidden = true; $('vAdm').hidden = false; $('sair').hidden = false; carregarAmazon(); carregarCentralOfertas(); })
-      .catch(() => { $('fEnt').hidden = false; });
+    carregar().then(() => {
+      $('fEnt').hidden = true;
+      $('vAdm').hidden = false;
+      $('sair').hidden = false;
+      carregarShopeeRelatorio();
+      carregarCentralOfertas();
+      carregarAmazon();
+    }).catch(() => { $('fEnt').hidden = false; });
   }
   iniciar();
 })();
