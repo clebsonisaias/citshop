@@ -587,6 +587,31 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   app.get("/loja/:slug", (req, res) => { semCache(res); res.sendFile(join(publico, "index.html")); });
   app.get("/black-friday", (req, res) => { semCache(res); res.sendFile(join(publico, "index.html")); });
 
+  // Mapa do site XML dinâmico (Sitemap) para o Google e motores de IA
+  app.get("/sitemap.xml", (req, res) => {
+    const v = vitrine();
+    const agoraIso = new Date(agora()).toISOString().slice(0, 10);
+    const urls = [
+      `  <url>\n    <loc>${urlPublica}/</loc>\n    <lastmod>${agoraIso}</lastmod>\n    <changefreq>daily</changefreq>\n    <priority>1.0</priority>\n  </url>`,
+      `  <url>\n    <loc>${urlPublica}/black-friday</loc>\n    <lastmod>${agoraIso}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.8</priority>\n  </url>`,
+    ];
+
+    for (const loja of v.lojas) {
+      if (loja.slug) {
+        urls.push(`  <url>\n    <loc>${urlPublica}/loja/${encodeURIComponent(loja.slug)}</loc>\n    <lastmod>${agoraIso}</lastmod>\n    <changefreq>daily</changefreq>\n    <priority>0.9</priority>\n  </url>`);
+      }
+    }
+
+    for (const p of v.produtos) {
+      const dataMod = p.atualizadoEm ? new Date(p.atualizadoEm).toISOString().slice(0, 10) : agoraIso;
+      const prioridade = p.loja === "local" ? "0.9" : "0.7";
+      urls.push(`  <url>\n    <loc>${urlPublica}/p/${encodeURIComponent(p.id)}</loc>\n    <lastmod>${dataMod}</lastmod>\n    <changefreq>daily</changefreq>\n    <priority>${prioridade}</priority>\n  </url>`);
+    }
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>`;
+    res.type("application/xml").set("Cache-Control", "public, max-age=3600").send(xml);
+  });
+
   // Página de produto renderizada no servidor: conteúdo, metadados e JSON-LD chegam no HTML inicial.
   const PAGINA_PRODUTO = readFileSync(join(publico, "produto.html"), "utf8");
   const NOME_LOJA = { amazon: "Amazon", shopee: "Shopee", ml: "Mercado Livre" };

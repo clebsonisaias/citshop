@@ -28,8 +28,10 @@ export function validarLinkAfiliado(link, marketplace) {
     }
 
     if (marketplace === "mercado-livre") {
-      const hostValido = u.hostname === "mercadolivre.com.br" || u.hostname.endsWith(".mercadolivre.com.br");
+      const dominiosValidos = ["mercadolivre.com.br", "mercadolibre.com", "mercadolivre.com", "meli.la"];
+      const hostValido = dominiosValidos.some((d) => u.hostname === d || u.hostname.endsWith(`.${d}`));
       if (!hostValido) return false;
+      if (u.pathname.startsWith("/sec/")) return true;
       return Boolean(u.searchParams.get("matt_tool") || u.searchParams.get("matt_word") || u.searchParams.get("afiliado"));
     }
 

@@ -52,8 +52,10 @@ export class ProvedorLinkMercadoLivre extends ProvedorLinkAfiliado {
     if (!url || typeof url !== "string") return false;
     try {
       const u = new URL(url);
-      const hostValido = u.hostname === "mercadolivre.com.br" || u.hostname.endsWith(".mercadolivre.com.br") || u.hostname === "mercadolibre.com";
+      const dominiosValidos = ["mercadolivre.com.br", "mercadolibre.com", "mercadolivre.com", "meli.la"];
+      const hostValido = dominiosValidos.some((d) => u.hostname === d || u.hostname.endsWith(`.${d}`));
       if (!hostValido) return false;
+      if (u.pathname.startsWith("/sec/")) return true;
 
       // Parâmetros oficiais de atribuição do programa de afiliados do Mercado Livre
       const temTool = Boolean(u.searchParams.get("matt_tool"));
