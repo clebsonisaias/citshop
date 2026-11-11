@@ -100,17 +100,21 @@ export const BUSCAS_PADRAO_SHOPEE = [
   { termo: "capsula cafe nespresso compativel", categoria: "mercado" },
   { termo: "chocolate importado", categoria: "mercado" },
 
-  // 22. Camping & Sobrevivência (Kits de Sobrevivência, Táticos & Energia Portátil)
-  { termo: "canivete", categoria: "camping" },
-  { termo: "lanterna", categoria: "camping" },
-  { termo: "estacao de energia", categoria: "camping" },
+  // 22. Camping & Sobrevivência (Facas Táticas, Canivetes, Fogareiros, Sacos de Dormir & Estações)
+  { termo: "faca tatica", categoria: "camping" },
+  { termo: "canivete tatica", categoria: "camping" },
+  { termo: "saco de dormir", categoria: "camping" },
+  { termo: "fogareiro camping", categoria: "camping" },
+  { termo: "kit camping", categoria: "camping" },
+  { termo: "colchonete camping", categoria: "camping" },
   { termo: "gerador solar", categoria: "camping" },
+  { termo: "bainha", categoria: "camping" },
 
   // 23. Móveis
   { termo: "sapateira organizadora multiuso", categoria: "moveis" },
   { termo: "mesa dobravel para notebook cama", categoria: "moveis" },
 
-  // 24. Jardim & Piscina (Iluminação Solar & Estação de Luz)
+  // 24. Jardim & Piscina (Refletores e Iluminação Solar)
   { termo: "refletor solar", categoria: "jardim" },
   { termo: "luminaria solar", categoria: "jardim" },
   { termo: "mangueira magica expansivel", categoria: "jardim" },
@@ -132,6 +136,8 @@ export const BUSCAS_PADRAO_SHOPEE = [
 
 export function inferirCategoriaShopee(nome = "") {
   const n = String(nome).toLowerCase();
+  // 0. Automotivo prioritário (evita que lanternas de carro/chicotes caiam em camping)
+  if (/traseira|dianteira|chicote|scania|reparo lanterna|farol|veicular|lampada automotiva|carro|caminhao|retrovisor|pneu|oleo motor/i.test(n)) return "auto";
   // 1. Bebês e Crianças pequenas
   if (/mordedor|chupeta|maternidade|berco|fralda|biberon|carrinho de bebe|mamadeira|body bebe|infantil bebe/i.test(n)) return "bebe";
   // 2. Instrumentos Musicais
@@ -143,7 +149,8 @@ export function inferirCategoriaShopee(nome = "") {
   // 5. Games & Consoles
   if (/video game|game retro|ps4|ps5|xbox|nintendo|manete|gamepad|console retro/i.test(n)) return "games";
   // 6. Camping, Sobrevivência & Estações de Energia Portáteis
-  if (/estacao de energia|gerador portatil|gerador solar|lanterna|canivete|faca de caca|kit sobrevivencia|tatica|tatico|sobrevivencia|barraca|pesca|bussola|cantil|saco de dormir|camping/i.test(n)) return "camping";
+  if (/faca tatica|canivete|sobrevivencia|camping|saco de dormir|colchonete camping|fogareiro|gerador solar|gerador portatil|estacao de energia|invictus|tatico|tatica|militar|acampamento|bainha|faca esportiva|cantil|bussola|barraca|pesca/i.test(n)) return "camping";
+  if (/lanterna/i.test(n) && !/traseira|dianteira|carro|caminhao|veiculo|reparo/i.test(n)) return "camping";
   // 7. Móveis
   if (/sapateira|mesa dobravel|cadeira gamer|estante|prateleira|armario|rack|mesa de cabeceira|movel/i.test(n)) return "moveis";
   // 8. Jardim & Piscina (Refletores e Iluminação Solar)
