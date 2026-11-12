@@ -1,5 +1,20 @@
 [
   {
+    "id": "shopee-58258952918",
+    "externalId": "58258952918",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Bolsa Feminina Matelassê com Lenço Kit Bolsa Transversal plus Carteira Tendência Couro Ecológico Para Trabalho e Balada",
+    "categoria": "moda",
+    "preco": 56.99,
+    "precoAntigo": 120,
+    "nota": 4.9,
+    "vendidos": 224,
+    "imagem": "https://down-br.img.susercontent.com/file/br-11134207-820mf-mtnjo31bim8312",
+    "link": "https://s.shopee.com.br/2VtDzqOkID",
+    "destaque": true
+  },
+  {
     "id": "shein-335750228",
     "externalId": "335750228",
     "marketplace": "shein",
