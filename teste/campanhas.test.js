@@ -15,6 +15,7 @@ test("campanhas: só as válidas e no prazo, sem repetir, as que acabam primeiro
     camp("a", { fim: "2026-11-25T00:00:00Z" }), camp("b", { fim: "2026-11-13T00:00:00Z" }), camp("b"),
     camp("vencida", { fim: "2026-11-11T00:00:00Z" }), camp("futura", { inicio: "2026-11-15T00:00:00Z" }),
     camp("imagem", { imagem: "https://golpe.example/x.jpg" }), camp("link", { link: "https://golpe.example/x" }), camp("semnome", { nome: "" }),
+    camp("permanente", { nome: "- - Men Shoes", fim: "2999-12-31T15:59:59Z" }), camp("semfim", { fim: null }), camp("traco", { nome: "- - Health" }),
   ], agora);
   assert.deepEqual(r.map((c) => c.id), ["b", "a"]);
 });
