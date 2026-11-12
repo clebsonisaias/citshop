@@ -55,17 +55,33 @@ export function marcarQuedas(novos, antigos) {
 
 async function chamarShopee(query, { appId, segredo }) {
   const body = JSON.stringify({ query });
-  const ts = Math.floor(Date.now() / 1000);
-  const assinatura = createHash("sha256").update(`${appId}${ts}${body}${segredo}`).digest("hex");
-  const r = await fetch(SHOPEE_API, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `SHA256 Credential=${appId}, Timestamp=${ts}, Signature=${assinatura}` },
-    body,
-    signal: AbortSignal.timeout(20_000),
-  });
-  const j = await r.json();
-  if (j.errors?.length) throw new Error(j.errors[0].message);
-  return j.data;
+  for (let tentativa = 1; tentativa <= 3; tentativa++) {
+    const ts = Math.floor(Date.now() / 1000);
+    const assinatura = createHash("sha256").update(`${appId}${ts}${body}${segredo}`).digest("hex");
+    try {
+      const r = await fetch(SHOPEE_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `SHA256 Credential=${appId}, Timestamp=${ts}, Signature=${assinatura}` },
+        body,
+        signal: AbortSignal.timeout(20_000),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (j.errors?.length) {
+        if (tentativa < 3 && /10000|system error/i.test(j.errors[0].message)) {
+          await new Promise((res) => setTimeout(res, 1000 * tentativa));
+          continue;
+        }
+        throw new Error(j.errors[0].message);
+      }
+      return j.data;
+    } catch (e) {
+      if (tentativa < 3 && /10000|system error/i.test(e.message)) {
+        await new Promise((res) => setTimeout(res, 1000 * tentativa));
+        continue;
+      }
+      throw e;
+    }
+  }
 }
 
 // productLink é só a página do produto: sem este link gerado, a compra não rende comissão.
@@ -87,6 +103,7 @@ async function buscarShopee({ termo, categoria }, credenciais) {
   const produtos = [];
   for (const n of nos) {
     try {
+      await new Promise((r) => setTimeout(r, 200));
       produtos.push({ ...deShopee(n, categoria), link: await linkDeAfiliado(n.productLink, credenciais) });
     } catch (e) {
       console.warn(`[afiliados] produto ${n.itemId} ficou de fora, sem link de afiliado: ${e.message}`);
@@ -134,7 +151,10 @@ export async function atualizarAfiliados({ env, dadosDir, manual }) {
 
   const shopee = [];
   if (env.SHOPEE_APP_ID && env.SHOPEE_SECRET) {
-    for (const b of BUSCAS) shopee.push(...await buscarShopee(b, { appId: env.SHOPEE_APP_ID, segredo: env.SHOPEE_SECRET }));
+    for (const b of BUSCAS) {
+      await new Promise((r) => setTimeout(r, 400));
+      shopee.push(...await buscarShopee(b, { appId: env.SHOPEE_APP_ID, segredo: env.SHOPEE_SECRET }));
+    }
   }
   // Ofertas mandadas pelo robô de coleta (POST /api/robo/afiliados). Valem mais que o manual.json.
   let coleta = [];
