@@ -29,8 +29,8 @@ test("cardápio: pizza com tamanho obrigatório, sabores, borda e adicionais; pr
   const esc = { [tam.id]: [tam.opcoes[1].id], [sab.id]: [sab.opcoes[0].id, sab.opcoes[1].id], [bor.id]: [bor.opcoes[0].id], [adc.id]: [adc.opcoes[0].id] };
   assert.equal(precoItem(item, esc).unitario, 70.5, "55,50 + 3 + 8 + 4");
   assert.match(precoItem(item, {}).erro, /tamanho/i);
-  assert.match(precoItem(item, { ...esc, [sab.id]: [sab.opcoes[0].id, sab.opcoes[1].id, "ffffffff"] }).erro, /no máximo 2/);
-  assert.match(precoItem(item, { ...esc, [adc.id]: [adc.opcoes[1].id] }).erro, /não está mais/, "opção desativada");
+  assert.match(precoItem(item, { ...esc, [sab.id]: [sab.opcoes[0].id, sab.opcoes[1].id, "ffffffff"] }).erro, /não está disponível/, "opção forjada é recusada");
+  assert.match(precoItem(item, { ...esc, [adc.id]: [adc.opcoes[1].id] }).erro, /não está disponível/, "opção desativada");
   assert.match(precoItem(item, { ...esc, zzzzzzzz: [] }).erro, /não está mais/);
   const r = montarItens([{ ...item, ativo: true }], [{ itemId: "pz", quantidade: 2, escolhas: esc, observacao: "sem cebola", preco: 1 }]);
   assert.deepEqual([r.subtotal, r.itens[0].unitario, r.itens[0].opcoes.length], [141, 70.5, 5], "preço do aparelho ignorado");

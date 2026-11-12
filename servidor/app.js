@@ -1315,6 +1315,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
           banco.salvar();
           log.info?.(`[mp] venda ${pedido.id}: ${pg.status}`);
           if (acabouDeAprovar) pedido.origem === "food" ? ctxFood.food.aoAprovar(loja, pedido) : avisarLojaVenda(loja, pedido);
+          if (["rejected", "cancelled", "refunded", "charged_back"].includes(pg.status)) { ctxFood.food.aoFalharPagamento(loja, pedido); banco.salvar(); }
         }
       }
     }

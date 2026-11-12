@@ -1,6 +1,7 @@
 // CITshop Food: regras puras (sem banco nem rede), testadas em teste/food.test.js.
 // Horário de funcionamento, cardápio com grupos de opções, preço calculado no servidor e situação do pedido.
 import { randomBytes } from "node:crypto";
+import { calcularItem } from "../publico/food-preco.js";
 
 const txt = (v, max) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, max);
 const reais = (n) => Math.round(Number(n) * 100) / 100;
@@ -49,75 +50,115 @@ export function situacaoLoja(food = {}, t) {
   return aberto ? { aberto: true, motivo: "Aberto agora" } : { aberto: false, motivo: "Fechado agora" };
 }
 
-// ---------- cardápio ----------
-/**
- * Item do cardápio vindo do painel. Grupos de opções (tamanho, sabor, borda, adicionais, bebida do combo):
- * { nome, min, max, opcoes: [{ nome, preco }] }. Ids existentes são mantidos (o pedido guarda um retrato, mas o
- * carrinho do cliente aponta para eles); ids novos são criados aqui.
- */
+// ---------- cardápio (motor universal: publico/food-preco.js, o mesmo cálculo do navegador) ----------
+export const LIMITES = { grupos: 20, opcoes: 60, variacoes: 12, datas: 60 };
+const dinheiro = (v) => { const n = reais(String(v ?? "0").replace(",", ".")); return Number.isFinite(n) && n >= 0 && n <= 100000 ? n : NaN; };
+const inteiro = (v, min, max, padrao) => { const n = Math.floor(Number(v)); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : padrao; };
+const estoqueDe = (v) => (v === "" || v == null ? null : inteiro(v, 0, 99999, null));
+const lerDatas = (v) => [...new Set((Array.isArray(v) ? v : String(v ?? "").split(/[,\s]+/)).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)))].sort().slice(-LIMITES.datas);
+const lerHorario = (h) => (h && /^\d{2}:\d{2}$/.test(h.de) && /^\d{2}:\d{2}$/.test(h.ate) && h.de !== h.ate ? { de: h.de, ate: h.ate } : null);
+const id = (v) => (idOk(v) ? v : id8());
+
+/** Grupo de personalização vindo do painel (ou de um modelo). Limites e regras são do restaurante. */
+export function lerGrupo(g) {
+  const opcoes = (Array.isArray(g?.opcoes) ? g.opcoes : []).slice(0, LIMITES.opcoes).map((o) => ({
+    id: id(o?.id), nome: txt(o?.nome, 60), descricao: txt(o?.descricao, 120), preco: dinheiro(o?.preco) || 0, ativo: o?.ativo !== false,
+    maxQtd: inteiro(o?.maxQtd, 1, 20, 1), estoque: estoqueDe(o?.estoque), datas: lerDatas(o?.datas),
+  })).filter((o) => o.nome);
+  const capacidade = opcoes.reduce((s, o) => s + o.maxQtd, 0) || 1;
+  const max = inteiro(g?.max, 1, capacidade, 1), min = inteiro(g?.min, 0, max, 0);
+  return {
+    id: id(g?.id), nome: txt(g?.nome, 60), descricao: txt(g?.descricao, 160), tipo: g?.tipo === "remover" ? "remover" : "escolha",
+    min, max, regra: ["maior", "media"].includes(g?.regra) ? g.regra : "soma", incluidas: inteiro(g?.incluidas, 0, max, 0),
+    estacao: txt(g?.estacao, 20) || null, ativo: g?.ativo !== false, opcoes,
+  };
+}
+
+/** Item do cardápio vindo do painel: preço-base, variações (com regras próprias por grupo), grupos, estoque, datas e horário. */
 export function lerItem(b) {
-  const preco = reais(String(b?.preco ?? "0").replace(",", "."));
-  const grupos = (Array.isArray(b?.grupos) ? b.grupos : []).slice(0, 10).map((g) => {
-    const opcoes = (Array.isArray(g?.opcoes) ? g.opcoes : []).slice(0, 40).map((o) => ({
-      id: idOk(o?.id) ? o.id : id8(), nome: txt(o?.nome, 60), preco: Math.max(0, reais(String(o?.preco ?? "0").replace(",", ".")) || 0), ativo: o?.ativo !== false,
-    })).filter((o) => o.nome);
-    const max = Math.min(Math.max(1, Math.floor(Number(g?.max) || 1)), opcoes.length || 1);
-    const min = Math.min(Math.max(0, Math.floor(Number(g?.min) || 0)), max);
-    return { id: idOk(g?.id) ? g.id : id8(), nome: txt(g?.nome, 60), min, max, opcoes };
-  }).filter((g) => g.nome && g.opcoes.length);
+  const grupos = (Array.isArray(b?.grupos) ? b.grupos : []).slice(0, LIMITES.grupos).map(lerGrupo).filter((g) => g.nome && g.opcoes.length);
+  const idsGrupo = new Set(grupos.map((g) => g.id));
+  const variacoes = (Array.isArray(b?.variacoes) ? b.variacoes : []).slice(0, LIMITES.variacoes).map((v) => ({
+    id: id(v?.id), nome: txt(v?.nome, 40), preco: dinheiro(v?.preco), ativo: v?.ativo !== false,
+    grupos: Object.fromEntries(Object.entries(v?.grupos ?? {}).filter(([gid]) => idsGrupo.has(gid)).map(([gid, r]) => {
+      const g = grupos.find((x) => x.id === gid), cap = g.opcoes.reduce((s, o) => s + o.maxQtd, 0);
+      const regra = {};
+      if (r?.ativo === false) regra.ativo = false;
+      if (r?.max != null && r.max !== "") regra.max = inteiro(r.max, 1, cap, g.max);
+      if (r?.min != null && r.min !== "") regra.min = inteiro(r.min, 0, regra.max ?? g.max, g.min);
+      const precos = Object.fromEntries(Object.entries(r?.precos ?? {}).filter(([oid, p]) => g.opcoes.some((o) => o.id === oid) && p !== "" && p != null).map(([oid, p]) => [oid, dinheiro(p) || 0]));
+      if (Object.keys(precos).length) regra.precos = precos;
+      return [gid, regra];
+    }).filter(([, r]) => Object.keys(r).length)),
+  })).filter((v) => v.nome);
   const item = {
     nome: txt(b?.nome, 80), descricao: String(b?.descricao ?? "").trim().slice(0, 400), categoria: txt(b?.categoria, 40) || "Cardápio",
-    preco: Number.isFinite(preco) && preco >= 0 ? preco : NaN, ativo: b?.ativo !== false, grupos,
-    estacao: txt(b?.estacao, 20) || null, // chapa, forno, bebidas... (impressora/tela por estação)
+    preco: variacoes.length ? 0 : dinheiro(b?.preco), ativo: b?.ativo !== false, grupos, variacoes,
+    estoque: estoqueDe(b?.estoque), datas: lerDatas(b?.datas), horario: lerHorario(b?.horario),
+    estacao: txt(b?.estacao, 20) || null, modeloId: idOk(b?.modeloId) ? b.modeloId : null,
   };
   if (item.nome.length < 2) return { erro: "Dê um nome ao item." };
-  if (!Number.isFinite(item.preco) || item.preco > 100000) return { erro: "Preço inválido." };
-  if (item.preco === 0 && !grupos.some((g) => g.min > 0 && g.opcoes.some((o) => o.preco > 0))) return { erro: "Informe o preço (ou um grupo obrigatório com preço, como o tamanho)." };
+  if (variacoes.some((v) => !Number.isFinite(v.preco))) return { erro: "Confira o preço de cada tamanho/variação." };
+  if (!Number.isFinite(item.preco)) return { erro: "Preço inválido." };
+  if (!variacoes.length && item.preco === 0 && !grupos.some((g) => g.min > 0 && g.opcoes.some((o) => o.preco > 0))) return { erro: "Informe o preço (ou crie tamanhos/variações com preço)." };
   return { item };
 }
 
-/**
- * Preço de uma unidade com as escolhas do cliente: { [grupoId]: [opcaoId, ...] }. Confere mínimo e máximo de cada
- * grupo e ignora nada: opção desconhecida ou desativada é erro (o cardápio mudou; o cliente escolhe de novo).
- */
-export function precoItem(item, escolhas = {}) {
-  let unitario = item.preco;
-  const opcoes = [];
-  for (const g of item.grupos ?? []) {
-    const ids = [...new Set(Array.isArray(escolhas?.[g.id]) ? escolhas[g.id].map(String) : [])];
-    if (ids.length < g.min) return { erro: g.min === 1 ? `Escolha ${g.nome.toLowerCase()} de ${item.nome}.` : `Escolha pelo menos ${g.min} em ${g.nome} de ${item.nome}.` };
-    if (ids.length > g.max) return { erro: `Escolha no máximo ${g.max} em ${g.nome} de ${item.nome}.` };
-    for (const idOp of ids) {
-      const o = g.opcoes.find((x) => x.id === idOp && x.ativo !== false);
-      if (!o) return { erro: `Uma opção de ${item.nome} não está mais disponível. Escolha de novo.` };
-      unitario += o.preco;
-      opcoes.push({ grupo: g.nome, nome: o.nome, preco: o.preco });
-    }
-  }
-  const sobra = Object.keys(escolhas ?? {}).find((k) => !(item.grupos ?? []).some((g) => g.id === k));
-  if (sobra) return { erro: `Uma opção de ${item.nome} não está mais disponível. Escolha de novo.` };
-  return { unitario: reais(unitario), opcoes };
+/** Compatível com a versão anterior: preço de uma unidade em R$ e as opções escolhidas. */
+export function precoItem(item, escolhas = {}, quando = {}, variacaoId) {
+  const r = calcularItem(item, { escolhas, variacaoId }, quando);
+  return r.erro ? r : { unitario: r.unitarioC / 100, opcoes: r.opcoes, variacao: r.variacao };
 }
 
-/** Linhas do pedido com retrato de nome, opções e preços; subtotal calculado aqui (nunca vem do aparelho). */
-export function montarItens(cardapioDaLoja, pedidos) {
+/**
+ * Linhas do pedido com o retrato completo (variação, grupos, opções, quantidades e preços do momento) e o consumo de
+ * estoque somado do pedido inteiro. Nada do aparelho é usado como preço. `quando` = data/hora do cardápio.
+ */
+export function montarItens(cardapioDaLoja, pedidos, quando = {}) {
   if (!Array.isArray(pedidos) || !pedidos.length) return { erro: "O carrinho está vazio." };
   if (pedidos.length > 30) return { erro: "Pedido grande demais: no máximo 30 itens diferentes." };
-  const linhas = [];
+  const linhas = [], consumo = { itens: {}, opcoes: {} };
   for (const p of pedidos) {
     const item = cardapioDaLoja.find((i) => i.id === String(p?.itemId) && i.ativo);
     if (!item) return { erro: "Um item do carrinho não está mais no cardápio." };
     const quantidade = Math.floor(Number(p?.quantidade) || 0);
     if (quantidade < 1 || quantidade > 50) return { erro: "Quantidade inválida." };
-    const r = precoItem(item, p?.escolhas);
+    const r = calcularItem(item, { variacaoId: p?.variacaoId, escolhas: p?.escolhas }, quando);
     if (r.erro) return r;
-    linhas.push({ itemId: item.id, nome: item.nome, categoria: item.categoria, estacao: item.estacao ?? null, quantidade, unitario: r.unitario, opcoes: r.opcoes, total: reais(r.unitario * quantidade), observacao: txt(p?.observacao, 140) });
+    if (item.estoque != null) consumo.itens[item.id] = (consumo.itens[item.id] ?? 0) + quantidade;
+    for (const [oid, q] of Object.entries(r.consumo)) consumo.opcoes[oid] = (consumo.opcoes[oid] ?? 0) + q * quantidade;
+    linhas.push({
+      itemId: item.id, nome: item.nome, categoria: item.categoria, estacao: item.estacao ?? null, variacao: r.variacao, quantidade,
+      base: r.baseC / 100, adicionais: r.adicionaisC / 100, unitario: r.unitarioC / 100, opcoes: r.opcoes.map(({ cobradoGrupoC, ...o }) => o),
+      total: (r.unitarioC * quantidade) / 100, observacao: txt(p?.observacao, 140), dataCardapio: quando.data ?? null,
+    });
   }
-  return { itens: linhas, subtotal: reais(linhas.reduce((s, l) => s + l.total, 0)) };
+  // Estoque do pedido inteiro (item e opção), conferido antes de reservar.
+  for (const [iid, q] of Object.entries(consumo.itens)) { const i = cardapioDaLoja.find((x) => x.id === iid); if (q > i.estoque) return { erro: i.estoque ? `Só restam ${i.estoque} de ${i.nome}.` : `${i.nome} esgotou.` }; }
+  for (const [oid, q] of Object.entries(consumo.opcoes)) {
+    const o = cardapioDaLoja.flatMap((i) => i.grupos.flatMap((g) => g.opcoes)).find((x) => x.id === oid);
+    if (q > o.estoque) return { erro: o.estoque ? `Só restam ${o.estoque} de ${o.nome}.` : `${o.nome} esgotou.` };
+  }
+  const subtotalC = linhas.reduce((s, l) => s + Math.round(l.total * 100), 0);
+  return { itens: linhas, subtotal: subtotalC / 100, consumo };
 }
 
-/** Opções agrupadas para leitura: ["Tamanho: Grande", "Sabores: Calabresa, Frango"]. */
-export const opcoesAgrupadas = (opcoes = []) => [...opcoes.reduce((m, o) => m.set(o.grupo, [...(m.get(o.grupo) ?? []), o.nome]), new Map())].map(([g, n]) => `${g}: ${n.join(", ")}`);
+/** Reserva (sinal 1) ou devolve (sinal -1) o estoque do pedido. Síncrono: dois pedidos não pegam a mesma unidade. */
+export function moverEstoqueFood(cardapioDaLoja, consumo, sinal) {
+  for (const [iid, q] of Object.entries(consumo?.itens ?? {})) { const i = cardapioDaLoja.find((x) => x.id === iid); if (i && i.estoque != null) i.estoque = Math.max(0, i.estoque - sinal * q); }
+  const opcoes = cardapioDaLoja.flatMap((i) => i.grupos.flatMap((g) => g.opcoes));
+  for (const [oid, q] of Object.entries(consumo?.opcoes ?? {})) { const o = opcoes.find((x) => x.id === oid); if (o && o.estoque != null) o.estoque = Math.max(0, o.estoque - sinal * q); }
+}
+
+/** Leitura da composição: ["Tamanho: Grande", "Sabores: Calabresa, Frango", "SEM: cebola", "Adicionais: 2x Queijo"]. */
+export function opcoesAgrupadas(opcoes = [], variacao = null) {
+  const m = new Map();
+  for (const o of opcoes) {
+    const k = o.tipo === "remover" ? "SEM" : o.grupo;
+    m.set(k, [...(m.get(k) ?? []), `${(o.qtd ?? 1) > 1 ? `${o.qtd}x ` : ""}${o.nome}`]);
+  }
+  return [...(variacao ? [`Tamanho: ${variacao.nome}`] : []), ...[...m].map(([g, n]) => `${g}: ${n.join(", ")}`)];
+}
 
 // ---------- comanda (dados; o CITshop Print transforma em ESC/POS) ----------
 export const TIPOS_COMANDA = ["completa", "cozinha", "expedicao", "cliente"];
@@ -129,7 +170,7 @@ export function comandaDe(pedido, loja, tipo = "completa") {
     cliente: c.nome ?? "", telefone: cozinha || tipo === "cliente" ? "" : c.whatsapp ?? "",
     modalidade: pedido.receber === "entrega" ? "ENTREGA" : "RETIRADA",
     endereco: cozinha ? "" : pedido.receber === "entrega" ? c.endereco ?? "" : "",
-    itens: pedido.itens.map((i) => ({ quantidade: i.quantidade, nome: i.nome, opcoes: opcoesAgrupadas(i.opcoes), observacao: i.observacao, ...(cozinha ? {} : { total: i.total }) })),
+    itens: pedido.itens.map((i) => ({ quantidade: i.quantidade, nome: i.nome, opcoes: opcoesAgrupadas(i.opcoes, i.variacao), observacao: i.observacao, ...(cozinha ? {} : { total: i.total }) })),
     observacao: c.observacao ?? "",
     ...(cozinha ? {} : { subtotal: pedido.subtotal, taxaEntrega: pedido.entrega?.valor ?? 0, desconto: pedido.desconto ?? 0, total: pedido.valorTotal, pagamento: pedido.pagamentoForma, situacaoPagamento: pedido.status === "approved" ? "PAGO" : pedido.status === "na_entrega" ? "COBRAR NA ENTREGA" : "PENDENTE" }),
   };

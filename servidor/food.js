@@ -2,7 +2,8 @@
 // Restaurante = conta em banco.lojas com segmento "food" (reaproveita cadastro, sessão, assinatura FOOD PRO e Mercado Pago).
 // Coleções: d.cardapio (itens), d.pedidos (origem "food"), d.acessos (cozinha/atendente/impressora), d.impressoes (fila).
 import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
-import { ATIVAS, ROTULO_SITUACAO, TIPOS_COMANDA, comandaDe, lerHorarios, lerItem, montarItens, podeMudar, situacaoLoja } from "./food-regras.js";
+import { ATIVAS, LIMITES, ROTULO_SITUACAO, TIPOS_COMANDA, comandaDe, horaLocal, lerGrupo, lerHorarios, lerItem, montarItens, moverEstoqueFood, podeMudar, situacaoLoja } from "./food-regras.js";
+import { disponivelEm, precoMinimo } from "../publico/food-preco.js";
 import { receberFotos, salvarFoto } from "./uploads.js";
 
 const reais = (n) => Math.round(Number(n) * 100) / 100;
@@ -78,11 +79,22 @@ export function instalarFood(app, ctx) {
     mexeu(loja.id);
     avisar(pedido, "loja:novo", loja.whatsapp, `🍽️ *Novo pedido #${pedido.numero}* no CITshop Food\n${pedido.itens.map((i) => `${i.quantidade}x ${i.nome}`).join("\n")}\nTotal ${pedido.valorTotal.toFixed(2).replace(".", ",")}\n${urlPublica}/cozinha`);
   }
+  // Estoque reservado na hora do pedido; volta se o pedido for cancelado, o pagamento falhar ou o checkout for abandonado.
+  function devolverEstoque(pedido) {
+    if (!pedido.consumo || pedido.estoqueDevolvido) return;
+    moverEstoqueFood(cardapioDa(pedido.lojaId), pedido.consumo, -1);
+    pedido.estoqueDevolvido = true;
+  }
+  const RESERVA_ONLINE = 30 * MIN;
+  function liberarReservasVencidas(lojaId) {
+    for (const p of pedidosFood(lojaId)) if (p.status === "criado" && !p.estoqueDevolvido && agora() - Date.parse(p.criadoEm) > RESERVA_ONLINE) { devolverEstoque(p); p.status = "expirado"; }
+  }
   function mudarSituacao(loja, pedido, para, quem) {
     const de = pedido.situacao;
     if (de === para) return null;
     if (["concluido", "cancelado"].includes(de)) return "Este pedido já foi encerrado.";
     pedido.situacao = para;
+    if (para === "cancelado") devolverEstoque(pedido);
     (pedido.historico ??= []).push({ em: iso(), campo: "situacao", de, para, por: quem });
     if (MSG_CLIENTE[para] && !(para === "pronto" && pedido.receber === "entrega")) {
       avisar(pedido, `cliente:${para}`, pedido.comprador?.whatsapp, `${loja.nome}: seu pedido #${pedido.numero} ${MSG_CLIENTE[para]}.\n${urlPublica}/alimentacao/${loja.slug}?pedido=${pedido.id}&t=${tokenAcompanhar(pedido.id)}`);
@@ -90,7 +102,11 @@ export function instalarFood(app, ctx) {
     mexeu(loja.id);
     return null;
   }
-  ctx.food = { aoAprovar: (loja, pedido) => { if (pedido.origem === "food") entrouNaCozinha(loja, pedido); } };
+  ctx.food = {
+    aoAprovar: (loja, pedido) => { if (pedido.origem === "food") entrouNaCozinha(loja, pedido); },
+    aoFalharPagamento: (loja, pedido) => { if (pedido.origem === "food") { devolverEstoque(pedido); mexeu(loja.id); } },
+  };
+  const quandoAgora = () => horaLocal(agora());
 
   // ---------- público: praça de alimentação ----------
   const taxaMinima = (l) => (freteAtivo(l) ? Math.min(...l.frete.faixas.map((f) => f.valor)) : l.food?.taxaEntrega ?? null);
@@ -109,7 +125,15 @@ export function instalarFood(app, ctx) {
   app.get("/api/food/restaurantes/:slug", (req, res) => {
     const l = restaurantesVisiveis().find((x) => x.slug === req.params.slug);
     if (!l) return erro(res, 404, "Restaurante não encontrado.");
-    const itens = cardapioDa(l.id).filter((i) => i.ativo).map(({ lojaId, criadoEm, atualizadoEm, ...i }) => ({ ...i, grupos: i.grupos.map((g) => ({ ...g, opcoes: g.opcoes.filter((o) => o.ativo !== false) })) }));
+    liberarReservasVencidas(l.id);
+    const q = quandoAgora();
+    // Só o que vale hoje e agora (cardápio do dia, horário); esgotado aparece marcado; nada de estoque exato nem modelo.
+    const itens = cardapioDa(l.id).filter((i) => i.ativo && disponivelEm({ ...i, horario: null }, q)).map(({ lojaId, criadoEm, atualizadoEm, modeloId, estoque, ...i }) => ({
+      ...i, esgotado: estoque === 0, foraDoHorario: !disponivelEm(i, q), aPartirDe: precoMinimo(i, q) / 100,
+      variacoes: (i.variacoes ?? []).filter((v) => v.ativo !== false),
+      grupos: i.grupos.filter((g) => g.ativo !== false).map((g) => ({ ...g, opcoes: g.opcoes.filter((o) => disponivelEm({ ...o, ativo: true }, q)) // opção do dia
+        .map(({ estoque: e, datas, ...o }) => ({ ...o, esgotado: o.ativo === false || e === 0 })) })),
+    }));
     res.set("Cache-Control", "no-cache").json({ restaurante: restaurantePublico(l), itens });
   });
 
@@ -139,7 +163,9 @@ export function instalarFood(app, ctx) {
     const f = loja.food ?? {}, s = situacaoLoja(f, agora());
     if (!s.aberto) return erro(res, 409, `${loja.nome} não está recebendo pedidos agora (${s.motivo.toLowerCase()}).`);
     if (f.maxSimultaneos && pedidosFood(loja.id).filter((p) => naCozinha(p) && ATIVAS.has(p.situacao)).length >= f.maxSimultaneos) return erro(res, 409, "O restaurante está com muitos pedidos agora. Tente em alguns minutos.");
-    const montado = montarItens(cardapioDa(loja.id), b.itens);
+    liberarReservasVencidas(loja.id);
+    const quando = quandoAgora();
+    const montado = montarItens(cardapioDa(loja.id), b.itens, quando);
     if (montado.erro) return erro(res, 400, montado.erro);
     const comprador = { nome: txt(b.comprador?.nome, 80), whatsapp: whatsapp(b.comprador?.whatsapp), observacao: txt(b.comprador?.observacao, 300), endereco: txt(b.comprador?.endereco, 200) };
     if (comprador.nome.length < 2) return erro(res, 400, "Informe seu nome.");
@@ -168,20 +194,23 @@ export function instalarFood(app, ctx) {
       id: `food-${randomUUID()}`, origem: "food", lojaId: loja.id, numero: f.ultimoNumero, itens: montado.itens, subtotal: montado.subtotal, entrega, valorTotal: total, receber, comprador,
       pagamentoForma, troco: pagamentoForma === "dinheiro" ? reais(Number(b.troco) || 0) || null : null,
       status: online ? "criado" : "na_entrega", situacao: "aguardando", historico: [], versaoComanda: 1, criadoEm: iso(),
+      consumo: montado.consumo, dataCardapio: quando.data,
       financeiro: { modelo: "food_pro", comissaoTotal: 0, unidades: montado.itens.reduce((s2, i) => s2 + i.quantidade, 0), valorTotal: total }, // FOOD PRO: nenhuma comissão
     };
     const acompanhar = `${urlPublica}/alimentacao/${loja.slug}?pedido=${pedido.id}&t=${tokenAcompanhar(pedido.id)}`;
     banco.d.pedidos ??= [];
+    moverEstoqueFood(cardapioDa(loja.id), montado.consumo, 1); // reserva no mesmo passo da conferência (sem corrida)
     if (online) {
-      const pref = await mp.criarPreferenciaSplit({
-        tokenVendedor: await tokenDaLoja(loja), titulo: `Pedido #${pedido.numero} · ${loja.nome}`, valor: total, referencia: pedido.id, taxaMarketplace: 0,
-        webhookUrl: `${urlPublica}/webhook/mercadopago?loja=${encodeURIComponent(loja.id)}`,
-        itens: [...pedido.itens.map((i) => ({ titulo: [i.nome, ...i.opcoes.map((o) => o.nome)].join(" · ").slice(0, 120), quantidade: i.quantidade, preco: i.unitario })),
-          ...(entrega?.valor ? [{ titulo: "Entrega", quantidade: 1, preco: entrega.valor }] : [])],
-        retornos: { success: acompanhar, pending: acompanhar, failure: acompanhar },
-      });
       banco.d.pedidos.push(pedido);
       banco.salvar();
+      let pref;
+      try { pref = await mp.criarPreferenciaSplit({
+        tokenVendedor: await tokenDaLoja(loja), titulo: `Pedido #${pedido.numero} · ${loja.nome}`, valor: total, referencia: pedido.id, taxaMarketplace: 0,
+        webhookUrl: `${urlPublica}/webhook/mercadopago?loja=${encodeURIComponent(loja.id)}`,
+        itens: [...pedido.itens.map((i) => ({ titulo: [i.nome, i.variacao?.nome, ...i.opcoes.map((o) => o.nome)].filter(Boolean).join(" · ").slice(0, 120), quantidade: i.quantidade, preco: i.unitario })),
+          ...(entrega?.valor ? [{ titulo: "Entrega", quantidade: 1, preco: entrega.valor }] : [])],
+        retornos: { success: acompanhar, pending: acompanhar, failure: acompanhar },
+      }); } catch (e) { devolverEstoque(pedido); pedido.status = "falhou"; banco.salvar(); throw e; }
       return res.json({ pedido: pedido.id, numero: pedido.numero, total, initPoint: pref.initPoint, acompanhar });
     }
     banco.d.pedidos.push(pedido);
@@ -202,7 +231,7 @@ export function instalarFood(app, ctx) {
     const visto = impressora && vistos.get(impressora.id);
     return {
       food: loja.food ?? {}, situacao: situacaoLoja(loja.food ?? {}, agora()), slug: loja.slug,
-      itens: cardapioDa(loja.id), pedidos: pedidosFood(loja.id).filter((p) => p.status !== "criado").slice(-150).reverse(),
+      itens: cardapioDa(loja.id), modelos: (banco.d.modelosFood ?? []).filter((m) => m.lojaId === loja.id), hoje: quandoAgora().data, pedidos: pedidosFood(loja.id).filter((p) => p.status !== "criado").slice(-150).reverse(),
       acessos: vivos.filter((x) => !x.revogadoEm).map(acessoPublico),
       impressao: { configurada: Boolean(impressora), online: Boolean(visto && agora() - visto < 2 * MIN), vistoEm: visto ? new Date(visto).toISOString() : null,
         pendentes: impressoes().filter((j) => j.lojaId === loja.id && ["pendente", "erro"].includes(j.status)).length },
@@ -264,6 +293,59 @@ export function instalarFood(app, ctx) {
     banco.salvar();
     res.json(painelFood(req.loja));
   }));
+  // ---------- cardápio do dia: copiar as datas de um dia para outro (itens e opções), para editar e publicar ----------
+  app.post("/api/food/painel/cardapio/copiar", exigirRest, (req, res) => {
+    const de = String(req.body?.de ?? ""), para = String(req.body?.para ?? "");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(de) || !/^\d{4}-\d{2}-\d{2}$/.test(para) || de === para) return erro(res, 400, "Escolha o dia de origem e o dia novo.");
+    let n = 0;
+    for (const i of cardapioDa(req.loja.id)) {
+      for (const x of [i, ...i.grupos.flatMap((g) => g.opcoes)]) if (x.datas?.includes(de) && !x.datas.includes(para)) { x.datas = [...x.datas, para].sort().slice(-LIMITES.datas); n++; }
+    }
+    banco.salvar();
+    res.json({ copiados: n, painel: painelFood(req.loja) });
+  });
+  // ---------- modelos de personalização (ex.: "Marmita tradicional"): aplicar copia os grupos para o produto ----------
+  // Editar um modelo NÃO muda produtos publicados, a não ser que o lojista peça (aplicarEmProdutos), e aí vale só para
+  // os produtos que vieram dele (modeloId). Ids de grupos e opções são mantidos pelo nome, então carrinhos abertos seguem válidos.
+  const modelos = () => (banco.d.modelosFood ??= []);
+  const lerModelo = (b) => {
+    const grupos = (Array.isArray(b?.grupos) ? b.grupos : []).slice(0, LIMITES.grupos).map(lerGrupo).filter((g) => g.nome && g.opcoes.length);
+    const nome = txt(b?.nome, 60);
+    return nome.length < 2 ? { erro: "Dê um nome ao modelo." } : !grupos.length ? { erro: "O modelo precisa de pelo menos um grupo com opções." } : { nome, grupos };
+  };
+  const mesclarIds = (novos, antigos) => novos.map((g) => {
+    const velho = antigos.find((x) => x.nome.toLowerCase() === g.nome.toLowerCase());
+    return velho ? { ...g, id: velho.id, opcoes: g.opcoes.map((o) => ({ ...o, id: velho.opcoes.find((x) => x.nome.toLowerCase() === o.nome.toLowerCase())?.id ?? o.id })) } : g;
+  });
+  app.post("/api/food/painel/modelos", exigirRest, (req, res) => {
+    const m = lerModelo(req.body);
+    if (m.erro) return erro(res, 400, m.erro);
+    if (modelos().filter((x) => x.lojaId === req.loja.id).length >= 50) return erro(res, 400, "Limite de 50 modelos.");
+    modelos().push({ id: randomBytes(4).toString("hex"), lojaId: req.loja.id, ...m, criadoEm: iso() });
+    banco.salvar();
+    res.status(201).json(painelFood(req.loja));
+  });
+  app.put("/api/food/painel/modelos/:id", exigirRest, (req, res) => {
+    const mod = modelos().find((x) => x.id === req.params.id && x.lojaId === req.loja.id);
+    if (!mod) return erro(res, 404, "Modelo não encontrado.");
+    const m = lerModelo(req.body);
+    if (m.erro) return erro(res, 400, m.erro);
+    Object.assign(mod, { nome: m.nome, grupos: mesclarIds(m.grupos, mod.grupos), atualizadoEm: iso() });
+    let aplicados = 0;
+    if (req.body?.aplicarEmProdutos === true) {
+      for (const i of cardapioDa(req.loja.id).filter((x) => x.modeloId === mod.id)) { i.grupos = mesclarIds(mod.grupos, i.grupos); i.atualizadoEm = iso(); aplicados++; }
+    }
+    banco.salvar();
+    res.json({ aplicados, painel: painelFood(req.loja) });
+  });
+  app.delete("/api/food/painel/modelos/:id", exigirRest, (req, res) => {
+    const i = modelos().findIndex((x) => x.id === req.params.id && x.lojaId === req.loja.id);
+    if (i < 0) return erro(res, 404, "Modelo não encontrado.");
+    modelos().splice(i, 1); // produtos que usaram continuam com a cópia dos grupos
+    banco.salvar();
+    res.json(painelFood(req.loja));
+  });
+
   const pedidoDaLoja = (req) => pedidosFood(req.loja.id).find((p) => p.id === req.params.id);
   app.patch("/api/food/painel/pedidos/:id", exigirRest, (req, res) => mudarPelaTela(req, res));
   app.post("/api/food/painel/pedidos/:id/imprimir", exigirRest, (req, res) => {
