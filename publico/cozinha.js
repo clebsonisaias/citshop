@@ -27,6 +27,7 @@
       }
     } catch { /* sem áudio */ }
   }
+  const agrupar = (ops) => [...ops.reduce((m, o) => m.set(o.grupo, [...(m.get(o.grupo) ?? []), o.nome]), new Map())].map(([g, n]) => `${g}: ${n.join(', ')}`);
   const minutos = (iso) => Math.floor((Date.now() - Date.parse(iso)) / 60000);
   const brl = (n) => Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -50,7 +51,7 @@
     return `<article class="kds-card s-${esc(p.situacao)}${atrasado ? ' atrasado' : ''}" aria-label="Pedido ${p.numero}">
       <header><b class="kds-num">#${p.numero}</b><span class="kds-sit">${ROTULO[p.situacao]}</span><span class="kds-tempo">${min} min${atrasado ? ' · atrasado' : ''}</span></header>
       <p class="kds-meta">${esc(p.comprador?.nome)} · ${p.receber === 'entrega' ? 'Entrega' : 'Retirada'} · ${pago} · ${new Date(p.criadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
-      <ul class="kds-itens">${itens.map((i) => `<li><b>${i.quantidade}x</b> ${esc(i.nome)}${i.opcoes.length ? `<small>${i.opcoes.map((o) => esc(`${o.grupo}: ${o.nome}`)).join(' · ')}</small>` : ''}${i.observacao ? `<em class="kds-obs">⚠ ${esc(i.observacao)}</em>` : ''}</li>`).join('')}</ul>
+      <ul class="kds-itens">${itens.map((i) => `<li><b>${i.quantidade}x</b> ${esc(i.nome)}${i.opcoes.length ? `<small>${agrupar(i.opcoes).map(esc).join(' · ')}</small>` : ''}${i.observacao ? `<em class="kds-obs">⚠ ${esc(i.observacao)}</em>` : ''}</li>`).join('')}</ul>
       ${p.comprador?.observacao ? `<p class="kds-obs">⚠ ${esc(p.comprador.observacao)}</p>` : ''}
       ${dados.papel !== 'cozinha' ? `<p class="kds-meta">Total ${brl(p.valorTotal)}</p>` : ''}
       <div class="kds-botoes">${acoes(p)}</div></article>`;

@@ -1040,3 +1040,5 @@ body.kds { background: #0f1416; color: #f2f5f5; min-height: 100dvh; margin: 0; }
 .rest-codigo b { font-size: 24px; letter-spacing: 2px; }
 .rest-foto { cursor: pointer; }
 .rest .lista-adm h3 { margin: 16px 0 6px; }
+.food-topo-link { color: #fff; font-weight: 700; text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; padding: 0 4px; }
+.food-topo-link:hover { text-decoration: underline; }

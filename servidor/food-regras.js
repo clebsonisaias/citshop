@@ -116,6 +116,9 @@ export function montarItens(cardapioDaLoja, pedidos) {
   return { itens: linhas, subtotal: reais(linhas.reduce((s, l) => s + l.total, 0)) };
 }
 
+/** Opções agrupadas para leitura: ["Tamanho: Grande", "Sabores: Calabresa, Frango"]. */
+export const opcoesAgrupadas = (opcoes = []) => [...opcoes.reduce((m, o) => m.set(o.grupo, [...(m.get(o.grupo) ?? []), o.nome]), new Map())].map(([g, n]) => `${g}: ${n.join(", ")}`);
+
 // ---------- comanda (dados; o CITshop Print transforma em ESC/POS) ----------
 export const TIPOS_COMANDA = ["completa", "cozinha", "expedicao", "cliente"];
 /** Comanda sem dado desnecessário: a de cozinha não leva valores, telefone nem endereço. */
@@ -126,7 +129,7 @@ export function comandaDe(pedido, loja, tipo = "completa") {
     cliente: c.nome ?? "", telefone: cozinha || tipo === "cliente" ? "" : c.whatsapp ?? "",
     modalidade: pedido.receber === "entrega" ? "ENTREGA" : "RETIRADA",
     endereco: cozinha ? "" : pedido.receber === "entrega" ? c.endereco ?? "" : "",
-    itens: pedido.itens.map((i) => ({ quantidade: i.quantidade, nome: i.nome, opcoes: i.opcoes.map((o) => `${o.grupo}: ${o.nome}`), observacao: i.observacao, ...(cozinha ? {} : { total: i.total }) })),
+    itens: pedido.itens.map((i) => ({ quantidade: i.quantidade, nome: i.nome, opcoes: opcoesAgrupadas(i.opcoes), observacao: i.observacao, ...(cozinha ? {} : { total: i.total }) })),
     observacao: c.observacao ?? "",
     ...(cozinha ? {} : { subtotal: pedido.subtotal, taxaEntrega: pedido.entrega?.valor ?? 0, desconto: pedido.desconto ?? 0, total: pedido.valorTotal, pagamento: pedido.pagamentoForma, situacaoPagamento: pedido.status === "approved" ? "PAGO" : pedido.status === "na_entrega" ? "COBRAR NA ENTREGA" : "PENDENTE" }),
   };
