@@ -37,6 +37,58 @@ export function criarMercadoPago({ token, fetchImpl = fetch }) {
       const d = await mp(`/preapproval/${encodeURIComponent(id)}`);
       return { id: d.id, status: d.status, externalReference: d.external_reference ?? null };
     },
+    /**
+     * Cria preferência de Checkout com Split do Mercado Pago.
+     * O marketplace retém a comissão fixa (ex: R$ 1,00) e o restante vai para a conta da loja.
+     */
+    async criarPreferenciaSplit({ titulo, valor, referencia, taxaMarketplace = 1.00, retorno, webhookUrl, sellerCollectorId = null }) {
+      const payload = {
+        items: [
+          {
+            title: titulo,
+            quantity: 1,
+            currency_id: "BRL",
+            unit_price: Number(valor),
+          },
+        ],
+        marketplace_fee: Number(taxaMarketplace),
+        external_reference: referencia,
+        back_urls: retorno ? { success: retorno, failure: retorno, pending: retorno } : undefined,
+        auto_return: retorno ? "approved" : undefined,
+        notification_url: webhookUrl,
+      };
+      if (sellerCollectorId) payload.sponsor_id = Number(sellerCollectorId);
+
+      const d = await mp("/checkout/preferences", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      return { id: d.id, initPoint: d.init_point };
+    },
+    async criarPixSplit({ titulo, valor, referencia, taxaMarketplace = 1.00, emailComprador, webhookUrl, sellerCollectorId = null }) {
+      const payload = {
+        transaction_amount: Number(valor),
+        description: titulo,
+        payment_method_id: "pix",
+        payer: { email: emailComprador || "cliente@citmax.com.br" },
+        application_fee: Number(taxaMarketplace),
+        external_reference: referencia,
+        notification_url: webhookUrl,
+      };
+      if (sellerCollectorId) payload.sponsor_id = Number(sellerCollectorId);
+
+      const d = await mp("/v1/payments", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      return {
+        id: d.id,
+        status: d.status,
+        qrCode: d.point_of_interaction?.transaction_data?.qr_code,
+        qrCodeBase64: d.point_of_interaction?.transaction_data?.qr_code_base64,
+        ticketUrl: d.point_of_interaction?.transaction_data?.ticket_url,
+      };
+    },
   };
 }
 

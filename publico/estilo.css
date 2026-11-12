@@ -224,6 +224,7 @@ footer.site a:hover { text-decoration: underline; }
 .status { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
 .pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 99px; padding: 4px 10px; font-weight: 700; font-size: 12px; }
 .pill.teste, .pill.ativa { background: color-mix(in oklab, #00C896 20%, var(--surface)); color: var(--good); }
+.pill.parceira { background: color-mix(in oklab, #8E44AD 18%, var(--surface)); color: #8E44AD; }
 .pill.vencida, .pill.suspensa { background: color-mix(in oklab, var(--hot) 16%, var(--surface)); color: var(--hot); }
 .lista { display: grid; gap: 10px; }
 .item { display: grid; grid-template-columns: 64px 1fr auto; gap: 12px; align-items: center; border: 1px solid var(--line); border-radius: 12px; padding: 10px; background: var(--surface); }

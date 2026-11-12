@@ -2,7 +2,7 @@
 (() => {
   const { esc, brl } = window.CIT;
   const $ = (id) => document.getElementById(id);
-  const ROTULO = { teste: 'Teste grátis', ativa: 'Pagante', vencida: 'Vencida', suspensa: 'Suspensa' };
+  const ROTULO = { teste: 'Teste grátis', ativa: 'Pagante (R$ 49/mês)', vencida: 'Vencida', suspensa: 'Suspensa', parceira: 'Parceira (R$ 1/venda)' };
   const DISPONIBILIDADE = { disponivel: 'Disponível', 'sob-encomenda': 'Sob encomenda', consulte: 'Consultar disponibilidade' };
   let lojas = [];
 
@@ -16,16 +16,17 @@
 
   function render() {
     const conta = (s) => lojas.filter((l) => l.status === s).length;
-    $('resumo').textContent = `${lojas.length} lojas · ${conta('ativa')} pagantes · ${conta('teste')} em teste · ${conta('vencida')} vencidas · ${conta('suspensa')} suspensas`;
+    $('resumo').textContent = `${lojas.length} lojas · ${conta('parceira')} parceiras · ${conta('ativa')} pagantes · ${conta('teste')} em teste · ${conta('vencida')} vencidas · ${conta('suspensa')} suspensas`;
     $('linhas').innerHTML = lojas.map((l) => `<tr>
-      <td><b>${esc(l.nome)}</b><br><small class="note">${esc(l.cidade)} · desde ${data(l.criadaEm)}</small><br><a href="/loja/${esc(l.slug)}" target="_blank">ver página</a></td>
+      <td><b>${esc(l.nome)}</b><br><small class="note">${esc(l.cidade)} · desde ${data(l.criadaEm)}</small><br><a href="/${esc(l.slug)}" target="_blank">ver página /${esc(l.slug)}</a></td>
       <td>${esc(l.responsavel)}<br>${esc(l.email)}<br><a href="https://wa.me/${esc(l.whatsapp)}" target="_blank" rel="noopener">${esc(l.whatsapp)}</a></td>
-      <td><span class="pill ${l.status}">${ROTULO[l.status]}</span><br><small class="note">teste até ${data(l.testeAte)}<br>MP: ${esc(l.assinatura?.status ?? 'nenhuma')}<br>${l.cliquesContatoLoja ?? 0} cliques no WhatsApp da loja</small></td>
+      <td><span class="pill ${l.status}">${ROTULO[l.status] || esc(l.status)}</span><br><small class="note">${l.modeloCobranca === 'comissao_fixa' ? 'Cobrança: R$ ' + (l.comissaoPorVenda || 1).toFixed(2) + ' por venda (Split MP)' : 'Cobrança: Mensalidade R$ 49/mês'}<br>teste até ${data(l.testeAte)}<br>MP: ${esc(l.assinatura?.status ?? 'nenhuma')}<br>${l.cliquesContatoLoja ?? 0} cliques no WhatsApp</small></td>
       <td>${l.produtos.map((p) => `<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
           <img src="${esc(p.foto)}" alt="" style="width:32px;height:32px;object-fit:cover;border-radius:6px">
           <span style="flex:1">${esc(p.nome)} · ${brl.format(p.preco)}<br><small class="note">${esc(DISPONIBILIDADE[p.disponibilidade] ?? DISPONIBILIDADE.consulte)} · ${p.cliquesContato ?? 0} cliques WhatsApp${p.ativo ? '' : ' · pausado'}</small></span>
           <button class="btn sec" style="min-height:32px;padding:4px 8px;font-size:11px" data-bloq="${p.id}" data-v="${!p.bloqueado}">${p.bloqueado ? 'Mostrar' : 'Ocultar'}</button></div>`).join('') || '<small class="note">nenhum</small>'}</td>
       <td style="display:grid;gap:6px">
+        <button class="btn sec" data-modelo="${l.id}" data-atual="${l.modeloCobranca || 'mensalidade'}">${l.modeloCobranca === 'comissao_fixa' ? 'Mudar p/ Mensalidade' : 'Mudar p/ Parceira (R$ 1/venda)'}</button>
         <button class="btn sec" data-susp="${l.id}" data-v="${!l.suspensa}">${l.suspensa ? 'Reativar' : 'Suspender'}</button>
         <button class="btn sec" data-senha="${l.id}">Senha provisória</button>
         <button class="btn perigo" data-excluir="${l.id}">Excluir loja</button></td></tr>`).join('');
@@ -36,6 +37,10 @@
     const b = e.target.closest('button');
     if (!b) return;
     try {
+      if (b.dataset.modelo) {
+        const novo = b.dataset.atual === 'comissao_fixa' ? 'mensalidade' : 'comissao_fixa';
+        await api(`/api/admin/lojas/${b.dataset.modelo}/modelo-cobranca`, 'PUT', { modeloCobranca: novo, comissaoPorVenda: 1.00 });
+      }
       if (b.dataset.susp) await api(`/api/admin/lojas/${b.dataset.susp}/suspensa`, 'POST', { suspensa: b.dataset.v === 'true' });
       if (b.dataset.bloq) await api(`/api/admin/produtos/${b.dataset.bloq}/bloqueado`, 'POST', { bloqueado: b.dataset.v === 'true' });
       if (b.dataset.excluir) {

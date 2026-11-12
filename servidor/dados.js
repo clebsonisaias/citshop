@@ -19,6 +19,7 @@ export class Banco {
   get produtos() { return this.d.produtos; }
   loja(id) { return this.lojas.find((l) => l.id === id); }
   lojaPorEmail(email) { return this.lojas.find((l) => l.email === email); }
+  lojaPorSlug(slug) { return this.lojas.find((l) => l.slug === slug); }
   produto(id) { return this.produtos.find((p) => p.id === id); }
   cliquesContato(chave) { return this.d.metricasContato?.[chave]?.total ?? 0; }
   registrarCliqueContato(chave, em) {
@@ -35,14 +36,16 @@ export class Banco {
   }
 }
 
-/** Regra única de cobrança: loja aparece se não está suspensa e está no teste ou com assinatura autorizada. */
+/** Regra de cobrança: loja aparece se não está suspensa e (é parceira de comissão fixa, está no teste ou tem assinatura ativa). */
 export function lojaVisivel(loja, agora = Date.now()) {
   if (!loja || loja.suspensa) return false;
+  if (loja.modeloCobranca === "comissao_fixa") return true;
   return agora <= Date.parse(loja.testeAte) || loja.assinatura?.status === "authorized";
 }
 
 export function statusLoja(loja, agora = Date.now()) {
   if (loja.suspensa) return "suspensa";
+  if (loja.modeloCobranca === "comissao_fixa") return "parceira";
   if (loja.assinatura?.status === "authorized") return "ativa";
   return agora <= Date.parse(loja.testeAte) ? "teste" : "vencida";
 }

@@ -149,7 +149,8 @@ import { filtrarCatalogo } from './catalogo.js';
     showResults('Produtos da loja', P.filter((x) => x.lojaSlug === slug),
       window.CIT.cabecalhoLoja(l, `<a class="btn" href="${zap}" target="_blank" rel="noopener">Falar no WhatsApp</a>`));
     document.title = `${l.nome} · CIT Shopping`;
-    if (location.pathname !== `/loja/${slug}`) history.pushState(null, '', `/loja/${slug}`);
+    const targetUrl = location.pathname === `/${slug}` ? `/${slug}` : `/loja/${slug}`;
+    if (location.pathname !== targetUrl) history.pushState(null, '', targetUrl);
   }
 
   // Black Friday: página própria (/black-friday) com contagem regressiva e o que tem desconto ou baixou de preço.
@@ -318,9 +319,20 @@ import { filtrarCatalogo } from './catalogo.js';
   }
 
   function rota() {
-    const m = location.pathname.match(/^\/loja\/([a-z0-9-]+)/);
-    if (m) bySeller(m[1]);
-    if (location.pathname === '/black-friday') blackFriday();
+    const mLoja = location.pathname.match(/^\/loja\/([a-z0-9-]+)/i);
+    if (mLoja) return bySeller(mLoja[1].toLowerCase());
+
+    const mDireto = location.pathname.match(/^\/([a-z0-9-]+)$/i);
+    if (mDireto) {
+      const slug = mDireto[1].toLowerCase();
+      const reservados = ['black-friday', 'bio', 'admin', 'painel', 'termos', 'privacidade'];
+      if (!reservados.includes(slug)) {
+        const lojaEncontrada = LOJAS.find((l) => l.slug === slug);
+        if (lojaEncontrada) return bySeller(slug);
+      }
+    }
+
+    if (location.pathname === '/black-friday') return blackFriday();
     // /p/<id> é o link novo; #p-<id> continua valendo para links antigos já compartilhados.
     const h = location.pathname.match(/^\/p\/(.+)$/) ?? location.hash.match(/^#p-(.+)$/);
     const x = h && P.find((p) => p.id === decodeURIComponent(h[1]));

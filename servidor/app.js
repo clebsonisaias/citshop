@@ -218,13 +218,17 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     slug: l.slug, nome: l.nome, cidade: l.cidade, categoria: l.categoria, whatsapp: l.whatsapp, desde: l.criadaEm,
     logo: l.logo ?? null, cor: l.cor ?? null, sobre: l.sobre ?? "", entrega: l.entrega ?? null,
     horario: l.horario ?? "", bairrosAtendidos: l.bairrosAtendidos ?? "", prazoEntrega: l.prazoEntrega ?? "",
+    modeloCobranca: l.modeloCobranca ?? "mensalidade",
   });
   const produtoLocal = (p, l) => ({
     id: `l-${p.id}`, nome: p.nome, descricao: p.descricao, dept: p.dept, loja: "local",
+    lojaId: l.id,
     lojaSlug: l.slug, lojaNome: l.nome, lojaLogo: l.logo ?? null, cidade: l.cidade, whatsapp: l.whatsapp,
     preco: p.preco, precoAntigo: p.precoAntigo, fotos: p.fotos, nota: 0, vendidos: 0, entrega: l.entrega ?? null,
     disponibilidade: p.disponibilidade ?? "consulte", horario: l.horario ?? "",
     bairrosAtendidos: l.bairrosAtendidos ?? "", prazoEntrega: l.prazoEntrega ?? "",
+    modeloCobranca: l.modeloCobranca ?? "mensalidade",
+    comissaoPorVenda: l.comissaoPorVenda ?? 1.00,
   });
   const produtoAfiliado = (x) => ({
     id: x.id, nome: x.nome, dept: DEPTS.includes(x.categoria) ? x.categoria : "casa", loja: x.loja,
@@ -485,6 +489,63 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     res.json({ url: pa.initPoint });
   }));
 
+  // Pagamento com Split Mercado Pago (para lojas parceiras com taxa fixa de R$ 1,00 para CIT Shopping)
+  app.post("/api/pagamento/split", express.json(), a(async (req, res) => {
+    const { produtoId, quantidade = 1, emailComprador, metodo = "checkout_pro" } = req.body;
+    const prod = vitrine().produtos.find((p) => p.id === produtoId);
+    if (!prod || prod.loja !== "local") return erro(res, 404, "Produto não encontrado.");
+    const loja = banco.loja(prod.lojaId);
+    if (!loja) return erro(res, 404, "Loja não encontrada.");
+
+    const valorUnitario = Number(prod.preco);
+    const qtd = Math.max(1, Number(quantidade) || 1);
+    const valorTotal = Math.round(valorUnitario * qtd * 100) / 100;
+    const taxaMarketplace = loja.modeloCobranca === "comissao_fixa" ? (loja.comissaoPorVenda ?? 1.00) : 0;
+
+    const referencia = `venda-${loja.slug}-${Date.now()}`;
+    const titulo = `${prod.nome} · ${loja.nome}`;
+
+    if (!mp.configurado) {
+      return res.json({
+        ok: true,
+        mock: true,
+        initPoint: `https://mp.test/checkout-split?ref=${referencia}&fee=${taxaMarketplace}`,
+        referencia,
+        taxaMarketplace,
+        valorTotal,
+      });
+    }
+
+    try {
+      if (metodo === "pix") {
+        const pix = await mp.criarPixSplit({
+          titulo,
+          valor: valorTotal,
+          referencia,
+          taxaMarketplace,
+          emailComprador,
+          webhookUrl: `${urlPublica}/webhook/mercadopago`,
+          sellerCollectorId: loja.mpCollectorId,
+        });
+        return res.json({ ok: true, pix, taxaMarketplace, valorTotal });
+      }
+
+      const pref = await mp.criarPreferenciaSplit({
+        titulo,
+        valor: valorTotal,
+        referencia,
+        taxaMarketplace,
+        retorno: `${urlPublica}/${loja.slug}?compra=sucesso`,
+        webhookUrl: `${urlPublica}/webhook/mercadopago`,
+        sellerCollectorId: loja.mpCollectorId,
+      });
+      res.json({ ok: true, initPoint: pref.initPoint, taxaMarketplace, valorTotal });
+    } catch (e) {
+      log.error?.(`[split-mp] Falha ao criar split: ${e.message}`);
+      erro(res, 500, `Falha ao gerar pagamento com split: ${e.message}`);
+    }
+  }));
+
   // Relê no MP o status de toda assinatura conhecida. Roda a cada 6h (servidor.js) e cobre o caso
   // de o token ser compartilhado com outro sistema cujo webhook não aponta para cá.
   async function sincronizarAssinaturas() {
@@ -563,6 +624,15 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     req.loja.senhaHash = S.gerarHashSenha(senha);
     banco.salvar();
     res.json({ senha });
+  });
+  app.put("/api/admin/lojas/:id/modelo-cobranca", exigirAdmin, lojaAdmin, express.json(), (req, res) => {
+    const { modeloCobranca, comissaoPorVenda, mpCollectorId } = req.body || {};
+    req.loja.modeloCobranca = modeloCobranca === "comissao_fixa" ? "comissao_fixa" : "mensalidade";
+    if (comissaoPorVenda !== undefined) req.loja.comissaoPorVenda = Number(comissaoPorVenda) || 1.00;
+    if (mpCollectorId !== undefined) req.loja.mpCollectorId = String(mpCollectorId || "").trim() || null;
+    req.loja.atualizadaEm = iso();
+    banco.salvar();
+    res.json({ ok: true, loja: req.loja });
   });
   // Exclusão a pedido da loja (prometida nos termos): some a loja, os produtos e as fotos.
   app.delete("/api/admin/lojas/:id", exigirAdmin, lojaAdmin, a(async (req, res) => {
@@ -881,6 +951,19 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   app.use(express.static(publico, { extensions: ["html"], setHeaders: semCache }));
   app.get("/loja/:slug", (req, res) => { semCache(res); res.sendFile(join(publico, "index.html")); });
   app.get("/black-friday", (req, res) => { semCache(res); res.sendFile(join(publico, "index.html")); });
+
+  // Rota direta da loja (ex: /mimosdadelly)
+  app.get("/:slug", (req, res, next) => {
+    const slug = String(req.params.slug || "").toLowerCase();
+    const rotasReservadas = new Set(["api", "bio", "admin", "painel", "contato", "p", "og", "uploads", "webhook", "black-friday", "termos", "privacidade", "sitemap.xml", "robots.txt"]);
+    if (rotasReservadas.has(slug)) return next();
+    const loja = banco.lojas.find((l) => l.slug === slug);
+    if (loja && lojaVisivel(loja, agora())) {
+      semCache(res);
+      return res.sendFile(join(publico, "index.html"));
+    }
+    next();
+  });
 
   // Mapa do site XML dinâmico (Sitemap) para o Google e motores de IA
   app.get("/sitemap.xml", (req, res) => {
