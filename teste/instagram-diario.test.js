@@ -85,6 +85,13 @@ test("token: de Página passa direto; de usuário vira longo e de Página; invá
   }) });
   assert.deepEqual(r, { token: "PAGINA", expiraEm: null, tipo: "PAGE" });
   await assert.rejects(prepararToken({ token: "X", accountId: "17", graph, fetchImpl: fake({ debug_token: { data: { is_valid: false } } }) }), /não é válido/);
+  // Sem App Secret: ainda pega o token da Página a partir do token colado (ex.: o de 60 dias do "Estender")
+  const semSegredo = await prepararToken({ token: "LONGO60", accountId: "17", graph, fetchImpl: fake({
+    "input_token=LONGO60": { data: { is_valid: true, type: "USER", app_id: "99", expires_at: 1768000000 } },
+    "me/accounts": { data: [{ access_token: "PAGINA2", instagram_business_account: { id: "17" } }] },
+    "input_token=PAGINA2": { data: { is_valid: true, type: "PAGE", expires_at: 0 } },
+  }) });
+  assert.deepEqual(semSegredo, { token: "PAGINA2", expiraEm: null, tipo: "PAGE" });
   assert.deepEqual(semSegredos({ instagram: { accessToken: "EAAabcd1234", accountId: "17" }, telegram: { botToken: "123:xyz9" } }), { instagram: { accessToken: "••••1234", accountId: "17" }, telegram: { botToken: "••••xyz9" } });
 });
 

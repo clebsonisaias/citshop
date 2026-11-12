@@ -80,8 +80,12 @@ export async function prepararToken({ token, accountId, appSecret, fetchImpl = f
   const i = await info(token);
   if (i.is_valid === false) throw new Error("Este token não é válido (vencido ou revogado). Gere outro na Meta.");
   const expira = (x) => (x.expires_at ? new Date(x.expires_at * 1000).toISOString() : null);
-  if (i.type === "PAGE" || !i.expires_at || !appSecret || !i.app_id) return { token, expiraEm: expira(i), tipo: i.type ?? "desconhecido" };
-  const longo = (await get(`${graph}/oauth/access_token?grant_type=fb_exchange_token&client_id=${encodeURIComponent(i.app_id)}&client_secret=${encodeURIComponent(appSecret)}&fb_exchange_token=${encodeURIComponent(token)}`)).access_token;
+  if (i.type === "PAGE" || !i.expires_at) return { token, expiraEm: expira(i), tipo: i.type ?? "desconhecido" };
+  // Com o App Secret, troca por token longo (60 dias). Sem ele, segue com o token colado (o "Estender" do depurador da
+  // Meta já dá um de 60 dias). Em seguida pega o token da Página: vindo de um token longo, ele não vence.
+  const longo = appSecret && i.app_id
+    ? (await get(`${graph}/oauth/access_token?grant_type=fb_exchange_token&client_id=${encodeURIComponent(i.app_id)}&client_secret=${encodeURIComponent(appSecret)}&fb_exchange_token=${encodeURIComponent(token)}`)).access_token
+    : token;
   if (!longo) throw new Error("A Meta não devolveu o token longo.");
   try {
     const paginas = (await get(`${graph}/me/accounts?fields=access_token,instagram_business_account&access_token=${encodeURIComponent(longo)}`)).data ?? [];
