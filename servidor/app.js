@@ -1630,7 +1630,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   async function atualizarCampanhasShopee() {
     const c = conectorShopee();
     if (!c?.estaConfigurado?.()) return 0;
-    const campanhas = filtrarCampanhas(await c.buscarCampanhas({ limite: 100 }), agora());
+    const campanhas = filtrarCampanhas(await c.buscarCampanhas({ limite: 50 }), agora());
     const arq = join(dadosDir, "campanhas.json");
     writeFileSync(`${arq}.tmp`, JSON.stringify({ atualizadoEm: iso(), campanhas }));
     renameSync(`${arq}.tmp`, arq);

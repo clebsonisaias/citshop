@@ -86,3 +86,4 @@ As duas primeiras correções mudam o que é publicado. Por isso ficam para apro
   A ordem é das que acabam primeiro; no máximo 16. Vencidas saem na hora da leitura.
 - **Home:** faixa "Campanhas Shopee" com imagem, nome e "Termina em…". O link não vai para a página: o clique passa por `/ir/campanha-…?c=site` (conta o clique e marca o canal, se a API devolver `originalLink`).
 - **Ressalva:** os nomes dos campos vêm de documentação não oficial. Se a API recusar algum, o conector tenta de novo só com o essencial (nome, imagem, link e período).
+- **Limite real da API:** 50 itens por página no `shopeeOfferV2` (a documentação não oficial dizia 500; a API real recusou com o erro 11001).

@@ -490,7 +490,7 @@ export class ConectorShopee extends ConectorMarketplace {
    */
   async buscarCampanhas({ limite = 50 } = {}) {
     if (!this.estaConfigurado()) return [];
-    const consulta = (campos) => `{ shopeeOfferV2(sortType: 2, page: 1, limit: ${Math.min(500, limite)}) { nodes { ${campos} } } }`;
+    const consulta = (campos) => `{ shopeeOfferV2(sortType: 2, page: 1, limit: ${Math.min(50, limite)}) { nodes { ${campos} } } }`; // máximo da API real: 50 por página
     let dados;
     try { dados = await this.chamarGraphQL(consulta("offerName imageUrl offerLink originalLink commissionRate periodStartTime periodEndTime offerType collectionId categoryId")); }
     catch { dados = await this.chamarGraphQL(consulta("offerName imageUrl offerLink periodStartTime periodEndTime")); }
