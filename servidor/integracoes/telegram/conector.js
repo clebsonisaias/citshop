@@ -1,5 +1,5 @@
 /**
- * Conector oficial da Telegram Bot API para canais e grupos de ofertas do CITshop.
+ * Conector oficial da Telegram Bot API para canais e grupos de ofertas do CIT Shopping.
  * Despacha fotos, legendas formatadas e botões inline interativos com link de afiliado.
  */
 
@@ -31,7 +31,7 @@ export class ConectorTelegram {
       : null;
     const descPct = temDesconto ? Math.round(((produto.precoAntigo - produto.preco) / produto.precoAntigo) * 100) : 0;
     const ehLocal = produto.loja === "local" || String(produto.id).startsWith("l-");
-    const linkCITshop = `${urlPublica}/p/${encodeURIComponent(produto.id)}`;
+    const linkCITShopping = `${urlPublica}/p/${encodeURIComponent(produto.id)}`;
 
     const escapeHTML = (s = "") => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const nomeLimpo = escapeHTML(produto.nome);
@@ -48,7 +48,7 @@ export class ConectorTelegram {
         temDesconto ? `🏷️ De <s>${precoAntigo}</s> por <b>${precoFormatado}</b> 🔥 (<b>${descPct}% OFF</b>)` : `💰 Preço: <b>${precoFormatado}</b>`,
         "",
         `👉 <i>Escolha o tamanho e cor no site e peça no WhatsApp da loja:</i>`,
-        `<a href="${linkCITshop}">${linkCITshop}</a>`,
+        `<a href="${linkCITShopping}">${linkCITShopping}</a>`,
       ].join("\n");
     }
 
@@ -90,7 +90,7 @@ export class ConectorTelegram {
     if (produto.loja === "local" || String(produto.id).startsWith("l-")) {
       botoes[0][0].text = "📲 Pedir no WhatsApp da Loja ↗";
     } else {
-      botoes.push([{ text: "🔍 Ver Detalhes no CITshop", url: linkDetalhes }]);
+      botoes.push([{ text: "🔍 Ver Detalhes no CIT Shopping", url: linkDetalhes }]);
     }
 
     const replyMarkup = { inline_keyboard: botoes };

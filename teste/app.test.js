@@ -114,7 +114,7 @@ test("loja se cadastra, publica com foto, aparece antes dos afiliados, some ao v
   const pagina = await req(`/p/${v.produtos[0].id}`);
   assert.equal(pagina.status, 200);
   const html = await pagina.text();
-  assert.match(html, /<meta property="og:title" content="Vestido midi · CITshop">/);
+  assert.match(html, /<meta property="og:title" content="Vestido midi · CIT Shopping">/);
   assert.match(html, /<link rel="canonical" href="http:\/\/localhost:3000\/p\/l-[^"]+">/);
   assert.match(html, /<h1>Vestido midi<\/h1>/);
   assert.match(html, /Pedir pelo WhatsApp da loja/);

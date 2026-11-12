@@ -27,7 +27,7 @@ header.site { position: sticky; top: 0; z-index: 20; background: var(--deep); co
 .bar { display: grid; grid-template-columns: auto 1fr auto; gap: 20px; align-items: center; padding-block: 14px; }
 .logo { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 26px; letter-spacing: -0.03em; text-decoration: none; color: var(--on-deep); }
 .logo i { width: 26px; height: 30px; background: var(--mint); clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
-.logo span { color: var(--mint-texto); font-size: 18px; font-weight: 700; margin-left: -6px; align-self: flex-end; }
+.logo span { color: var(--mint-texto); font-size: 18px; font-weight: 700; margin-left: 2px; align-self: flex-end; }
 .search { display: flex; background: #FFFFFF; border-radius: 12px; overflow: hidden; min-width: 0; }
 .search select { border: 0; background: #E9F3F2; color: #0B2E35; padding: 0 10px; font-size: 13px; font-weight: 600; max-width: 150px; }
 .search input { flex: 1; min-width: 0; border: 0; padding: 13px 14px; color: #0B2E35; background: #FFFFFF; }

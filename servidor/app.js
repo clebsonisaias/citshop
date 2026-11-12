@@ -1,5 +1,5 @@
 /**
- * CITshop: vitrine pública (afiliados + lojas locais), painel das lojas,
+ * CIT Shopping: vitrine pública (afiliados + lojas locais), painel das lojas,
  * assinatura Mercado Pago e administração. `criarApp` recebe env e relógio
  * para os testes rodarem com pasta temporária e tempo controlado.
  */
@@ -281,7 +281,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     if (obs) detalhes.push(`▫️ *Obs:* ${obs}`);
 
     const linhas = [
-      "Olá! Vi o produto no CITshop e tenho interesse em pedir:",
+      "Olá! Vi o produto no CIT Shopping e tenho interesse em pedir:",
       `🛍️ *${x.nome}* (${precoFormatado})`,
     ];
     if (detalhes.length) {
@@ -298,7 +298,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     if (!loja) return res.status(404).sendFile(join(publico, "404.html"));
     banco.registrarCliqueContato(`loja:${loja.id}`, iso());
     const pagina = `${urlPublica}/loja/${encodeURIComponent(loja.slug)}`;
-    const mensagem = `Olá! Encontrei sua loja na CITshop. ${pagina}`;
+    const mensagem = `Olá! Encontrei sua loja na CIT Shopping. ${pagina}`;
     const destino = `https://wa.me/${encodeURIComponent(loja.whatsapp)}?text=${encodeURIComponent(mensagem)}`;
     res.set("Cache-Control", "no-store").set("X-Robots-Tag", "noindex, nofollow").redirect(302, destino);
   });
@@ -472,12 +472,12 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
 
   // ---------- assinatura ----------
   app.post("/api/painel/assinar", exigirLoja, a(async (req, res) => {
-    if (!mp.configurado) return erro(res, 503, "O pagamento ainda não está disponível. Fale com a CITshop.");
+    if (!mp.configurado) return erro(res, 503, "O pagamento ainda não está disponível. Fale com a CIT Shopping.");
     const loja = req.loja;
     // Assinando durante o teste, a primeira cobrança só acontece quando o teste acaba.
     const inicio = Math.max(agora() + 5 * 60_000, Date.parse(loja.testeAte));
     const pa = await mp.criarPreapproval({
-      referencia: loja.id, email: loja.email, motivo: "CITshop · Plano Loja", valor: PRECO_PLANO,
+      referencia: loja.id, email: loja.email, motivo: "CIT Shopping · Plano Loja", valor: PRECO_PLANO,
       inicio: new Date(inicio).toISOString(), retorno: `${urlPublica}/painel?assinatura=retorno`,
     });
     loja.assinatura = { status: "pendente", preapprovalId: pa.id, atualizadaEm: iso() };
@@ -759,7 +759,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
         const texto = String(val.text).toLowerCase();
         if (/quero|link|preço|preco|comprar|valor|onde|site/i.test(texto)) {
           const commentId = val.id;
-          const resposta = `Olá! 🛍️ Aqui está o seu link com desconto no CITshop: ${urlPublica}/bio\n\nOu no nosso canal VIP: https://whatsapp.com/channel/0029VbDyNjvIyPtZGJ6HTs3i`;
+          const resposta = `Olá! 🛍️ Aqui está o seu link com desconto no CIT Shopping: ${urlPublica}/bio\n\nOu no nosso canal VIP: https://whatsapp.com/channel/0029VbDyNjvIyPtZGJ6HTs3i`;
           await conectorInstagram.responderComentarioDirect({ commentId, texto: resposta }).catch(() => {});
         }
       }
@@ -912,10 +912,10 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   const NOME_LOJA = { amazon: "Amazon", shopee: "Shopee", ml: "Mercado Livre", "mercado-livre": "Mercado Livre", shein: "SHEIN" };
   const attr = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   function metaProduto(x) {
-    const titulo = `${x.nome} · CITshop`;
+    const titulo = `${x.nome} · CIT Shopping`;
     const desc = x.loja === "local"
-      ? `${x.lojaNome}, ${x.cidade}. Produto disponível na CITshop; consulte a loja pelo WhatsApp.`
-      : `Oferta na ${NOME_LOJA[x.loja] ?? "loja parceira"}, achada pela CITshop.`;
+      ? `${x.lojaNome}, ${x.cidade}. Produto disponível na CIT Shopping; consulte a loja pelo WhatsApp.`
+      : `Oferta na ${NOME_LOJA[x.loja] ?? "loja parceira"}, achada pela CIT Shopping.`;
     const foto = x.fotos?.[0];
     const imagem = !foto ? null : foto.startsWith("/uploads/") ? `${urlPublica}/og/${basename(foto, ".webp")}.jpg` : foto;
     const canonical = `${urlPublica}/p/${encodeURIComponent(x.id)}`;
@@ -983,7 +983,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const descricao = String(x.descricao ?? "").trim();
     const imagemHtml = imagem
       ? `<img src="${attr(imagem)}" alt="${attr(x.nome)}" width="720" height="720" fetchpriority="high">`
-      : `<div class="product-no-image" aria-label="Produto sem foto">CITshop</div>`;
+      : `<div class="product-no-image" aria-label="Produto sem foto">CIT Shopping</div>`;
     const jsonLd = {
       "@context": "https://schema.org",
       "@type": "Product",
@@ -1020,7 +1020,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       DESCRICAO_LONGA: attr(descricao || "Consulte as informações e a disponibilidade com o vendedor."),
       AVISO_AFILIADO: local
         ? "Produtos de lojas locais são vendidos e entregues pela própria loja."
-        : "O CITshop pode receber comissão por compras feitas pelos links de afiliado, sem custo adicional para você. Preço e estoque podem mudar.",
+        : "O CIT Shopping pode receber comissão por compras feitas pelos links de afiliado, sem custo adicional para você. Preço e estoque podem mudar.",
     };
     const html = PAGINA_PRODUTO.replace(/<!--meta-->|<!--\/meta-->/g, "")
       .replace("<!--structured-->", `<script type="application/ld+json">${JSON.stringify(jsonLd).replace(/[<>&\u2028\u2029]/g, (c) => ({ "<": "\\u003c", ">": "\\u003e", "&": "\\u0026", "\u2028": "\\u2028", "\u2029": "\\u2029" })[c])}</script>`);

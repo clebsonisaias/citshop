@@ -110,7 +110,7 @@ export class GeradorCardInstagram {
 
       <!-- Topo: Header com Logo & Tag -->
       <rect x="60" y="44" width="220" height="42" rx="21" fill="rgba(255,255,255,0.15)"/>
-      <text x="170" y="72" font-family="Helvetica, Arial, sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">CITshop</text>
+      <text x="170" y="72" font-family="Helvetica, Arial, sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">CIT Shopping</text>
 
       <rect x="760" y="44" width="260" height="42" rx="21" fill="${badgeCor}"/>
       <text x="890" y="71" font-family="Helvetica, Arial, sans-serif" font-size="18" font-weight="bold" fill="#ffffff" text-anchor="middle">${badgeTexto}</text>
@@ -223,7 +223,7 @@ export class GeradorCardInstagram {
 
       <!-- Topo: Header com Logo & Tag -->
       <rect x="70" y="100" width="240" height="50" rx="25" fill="rgba(255,255,255,0.18)"/>
-      <text x="190" y="133" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle">CITshop</text>
+      <text x="190" y="133" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle">CIT Shopping</text>
 
       <rect x="730" y="100" width="280" height="50" rx="25" fill="${badgeCor}"/>
       <text x="870" y="132" font-family="Helvetica, Arial, sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">${badgeTexto}</text>
@@ -264,7 +264,7 @@ export class GeradorCardInstagram {
       <text x="540" y="1695" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="rgba(255,255,255,0.8)" text-anchor="middle">Ou acesse: shop.citmax.com.br/bio</text>
 
       <!-- Rodapé -->
-      <text x="540" y="1860" font-family="Helvetica, Arial, sans-serif" font-size="20" font-weight="bold" fill="rgba(255,255,255,0.6)" text-anchor="middle">@citshopping · CITshop</text>
+      <text x="540" y="1860" font-family="Helvetica, Arial, sans-serif" font-size="20" font-weight="bold" fill="rgba(255,255,255,0.6)" text-anchor="middle">@citshopping · CIT Shopping</text>
     </svg>
     `;
 

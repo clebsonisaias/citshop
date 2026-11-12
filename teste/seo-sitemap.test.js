@@ -47,7 +47,7 @@ test("página inicial contém canonical, h1 semântico e dados estruturados", as
   assert.equal(r.status, 200);
   const html = await r.text();
   assert.match(html, /<link rel="canonical" href="https:\/\/shop\.citmax\.com\.br\/"/);
-  assert.match(html, /<h1 class="sr-only">CITshop · Comparador de Ofertas, Lojas Locais e Grandes Marketplaces<\/h1>/);
+  assert.match(html, /<h1 class="sr-only">CIT (Shopping|shop) · Comparador de Ofertas, Lojas Locais e Grandes Marketplaces<\/h1>/);
   assert.match(html, /"FAQPage"/);
   assert.match(html, /"WebSite"/);
   assert.match(html, /"Organization"/);

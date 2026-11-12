@@ -10,7 +10,7 @@ import { filtrarCatalogo } from './catalogo.js';
   let P = [], LOJAS = [];
 
   const off = (x) => (x.precoAntigo > x.preco ? Math.round((1 - x.preco / x.precoAntigo) * 100) : 0);
-  // Quanto (em %) caiu desde o maior preço que a CITshop viu nos últimos dias.
+  // Quanto (em %) caiu desde o maior preço que a CIT Shopping viu nos últimos dias.
   const caiu = (x) => (x.queda > 0 ? Math.round((x.queda / (x.preco + x.queda)) * 100) : 0);
   const label = (x) => (x.loja === 'local' ? x.lojaNome : STORE[x.loja]);
   const hue = (x) => (D[x.dept] ?? D.casa).h;
@@ -69,9 +69,9 @@ import { filtrarCatalogo } from './catalogo.js';
 
   // Carrossel
   const SLIDES = [
-    { k: 'Black Friday', h: 'Black Friday CITshop', p: 'Contagem regressiva e os produtos que mais baixaram de preço.', c: 'Ver ofertas →', a: 'bag', href: '/black-friday' },
+    { k: 'Black Friday', h: 'Black Friday CIT Shopping', p: 'Contagem regressiva e os produtos que mais baixaram de preço.', c: 'Ver ofertas →', a: 'bag', href: '/black-friday' },
     { k: 'Compre perto', h: 'As lojas da sua cidade estão aqui', p: 'Escolha, chame a loja no WhatsApp e receba rápido.', c: 'Ver lojas →', a: 'shop', show: 'local' },
-    { k: 'Venda na CITshop', h: 'Sua loja na frente das gigantes', p: '30 dias grátis pra testar. Depois, R$ 49,90 por mês.', c: 'Cadastrar minha loja →', a: 'shop', href: '/painel' },
+    { k: 'Venda na CIT Shopping', h: 'Sua loja na frente das gigantes', p: '30 dias grátis pra testar. Depois, R$ 49,90 por mês.', c: 'Cadastrar minha loja →', a: 'shop', href: '/painel' },
   ];
   let cur = 0, timer;
   function renderSlides() {
@@ -98,7 +98,7 @@ import { filtrarCatalogo } from './catalogo.js';
 
   // Resultados (departamento, lista, loja, busca)
   const view = { list: [], ordem: 'relevancia', cidade: '', sub: '', origem: '', precoMin: '', precoMax: '', q: '', dept: '' };
-  const TITULO = 'CITshop · ofertas e lojas da sua cidade';
+  const TITULO = 'CIT Shopping · ofertas e lojas da sua cidade';
   let voltar = '/'; // endereço (com a query, ex.: utm) para onde a janela do produto devolve ao fechar
   let empurrou = false; // abrir o produto criou uma entrada no histórico: o Voltar só fecha a janela
   let tituloAntes = TITULO;
@@ -118,7 +118,7 @@ import { filtrarCatalogo } from './catalogo.js';
     scrollTo({ top: 0 });
   }
   function renderResults() {
-    // Sem filtro por loja: a CITshop é uma loja só; quem vende aparece em cada produto.
+    // Sem filtro por loja: a CIT Shopping é uma loja só; quem vende aparece em cada produto.
     const base = view.list.filter((x) => !view.cidade || (x.loja === 'local' && x.cidade === view.cidade));
     const cidades = [...new Set(view.list.filter((x) => x.loja === 'local').map((x) => x.cidade))].sort();
     $('rcidadeL').hidden = cidades.length < 2;
@@ -148,7 +148,7 @@ import { filtrarCatalogo } from './catalogo.js';
     const zap = `/contato/loja/${encodeURIComponent(l.slug)}`;
     showResults('Produtos da loja', P.filter((x) => x.lojaSlug === slug),
       window.CIT.cabecalhoLoja(l, `<a class="btn" href="${zap}" target="_blank" rel="noopener">Falar no WhatsApp</a>`));
-    document.title = `${l.nome} · CITshop`;
+    document.title = `${l.nome} · CIT Shopping`;
     if (location.pathname !== `/loja/${slug}`) history.pushState(null, '', `/loja/${slug}`);
   }
 
@@ -166,9 +166,9 @@ import { filtrarCatalogo } from './catalogo.js';
   function blackFriday() {
     const melhor = (x) => Math.max(off(x), caiu(x));
     const lista = ordenar([...P].filter((x) => melhor(x) > 0 || x.menor30).sort((a, b) => melhor(b) - melhor(a)));
-    showResults('Black Friday CITshop', lista, `<div class="sellbox" style="margin-bottom:16px"><div><h2 id="bfconta">${contagemBF()}</h2>
+    showResults('Black Friday CIT Shopping', lista, `<div class="sellbox" style="margin-bottom:16px"><div><h2 id="bfconta">${contagemBF()}</h2>
       <p>Produtos com desconto e os que baixaram de preço nos últimos dias.</p></div></div>`);
-    document.title = 'Black Friday · CITshop';
+    document.title = 'Black Friday · CIT Shopping';
     if (location.pathname !== '/black-friday') history.pushState(null, '', '/black-friday');
     clearInterval(bfTimer);
     bfTimer = setInterval(() => {
@@ -285,12 +285,12 @@ import { filtrarCatalogo } from './catalogo.js';
       const quando = x.atualizadoEm ? ` Preço consultado em ${new Date(x.atualizadoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })} e pode mudar.` : '';
       $('mnote').textContent = `Você finaliza a compra no site da loja. Preço e frete confirmados lá.${quando}`;
     }
-    $('mzap').href = `https://wa.me/?text=${encodeURIComponent(`Olha esse achado na CITshop: ${x.nome} por ${brl.format(x.preco)} ${link}`)}`;
+    $('mzap').href = `https://wa.me/?text=${encodeURIComponent(`Olha esse achado na CIT Shopping: ${x.nome} por ${brl.format(x.preco)} ${link}`)}`;
     const jaAberto = !$('modal').hidden;
     $('modal').hidden = false;
     $('mx').focus();
     if (!jaAberto) tituloAntes = location.pathname.startsWith('/p/') ? TITULO : document.title;
-    document.title = `${x.nome} · CITshop`;
+    document.title = `${x.nome} · CIT Shopping`;
     const url = `/p/${encodeURIComponent(x.id)}`;
     // Link direto (/p/ ou #p- antigo): só troca o endereço. Aberto pela vitrine: cria entrada, e o Voltar fecha.
     if (location.pathname.startsWith('/p/') || location.hash.startsWith('#p-')) history.replaceState(null, '', url);

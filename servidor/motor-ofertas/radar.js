@@ -117,7 +117,7 @@ export class RadarOfertas {
     const descontoPct = temDesconto ? Math.round(((produto.precoAntigo - produto.preco) / produto.precoAntigo) * 100) : null;
 
     const ehLocal = produto.loja === "local" || String(produto.id).startsWith("l-");
-    const linkCITshop = `${this.urlPublica}/p/${encodeURIComponent(produto.id)}`;
+    const linkCITShopping = `${this.urlPublica}/p/${encodeURIComponent(produto.id)}`;
 
     if (ehLocal) {
       const nomeLoja = produto.lojaNome || "Comércio Parceiro";
@@ -134,18 +134,18 @@ export class RadarOfertas {
             : `💰 Por apenas *${precoFormatado}*`,
           "",
           "👉 *Escolha o modelo, tamanho e cor em nosso site e peça direto pelo WhatsApp da loja:*",
-          linkCITshop,
+          linkCITShopping,
           "",
-          "_CITshop · Fortalecendo o comércio da nossa cidade!_",
+          "_CIT Shopping · Fortalecendo o comércio da nossa cidade!_",
         ].join("\n"),
         urlImagem: produto.fotos?.[0] || produto.imagem || null,
-        linkPrincipal: linkCITshop,
+        linkPrincipal: linkCITShopping,
         tipo: "local",
       };
     }
 
     // Produto de Afiliado (Shopee, etc.)
-    const linkAfiliado = produto.link || linkCITshop;
+    const linkAfiliado = produto.link || linkCITShopping;
     const eh1111 = produto.selo === "11.11" || produto.superOferta || /11\.11/i.test(produto.nome);
 
     const cabecalho = eh1111
@@ -175,9 +175,9 @@ export class RadarOfertas {
       "🛒 *Garanta o seu com desconto antes que acabe:*",
       `👉 ${linkAfiliado}`,
       "",
-      `🔍 Ver detalhes na CITshop: ${linkCITshop}`,
+      `🔍 Ver detalhes na CIT Shopping: ${linkCITShopping}`,
       "",
-      "_CITshop Radar · Preços e estoques sujeitos a alteração rápida na loja parceira._"
+      "_CIT Shopping Radar · Preços e estoques sujeitos a alteração rápida na loja parceira._"
     );
 
     return {

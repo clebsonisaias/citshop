@@ -56,7 +56,7 @@
     vencida: (s) => s.loja.assinatura?.status === 'pendente'
       ? 'Estamos aguardando a confirmação do pagamento no Mercado Pago. Assim que confirmar, seus produtos voltam pra vitrine.'
       : 'Seu teste acabou e seus produtos saíram da vitrine. Assine para voltar a aparecer.',
-    suspensa: () => 'Sua loja foi suspensa pela CITshop. Fale com a gente pelo WhatsApp da CITmax.',
+    suspensa: () => 'Sua loja foi suspensa pela CIT Shopping. Fale com a gente pelo WhatsApp da CITmax.',
   };
   const ROTULO = { teste: 'Teste grátis', ativa: 'Assinatura ativa', vencida: 'Fora da vitrine', suspensa: 'Suspensa' };
   const ROTULO_DISPONIBILIDADE = { disponivel: 'Disponível', 'sob-encomenda': 'Sob encomenda', consulte: 'Consultar disponibilidade' };
@@ -122,7 +122,7 @@
     const ps = estado.produtos;
     $('lista').innerHTML = ps.length ? ps.map((p) => `<div class="item ${p.ativo && !p.bloqueado ? '' : 'off'}">
         <img src="${esc(p.fotos[0])}" alt="">
-        <div><b>${esc(p.nome)}</b><br><small class="note">${brl.format(p.preco)} · ${esc(D[p.dept]?.n ?? '')} · ${esc(ROTULO_DISPONIBILIDADE[p.disponibilidade] ?? ROTULO_DISPONIBILIDADE.consulte)}${p.bloqueado ? ' · ocultado pela CITshop' : p.ativo ? '' : ' · pausado'} · ${p.cliquesContato ?? 0} cliques no WhatsApp</small></div>
+        <div><b>${esc(p.nome)}</b><br><small class="note">${brl.format(p.preco)} · ${esc(D[p.dept]?.n ?? '')} · ${esc(ROTULO_DISPONIBILIDADE[p.disponibilidade] ?? ROTULO_DISPONIBILIDADE.consulte)}${p.bloqueado ? ' · ocultado pela CIT Shopping' : p.ativo ? '' : ' · pausado'} · ${p.cliquesContato ?? 0} cliques no WhatsApp</small></div>
         <div class="acoes">
           <button class="btn sec" data-ed="${p.id}">Editar</button>
           <button class="btn sec" data-at="${p.id}">${p.ativo ? 'Pausar' : 'Ativar'}</button>
