@@ -1,0 +1,28 @@
+# Segurança
+
+- **Senhas:**
+  - scrypt com sal;
+  - o admin entra por `ADMIN_SENHA_HASH`;
+  - um acesso provisório obriga a trocar a senha no primeiro uso;
+  - trocar a senha invalida as sessões antigas.
+- **Sessão:**
+  - cookie `HttpOnly` + `SameSite`, assinado com HMAC (`SESSAO_SEGREDO`);
+  - as rotas que mudam algo conferem a origem (`origemConfiavel`).
+- **Limites por IP** (`req.ip`, trust proxy 1): login, cadastro, pedido, pagamento, alerta, convite, frete e avaliação.
+- **CSP** `script-src 'self'`: escape (`esc`) em todo HTML montado com dados de usuário.
+- **Planilha CSV:** campos que começam com `= + - @` recebem apóstrofo, para não virarem fórmula.
+- **Mercado Pago:**
+  - o webhook confere a `x-signature` (HMAC) e relê o recurso na API, sem confiar no corpo;
+  - preço, comissão e frete são sempre recalculados no servidor; o valor que vem do aparelho é ignorado;
+  - os tokens das lojas ficam cifrados (`cifrar`).
+- **Avaliações:**
+  - o link usa um token HMAC do pedido, comparado com `timingSafeEqual`;
+  - uma avaliação por pedido; o texto é limpo e limitado a 500 caracteres;
+  - só o primeiro nome é público; o admin pode ocultar.
+- **Dados pessoais:**
+  - pedidos guardados por 12 meses;
+  - o telefone e o WhatsApp da loja parceira não aparecem em público;
+  - o ponto exato do mapa da loja não sai do servidor;
+  - `/saude` não expõe mensagens de erro.
+- **Auditoria:** toda ação do admin é registrada (`/api/admin/auditoria`).
+- **Backups:** ficam fora da pasta servida (`uploads`).

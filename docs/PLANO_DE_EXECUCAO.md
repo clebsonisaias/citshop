@@ -71,5 +71,8 @@ Regra: nada vai para `main` (que publica sozinho no Coolify) sem autorização e
 - [x] Proposta de PostgreSQL (`docs/PROPOSTA_POSTGRESQL.md`): gatilhos, modelo, migração, backup, rollback — **migração só com autorização**
 
 ## Fase 10 · Homologação
-- [ ] Suíte completa, segurança, navegador/responsivo, documentação (README, ARQUITETURA, MODELO_COMERCIAL, FINANCEIRO_E_SPLIT, AFILIADOS, SEGURANCA, TESTES, DEPLOY, CHANGELOG, DESIGN_SYSTEM)
+- [x] Suíte completa: 102/102
+- [x] Navegador: 20 páginas (vitrine, loja, carrinho, termos, avaliar, saúde, 5 abas do painel, 9 do admin) × 375/1280 px = 40 combinações sem rolagem horizontal
+- [x] Segurança das superfícies novas revisada (`docs/SEGURANCA.md`)
+- [x] Documentação: README, ARQUITETURA, MODELO_COMERCIAL, FINANCEIRO_E_SPLIT, AFILIADOS, SEGURANCA, TESTES, DEPLOY, CHANGELOG, DESIGN_SYSTEM, PROPOSTA_POSTGRESQL
 - [ ] Publicação em produção — **só com autorização**
