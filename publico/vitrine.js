@@ -423,7 +423,8 @@ import { filtrarCatalogo } from './catalogo.js';
   fetch('/api/vitrine')
     .then((r) => r.json())
     .then((d) => { P = d.produtos.map((x) => ({ ...x, categoriaNome: D[x.dept]?.n ?? x.dept })); LOJAS = d.lojas; CAMPANHA = d.campanha ?? null;
-      if (CAMPANHA) { $('seloCampanha').textContent = `Especial ${CAMPANHA}`; $('seloCampanha').hidden = false; }
+      // Faixa "Especial" só no dia da data dupla (12/12, 1/1...); nos outros dias fica escondida.
+      if (CAMPANHA) { $('seloCampanha').textContent = `Especial ${CAMPANHA}`; $('seloCampanha').hidden = false; $('faixaCampanha').hidden = false; }
       montarHome(); rota();
       // Link /#sellers (ex.: da /bio): a faixa só existe depois do fetch, então rola até ela aqui.
       if (location.hash === '#sellers') $('sellers').closest('section').scrollIntoView(); })

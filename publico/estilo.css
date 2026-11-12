@@ -411,6 +411,7 @@ footer.site a:hover { text-decoration: underline; }
 .product-note { color: var(--muted); font-size: 12px; line-height: 1.6; }
 
 /* Banner do Canal no WhatsApp */
+.banner-canal-whatsapp[hidden] { display: none; } /* só aparece no dia da data dupla (vitrine.js) */
 .banner-canal-whatsapp {
   background: linear-gradient(135deg, #036271 0%, #008b87 100%);
   color: #ffffff;
