@@ -761,3 +761,37 @@ dialog.compra::backdrop { background: rgba(3, 48, 58, .55); }
 /* Na home o botão do Canal VIP fica no mesmo canto: o carrinho sobe para cima dele. */
 body:has(.canal-flutuante) .carrinho-flutuante { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 72px); }
 body.na-loja .carrinho-flutuante { bottom: max(16px, env(safe-area-inset-bottom)); }
+
+/* ---------- painel do lojista: abas e início ---------- */
+.abas { display: flex; gap: 0; margin-top: 16px; overflow-x: auto; border-bottom: 1px solid var(--line); scrollbar-width: none; }
+.abas::-webkit-scrollbar { display: none; }
+.abas a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 12px; font-weight: 700; color: var(--muted); text-decoration: none; border-bottom: 3px solid transparent; white-space: nowrap; }
+.abas a[aria-current] { color: var(--deep); border-bottom-color: var(--brand); }
+.abas .n { min-width: 20px; padding: 1px 6px; border-radius: 99px; background: var(--hot); color: #fff; font-size: 12px; text-align: center; }
+.cartoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 16px; }
+.cartao { display: grid; gap: 2px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); text-decoration: none; }
+.cartao span, .cartao small { font-size: 12px; color: var(--muted); }
+.cartao b { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.cartao.destaque { border-color: var(--hot); background: color-mix(in oklab, var(--hot) 8%, var(--surface)); }
+.cartao.destaque b { color: var(--hot); }
+.proximos, .ranking { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.proximos li { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ranking li { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
+.ranking li span { overflow-wrap: anywhere; }
+.ranking .vazio { color: var(--muted); }
+.ranking-duo { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 600px) { .ranking-duo { grid-template-columns: 1fr; } }
+.compra-esgotada { margin: 0; padding: 14px; border-radius: 12px; background: #FDECEC; color: #8A1F25; font-weight: 800; text-align: center; }
+.product-restam { color: var(--hot); font-weight: 700; }
+.aviso-mp { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 16px; padding: 18px; border-radius: 16px; background: var(--deep); color: var(--on-deep); }
+.aviso-mp b { font-size: 17px; }
+.aviso-mp p { margin: 4px 0 0; font-size: 14px; opacity: .9; }
+.aviso-mp .btn { flex: none; background: var(--mint); color: var(--on-mint); border: 0; }
+@media (max-width: 600px) { .aviso-mp { flex-direction: column; align-items: stretch; } .aviso-mp .btn { text-align: center; } }
+.modo-estoque { margin-bottom: 12px; }
+.modo-estoque label { display: grid; gap: 4px; font-weight: 700; font-size: 13px; }
+.est-linha { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.est-linha label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.est-linha .btn { min-height: 36px; padding: 6px 12px; font-size: 12px; }
+.est-input { width: 110px; min-height: 40px; }
+.modo-estoque select { width: 100%; box-sizing: border-box; min-height: 44px; }

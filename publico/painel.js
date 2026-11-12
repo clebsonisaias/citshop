@@ -1,4 +1,4 @@
-// Painel da loja: cadastro, login, produtos com fotos, dados e assinatura.
+// Painel da loja: abas (Início, Pedidos, Produtos, Loja), cadastro, login, produtos com fotos, dados e assinatura.
 (() => {
   const { DEPTS, D, esc, brl } = window.CIT;
   const $ = (id) => document.getElementById(id);
@@ -110,6 +110,56 @@
     catch (err) { mostrarMsg($('mPedidos'), err.message); sel.disabled = false; }
   });
 
+  // ---------- abas (#inicio, #pedidos, #produtos, #loja) ----------
+  function irPara() {
+    const nome = location.hash.slice(1);
+    const aba = document.querySelector(`[data-aba="${nome}"]`) ? nome : 'inicio';
+    document.querySelectorAll('[data-aba]').forEach((el) => { el.hidden = el.dataset.aba !== aba; });
+    document.querySelectorAll('#abas a').forEach((a) => { a.toggleAttribute('aria-current', a.getAttribute('href') === `#${aba}`); });
+  }
+  addEventListener('hashchange', irPara);
+
+  // ---------- início: números do dia e próximos passos ----------
+  function renderInicio() {
+    const r = estado.resumo;
+    const cartao = (rotulo, valor, sub, href) => `<${href ? `a href="${href}"` : 'div'} class="cartao${href && r.novos ? ' destaque' : ''}"><span>${rotulo}</span><b>${valor}</b><small>${sub}</small></${href ? 'a' : 'div'}>`;
+    const vendas = (v) => `${v.qtd} ${v.qtd === 1 ? 'venda' : 'vendas'}`;
+    $('cartoes').innerHTML = [
+      cartao('Pedidos novos', r.novos, r.novos ? 'Toque para atender' : 'Nenhum esperando', '#pedidos'),
+      cartao('Hoje', brl.format(r.hoje.valor), vendas(r.hoje)),
+      cartao('Últimos 7 dias', brl.format(r.semana.valor), vendas(r.semana)),
+      cartao('Últimos 30 dias', brl.format(r.mes.valor), vendas(r.mes)),
+    ].join('');
+    // Loja que vende pelo site e ainda não conectou o Mercado Pago: aviso grande no topo do Início. Depois de conectar, fica só na aba Loja.
+    $('avisoMp').hidden = !(estado.loja.modeloCobranca === 'comissao_fixa' && !estado.loja.mpConectado);
+    $('abaNovos').hidden = !r.novos;
+    $('abaNovos').textContent = r.novos;
+    const rank = (lista, texto) => lista.length ? lista.map((i) => `<li><span>${esc(i.nome)}</span><b>${texto(i)}</b></li>`).join('') : '<li class="vazio">Ainda sem dados.</li>';
+    $('rankPedidos').innerHTML = rank(r.maisPedidos, (i) => `${i.quantidade}x`);
+    $('rankVistos').innerHTML = rank(r.maisVistos, (i) => i.cliques);
+    const passos = [];
+    if (!estado.produtos.length) passos.push(['Cadastre seu primeiro produto: tire as fotos pelo celular.', '#produtos', 'Cadastrar']);
+    if (!estado.loja.logo) passos.push(['Coloque o logo da loja para ela aparecer com a sua marca.', '#loja', 'Adicionar logo']);
+    const baixos = estado.produtos.filter((p) => p.ativo && !p.bloqueado && (esgotado(p) || (porQuantidade() && p.estoque != null && p.estoque <= 2)));
+    $('blocoEstoqueBaixo').hidden = !baixos.length;
+    $('listaEstoqueBaixo').innerHTML = baixos.map((p) => `<li><span>${esc(p.nome)}: <b>${esgotado(p) ? 'esgotado' : `restam ${p.estoque}`}</b></span><a class="btn sec" href="#produtos">Atualizar</a></li>`).join('');
+    $('proximos').hidden = !passos.length;
+    $('listaProximos').innerHTML = passos.map(([t, href, b]) => `<li><span>${t}</span><a class="btn sec" href="${href}">${b}</a></li>`).join('');
+  }
+
+  // Atualiza só pedidos e resumo (sem mexer nos formulários que a pessoa pode estar preenchendo).
+  async function atualizar() {
+    if (document.hidden || $('vPainel').hidden) return;
+    try {
+      const s = await api('/api/painel/eu');
+      estado.pedidos = s.pedidos; estado.resumo = s.resumo;
+      if (!document.activeElement?.closest('#lista')) { estado.produtos = s.produtos; renderLista(); }
+      renderPedidos(); renderInicio();
+    } catch { /* sessão expirada ou sem rede: tenta de novo no próximo ciclo */ }
+  }
+  setInterval(atualizar, 60_000);
+  document.addEventListener('visibilitychange', atualizar);
+
   function mostrar(s) {
     estado = s;
     $('vAuth').hidden = true;
@@ -129,13 +179,17 @@
     $('mpConectar').textContent = s.loja.mpConectado ? 'Conectar outra conta' : 'Conectar Mercado Pago';
     $('mpDesconectar').hidden = !s.loja.mpConectado;
     renderPedidos();
+    renderInicio();
+    irPara();
     $('listaCupons').innerHTML = (s.cupons ?? []).map((c) => `<div class="venda"><b>${esc(c.codigo)}</b><span>${esc(c.descricao)}</span>
       <div class="venda-rodape"><small>Válido até ${new Date(`${c.validoAte}T12:00:00`).toLocaleDateString('pt-BR')}</small><button class="btn sec" type="button" data-apagar-cupom="${esc(c.id)}">Apagar</button></div></div>`).join('');
     $('vCor').value = s.loja.cor || '#036271';
     $('vSobre').value = s.loja.sobre ?? '';
     $('tirarLogo').hidden = !s.loja.logo;
     amostra();
+    aplicarModoEstoque();
     renderLista();
+    renderInicio();
   }
 
   // ---------- aparência ----------
@@ -173,11 +227,38 @@
     catch (err) { mostrarMsg($('mVisual'), err.message); }
   };
 
+  // ---------- estoque: simples (tem / esgotado) ou por quantidade (o site desconta a cada venda) ----------
+  const porQuantidade = () => estado.loja.modoEstoque === 'quantidade';
+  const esgotado = (p) => (porQuantidade() ? p.estoque != null && p.estoque <= 0 : Boolean(p.esgotado));
+  function linhaEstoque(p) {
+    const pill = esgotado(p) ? '<span class="pill vencida">Esgotado</span>' : '<span class="pill ativa">Tem estoque</span>';
+    return porQuantidade()
+      ? `<div class="est-linha">${pill}<label>Estoque <input class="est-input" type="number" min="0" max="99999" inputmode="numeric" placeholder="sem contagem" value="${p.estoque ?? ''}" data-est="${esc(p.id)}"></label></div>`
+      : `<div class="est-linha">${pill}<button class="btn sec" data-esg="${esc(p.id)}">${p.esgotado ? 'Voltou ao estoque' : 'Marcar esgotado'}</button></div>`;
+  }
+  function aplicarModoEstoque() {
+    const q = porQuantidade();
+    $('modoEstoque').value = q ? 'quantidade' : 'simples';
+    document.querySelector('.est-simples').hidden = q;
+    document.querySelector('.est-qtd').hidden = !q;
+    $('modoEstoqueAjuda').textContent = q
+      ? 'Digite quantas unidades você tem. A cada venda o site desconta e, quando chegar a zero, o produto some da vitrine e avisamos você no WhatsApp.'
+      : 'Quando um produto acabar, toque em "Marcar esgotado". Ele some da vitrine até você tocar em "Voltou ao estoque".';
+  }
+  $('modoEstoque').addEventListener('change', async () => {
+    try {
+      const d = await api('/api/painel/estoque', { metodo: 'PUT', json: { modo: $('modoEstoque').value } });
+      estado.loja = d.loja; estado.produtos = d.produtos;
+    } catch (err) { alert(err.message); }
+    aplicarModoEstoque(); renderLista(); renderInicio();
+  });
+
   function renderLista() {
     const ps = estado.produtos;
     $('lista').innerHTML = ps.length ? ps.map((p) => `<div class="item ${p.ativo && !p.bloqueado ? '' : 'off'}">
         <img src="${esc(p.fotos[0])}" alt="">
-        <div><b>${esc(p.nome)}</b><br><small class="note">${brl.format(p.preco)} · ${esc(D[p.dept]?.n ?? '')} · ${esc(ROTULO_DISPONIBILIDADE[p.disponibilidade] ?? ROTULO_DISPONIBILIDADE.consulte)}${p.bloqueado ? ' · ocultado pela CIT Shopping' : p.ativo ? '' : ' · pausado'} · ${p.cliquesContato ?? 0} cliques no WhatsApp</small></div>
+        <div><b>${esc(p.nome)}</b><br><small class="note">${brl.format(p.preco)} · ${esc(D[p.dept]?.n ?? '')} · ${esc(ROTULO_DISPONIBILIDADE[p.disponibilidade] ?? ROTULO_DISPONIBILIDADE.consulte)}${p.bloqueado ? ' · ocultado pela CIT Shopping' : p.ativo ? '' : ' · pausado'} · ${p.cliquesContato ?? 0} cliques no WhatsApp</small>
+          ${linhaEstoque(p)}</div>
         <div class="acoes">
           <button class="btn sec" data-ed="${p.id}">Editar</button>
           <button class="btn sec" data-at="${p.id}">${p.ativo ? 'Pausar' : 'Ativar'}</button>
@@ -200,6 +281,8 @@
     f.reset();
     $('fProdTit').textContent = p ? 'Editar produto' : 'Novo produto';
     if (p) for (const k of ['nome', 'dept', 'descricao', 'disponibilidade']) f[k].value = p[k] ?? 'consulte';
+    f.esgotado.value = p?.esgotado ? 'true' : 'false';
+    f.estoque.value = p?.estoque ?? '';
     if (p) { f.preco.value = String(p.preco).replace('.', ','); f.precoAntigo.value = p.precoAntigo ? String(p.precoAntigo).replace('.', ',') : ''; }
     manter = p ? [...p.fotos] : [];
     novas = [];
@@ -241,17 +324,28 @@
   $('lista').addEventListener('click', async (e) => {
     const b = e.target.closest('button');
     if (!b) return;
-    const p = estado.produtos.find((x) => x.id === (b.dataset.ed ?? b.dataset.at ?? b.dataset.del));
+    const p = estado.produtos.find((x) => x.id === (b.dataset.ed ?? b.dataset.at ?? b.dataset.del ?? b.dataset.esg));
     if (!p) return;
     try {
       if (b.dataset.ed) return abrirForm(p);
       if (b.dataset.at) await api(`/api/painel/produtos/${p.id}`, { metodo: 'PATCH', json: { ativo: !p.ativo } });
+      if (b.dataset.esg) await api(`/api/painel/produtos/${p.id}`, { metodo: 'PATCH', json: { esgotado: !p.esgotado } });
       if (b.dataset.del) {
         if (!confirm(`Excluir "${p.nome}"? Isso não pode ser desfeito.`)) return;
         await api(`/api/painel/produtos/${p.id}`, { metodo: 'DELETE' });
       }
       mostrar(await api('/api/painel/eu'));
     } catch (err) { alert(err.message); }
+  });
+
+  // Quantidade digitada direto na linha do produto: salva ao sair do campo.
+  $('lista').addEventListener('change', async (e) => {
+    const campo = e.target.closest('input[data-est]');
+    if (!campo) return;
+    const p = estado.produtos.find((x) => x.id === campo.dataset.est);
+    try { Object.assign(p, await api(`/api/painel/produtos/${p.id}`, { metodo: 'PATCH', json: { estoque: campo.value } })); }
+    catch (err) { alert(err.message); }
+    renderLista(); renderInicio();
   });
 
   $('fLoja').addEventListener('submit', (e) => {

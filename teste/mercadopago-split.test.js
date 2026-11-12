@@ -102,6 +102,7 @@ test("split: loja conecta o MP, cobrança sai com o token dela e o webhook de pa
   assert.equal(pix.idem, referenciaPix);
   assert.equal(pix.corpo.application_fee, 1);
 
+  b.loja("loja-d").modoEstoque = "quantidade"; b.produto("p1").estoque = 10;
   // 4. Webhook sem assinatura é recusado; assinado, o pedido vira "approved"
   const caminho = "/webhook/mercadopago?loja=loja-d&data.id=99&type=payment";
   assert.equal((await post(caminho, { type: "payment", data: { id: "99" } })).status, 401);
@@ -109,6 +110,7 @@ test("split: loja conecta o MP, cobrança sai com o token dela e o webhook de pa
   const v1 = createHmac("sha256", ASSINATURA_WEBHOOK).update(`id:99;request-id:${rid};ts:${ts};`).digest("hex");
   assert.equal((await post(caminho, { type: "payment", data: { id: "99" } }, { "x-signature": `ts=${ts},v1=${v1}`, "x-request-id": rid })).status, 200);
   assert.equal(b.d.pedidos.find((p) => p.id === referenciaPix).status, "approved");
+  assert.equal(b.produto("p1").estoque, 9, "venda aprovada desconta do estoque");
   // 5. Venda aprovada: a loja recebe o aviso no WhatsApp com o cliente e o endereço
   await new Promise((r) => setTimeout(r, 30));
   const aviso = chamadas.find((c) => c.u.endsWith("/api/sendText"));

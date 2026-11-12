@@ -10,7 +10,7 @@ import sharp from "sharp";
 import { fileURLToPath } from "node:url";
 import { createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import * as S from "./seguranca.js";
-import { Banco, DEPTS, DIAS_TESTE, lojaVisivel, ordenarVitrine, slugUnico, statusLoja } from "./dados.js";
+import { Banco, DEPTS, DIAS_TESTE, lojaVisivel, ordenarVitrine, slugUnico, statusLoja, temEstoque } from "./dados.js";
 import { MAX_FOTOS, apagarFoto, receberFotos, receberLogo, salvarFoto } from "./uploads.js";
 import { cifrar, criarMercadoPago, decifrar, statusDoMp, webhookValido } from "./mercadopago.js";
 import { MARKETPLACE, criarClienteAmazon } from "./amazon.js";
@@ -45,8 +45,16 @@ function valor(v) {
   const n = Number(s.includes(",") ? s.replace(/\./g, "").replace(",", ".") : s);
   return Number.isFinite(n) && n > 0 && n < 1_000_000 ? Math.round(n * 100) / 100 : null;
 }
+// Estoque: vazio = sem contagem; senão um inteiro de 0 a 99999.
+function estoqueDe(v) {
+  if (v === undefined || v === null || String(v).trim() === "") return null;
+  const n = Math.floor(Number(v));
+  return Number.isFinite(n) && n >= 0 ? Math.min(n, 99999) : null;
+}
 function lerProduto(b) {
   const p = {
+    esgotado: String(b.esgotado) === "true",
+    estoque: estoqueDe(b.estoque),
     nome: txt(b.nome, 90),
     descricao: String(b.descricao ?? "").trim().slice(0, 1000),
     dept: DEPTS.includes(b.dept) ? b.dept : null,
@@ -246,6 +254,9 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     bairrosAtendidos: l.bairrosAtendidos ?? "", prazoEntrega: l.prazoEntrega ?? "",
     modeloCobranca: l.modeloCobranca ?? "mensalidade",
     comissaoPorVenda: l.comissaoPorVenda ?? 1.00,
+    esgotado: !temEstoque(p, l),
+    // Poucas unidades: avisa o cliente (só no modo por quantidade).
+    restam: l.modoEstoque === "quantidade" && p.estoque > 0 && p.estoque <= 5 ? p.estoque : null,
     // Compra pelo site (Pix/cartão com split) só para lojas que pagam por venda e conectaram o Mercado Pago.
     // As de mensalidade vendem pelo WhatsApp.
     compraOnline: l.modeloCobranca === "comissao_fixa" && Boolean(l.mpConta) && mp.oauthConfigurado,
@@ -263,7 +274,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const t = agora();
     const visiveis = new Map(banco.lojas.filter((l) => lojaVisivel(l, t)).map((l) => [l.id, l]));
     const locais = banco.produtos
-      .filter((p) => p.ativo && !p.bloqueado && visiveis.has(p.lojaId))
+      .filter((p) => p.ativo && !p.bloqueado && visiveis.has(p.lojaId) && temEstoque(p, visiveis.get(p.lojaId)))
       .sort((x, y) => y.criadoEm.localeCompare(x.criadoEm))
       .map((p) => produtoLocal(p, visiveis.get(p.lojaId)));
     const af = afiliados();
@@ -327,6 +338,14 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const itens = produtos.map((x, i) => ({
       produtoId: x.id, nome: x.nome, preco: x.preco, quantidade: quantidadeDe(brutos[i].quantidade), observacao: txt(brutos[i].observacao, 150),
     }));
+    // Estoque: esgotado não vende; no modo por quantidade, ninguém leva mais do que a loja tem.
+    const pedidas = new Map();
+    for (const i of itens) pedidas.set(i.produtoId, (pedidas.get(i.produtoId) ?? 0) + i.quantidade);
+    for (const x of new Map(produtos.map((y) => [y.id, y])).values()) {
+      if (x.esgotado) return { status: 409, erro: `${x.nome} está esgotado. Tire do carrinho para continuar.` };
+      const tem = banco.loja(x.lojaId)?.modoEstoque === "quantidade" ? banco.produtos.find((r) => `l-${r.id}` === x.id)?.estoque : null;
+      if (tem != null && pedidas.get(x.id) > tem) return { status: 409, erro: `Só ${tem === 1 ? "resta 1 unidade" : `restam ${tem} unidades`} de ${x.nome}.` };
+    }
     const valorTotal = Math.round(itens.reduce((s, i) => s + i.preco * i.quantidade, 0) * 100) / 100;
     const unidades = itens.reduce((s, i) => s + i.quantidade, 0);
     // Resumo nos campos antigos, para quem lê pedidos de um produto só (painel, planilha, avisos).
@@ -335,6 +354,25 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   }
   const linhaItem = (i) => `${i.quantidade}x ${i.nome} (${reais(i.preco * i.quantidade)})${i.observacao ? ` · ${i.observacao}` : ""}`;
   const itensDo = (p) => p.itens ?? [{ nome: p.produtoNome ?? p.produtoId, quantidade: p.quantidade, preco: p.valorTotal / (p.quantidade || 1) }];
+
+  // Estoque por quantidade: desconta (sinal 1) ou devolve (-1) os itens de um pedido, uma vez só (estoqueBaixado).
+  // Só em lojas no modo "quantidade" e em produtos com número. Quem chama salva o banco.
+  function moverEstoque(loja, pedido, sinal) {
+    if (loja.modoEstoque !== "quantidade" || Boolean(pedido.estoqueBaixado) === sinal > 0) return;
+    for (const i of pedido.itens ?? [{ produtoId: pedido.produtoId, quantidade: pedido.quantidade }]) {
+      const p = banco.produtos.find((r) => r.lojaId === loja.id && `l-${r.id}` === i.produtoId);
+      if (!p || p.estoque == null) continue;
+      const antes = p.estoque;
+      p.estoque = Math.max(0, antes - sinal * i.quantidade);
+      if (antes > 0 && p.estoque === 0) avisarEstoqueZerado(loja, p);
+    }
+    pedido.estoqueBaixado = sinal > 0;
+  }
+  function avisarEstoqueZerado(loja, p) {
+    const texto = `📦 *Acabou o estoque!*\n\n${p.nome} esgotou e saiu da vitrine do CIT Shopping.\nQuando chegar mais, atualize a quantidade no painel: ${urlPublica}/painel#produtos`;
+    conectorWaha.enviarTexto({ chatId: loja.whatsapp, texto })
+      .catch((e) => log.warn?.(`[estoque] ${loja.slug}: aviso no WhatsApp falhou (${e.message})`));
+  }
 
   // Pedido pelo WhatsApp: registra o pedido (com código) e devolve o link do WhatsApp da loja já com a mensagem.
   app.post("/api/pedidos/whatsapp", (req, res) => {
@@ -409,15 +447,18 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     if (!zap) return erro(res, 400, "Informe seu WhatsApp com DDD.");
     banco.d.alertas ??= [];
     if (banco.d.alertas.filter((a) => a.whatsapp === zap).length >= 30) return erro(res, 400, "Você já tem 30 alertas ativos. Cancele algum para criar outro.");
-    const existente = banco.d.alertas.find((a) => a.whatsapp === zap && a.produtoId === x.id);
-    if (!existente) banco.d.alertas.push({ id: randomBytes(12).toString("hex"), produtoId: x.id, produtoNome: x.nome, whatsapp: zap, precoBase: x.preco, criadoEm: iso() });
+    // tipo "estoque": "avise-me quando voltar" num produto esgotado; o padrão é o alerta de queda de preço.
+    const tipo = req.body?.tipo === "estoque" ? "estoque" : "preco";
+    if (tipo === "estoque" && !x.esgotado) return erro(res, 409, "Este produto está disponível agora.");
+    const existente = banco.d.alertas.find((a) => a.whatsapp === zap && a.produtoId === x.id && (a.tipo ?? "preco") === tipo);
+    if (!existente) banco.d.alertas.push({ id: randomBytes(12).toString("hex"), produtoId: x.id, produtoNome: x.nome, whatsapp: zap, tipo, precoBase: x.preco, criadoEm: iso() });
     banco.salvar();
     res.json({ ok: true, preco: x.preco });
   });
   app.get("/alertas/cancelar/:id", (req, res) => {
     banco.d.alertas = (banco.d.alertas ?? []).filter((a) => a.id !== req.params.id);
     banco.salvar();
-    res.set("Cache-Control", "no-store").type("html").send(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Alerta cancelado · CIT Shopping</title><link rel="stylesheet" href="/estilo.css"></head><body><main class="wrap" style="padding:48px 16px;max-width:520px"><h1 style="color:var(--deep)">Alerta cancelado</h1><p>Você não vai mais receber o aviso de queda de preço desse produto.</p><p><a class="btn" href="/">Voltar às ofertas</a></p></main></body></html>`);
+    res.set("Cache-Control", "no-store").type("html").send(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Alerta cancelado · CIT Shopping</title><link rel="stylesheet" href="/estilo.css"></head><body><main class="wrap" style="padding:48px 16px;max-width:520px"><h1 style="color:var(--deep)">Alerta cancelado</h1><p>Você não vai mais receber esse aviso.</p><p><a class="btn" href="/">Voltar às ofertas</a></p></main></body></html>`);
   });
   // Roda a cada hora (servidor.js): avisa quem tem alerta de produto que baixou e limpa os vencidos.
   async function verificarAlertas() {
@@ -430,8 +471,17 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       if (Date.parse(a.criadoEm) < limite) continue;
       const x = produtoPorId(a.produtoId);
       // Queda que vale aviso: pelo menos 1% e R$ 0,50 abaixo do preço do dia do alerta.
-      if (!x || !(x.preco <= a.precoBase * 0.99 && a.precoBase - x.preco >= 0.5)) { if (x) ficam.push(a); continue; }
-      const texto = [
+      const quer = a.tipo === "estoque" ? x && !x.esgotado : x && !x.esgotado && x.preco <= a.precoBase * 0.99 && a.precoBase - x.preco >= 0.5;
+      if (!quer) { if (x) ficam.push(a); continue; }
+      const texto = a.tipo === "estoque" ? [
+        "📦 *Voltou ao estoque!*",
+        "",
+        x.nome,
+        "",
+        `👉 ${urlPublica}/p/${encodeURIComponent(x.id)}`,
+        "",
+        `Não quer mais esse aviso? ${urlPublica}/alertas/cancelar/${a.id}`,
+      ].join("\n") : [
         "🔔 *Baixou de preço!*",
         "",
         `📦 ${x.nome}`,
@@ -468,7 +518,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const t = agora();
     const candidatas = banco.lojas
       .filter((l) => statusLoja(l, t) === "ativa")
-      .map((l) => ({ l, produtos: banco.produtos.filter((p) => p.lojaId === l.id && p.ativo && !p.bloqueado && p.fotos?.length) }))
+      .map((l) => ({ l, produtos: banco.produtos.filter((p) => p.lojaId === l.id && p.ativo && !p.bloqueado && p.fotos?.length && temEstoque(p, l)) }))
       .filter((c) => c.produtos.length)
       .sort((a, b) => String(registro.porLoja[a.l.id]?.dia ?? "").localeCompare(String(registro.porLoja[b.l.id]?.dia ?? "")));
     if (!candidatas.length) return { publicado: false, motivo: "nenhuma loja com assinatura ativa e produto com foto" };
@@ -535,12 +585,36 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   const pedidosDa = (loja) => (banco.d.pedidos ?? [])
     .filter((p) => p.lojaId === loja.id && !(p.origem !== "whatsapp" && p.status === "criado"))
     .sort((x, y) => y.criadoEm.localeCompare(x.criadoEm));
+  // Resumo da aba Início: pedidos novos, vendas por período e o que mais interessa aos clientes.
+  // Venda = pago no site (approved) ou pedido do WhatsApp marcado como "vendido"; cancelado não conta.
+  function resumoDe(loja) {
+    const t = agora();
+    const dia = (ms) => new Date(ms - 3 * 60 * 60 * 1000).toISOString().slice(0, 10); // dia em Brasília
+    const hoje = dia(t);
+    const pedidos = pedidosDa(loja).filter((p) => p.etapa !== "cancelado");
+    const vendas = pedidos.filter((p) => (p.origem === "whatsapp" ? p.etapa === "vendido" : p.status === "approved"));
+    const periodo = (dias) => {
+      const doPeriodo = vendas.filter((p) => dias === 1 ? dia(Date.parse(p.criadoEm)) === hoje : Date.parse(p.criadoEm) >= t - dias * DIA);
+      return { qtd: doPeriodo.length, valor: Math.round(doPeriodo.reduce((s, p) => s + p.valorTotal, 0) * 100) / 100 };
+    };
+    const porProduto = new Map();
+    for (const p of pedidos) for (const i of itensDo(p)) porProduto.set(i.nome, (porProduto.get(i.nome) ?? 0) + i.quantidade);
+    return {
+      novos: pedidos.filter((p) => (p.etapa ?? "novo") === "novo").length,
+      hoje: periodo(1), semana: periodo(7), mes: periodo(30),
+      maisPedidos: [...porProduto].sort((x, y) => y[1] - x[1]).slice(0, 5).map(([nome, quantidade]) => ({ nome, quantidade })),
+      maisVistos: banco.produtos.filter((p) => p.lojaId === loja.id)
+        .map((p) => ({ nome: p.nome, cliques: banco.cliquesContato(`produto:${p.id}`) }))
+        .filter((p) => p.cliques > 0).sort((x, y) => y.cliques - x.cliques).slice(0, 5),
+    };
+  }
   function painelDe(loja) {
     const t = agora();
     const { senhaHash, mpConta, mpOauth, ...dados } = loja;
     return {
       loja: { ...dados, mpConectado: Boolean(mpConta) },
       pedidos: pedidosDa(loja).slice(0, 200),
+      resumo: resumoDe(loja),
       cupons: (banco.d.cupons ?? []).filter((c) => c.lojaId === loja.id).map(cupomPublico),
       status: statusLoja(loja, t),
       diasTeste: Math.max(0, Math.ceil((Date.parse(loja.testeAte) - t) / DIA)),
@@ -693,9 +767,19 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   }));
 
   app.patch("/api/painel/produtos/:id", exigirLoja, meuProduto, (req, res) => {
-    req.produto.ativo = Boolean(req.body?.ativo);
+    const b = req.body ?? {};
+    if (b.ativo !== undefined) req.produto.ativo = Boolean(b.ativo);
+    if (b.esgotado !== undefined) req.produto.esgotado = b.esgotado === true;
+    if (b.estoque !== undefined) req.produto.estoque = estoqueDe(b.estoque);
     banco.salvar();
     res.json(req.produto);
+  });
+  // Como a loja controla o estoque: "simples" (marca quando acaba) ou "quantidade" (o site desconta a cada venda).
+  app.put("/api/painel/estoque", exigirLoja, (req, res) => {
+    if (!["simples", "quantidade"].includes(req.body?.modo)) return erro(res, 400, "Modo de estoque inválido.");
+    req.loja.modoEstoque = req.body.modo;
+    banco.salvar();
+    res.json(painelDe(req.loja));
   });
 
   app.delete("/api/painel/produtos/:id", exigirLoja, meuProduto, a(async (req, res) => {
@@ -777,6 +861,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     if (!p) return erro(res, 404, "Pedido não encontrado.");
     if (!ETAPAS.includes(req.body?.etapa)) return erro(res, 400, "Situação inválida.");
     Object.assign(p, { etapa: req.body.etapa, atualizadoEm: iso() });
+    if (p.etapa === "vendido") moverEstoque(req.loja, p, 1);
+    if (p.etapa === "cancelado") moverEstoque(req.loja, p, -1);
     banco.salvar();
     res.json(painelDe(req.loja));
   });
@@ -915,6 +1001,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
         if (pedido) {
           const acabouDeAprovar = pg.status === "approved" && pedido.status !== "approved";
           Object.assign(pedido, { status: pg.status, mpPagamentoId: pg.id, atualizadoEm: iso() });
+          if (acabouDeAprovar) moverEstoque(loja, pedido, 1);
+          if (["refunded", "cancelled", "charged_back"].includes(pg.status)) moverEstoque(loja, pedido, -1);
           banco.salvar();
           log.info?.(`[mp] venda ${pedido.id}: ${pg.status}`);
           if (acabouDeAprovar) avisarLojaVenda(loja, pedido);
@@ -1409,6 +1497,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const canonical = `${urlPublica}/p/${encodeURIComponent(x.id)}`;
     const preco = Number(x.preco).toFixed(2);
     const local = x.loja === "local";
+    const esgotado = local && x.esgotado === true;
     const destino = local ? `/contato/${encodeURIComponent(x.id)}` : x.link;
     const infoLocal = local
       ? ` · ${attr(x.cidade)}${x.entrega ? ` · ${attr(x.entrega === "ambos" ? "Entrega ou retirada" : x.entrega === "entrega" ? "Entrega" : "Retirada na loja")}` : ""}`
@@ -1484,6 +1573,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
         url: canonical,
         priceCurrency: "BRL",
         price: preco,
+        ...(esgotado ? { availability: "https://schema.org/OutOfStock" } : {}),
         seller: { "@type": "Organization", name: local ? x.lojaNome : NOME_LOJA[x.loja] ?? "Loja parceira" },
       },
     };
@@ -1492,26 +1582,28 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       OG_IMAGE: imagem ? `<meta property="og:image" content="${attr(imagem)}">` : "",
       CATEGORIA: attr(x.dept), NOME: attr(x.nome), VENDEDOR: attr(local ? x.lojaNome : NOME_LOJA[x.loja] ?? "Loja parceira"),
       LOCAL_INFO: infoLocal, AVALIACAO: avaliacao, DESCRICAO: descricao ? `<p class="product-highlights">${attr(descricao)}</p>` : "",
-      DISPONIBILIDADE: local ? `<p class="product-availability">${attr(({ disponivel: "Disponível, conforme informado pela loja", "sob-encomenda": "Sob encomenda", consulte: "Consulte a disponibilidade com a loja" })[disponibilidade] ?? "Consulte a disponibilidade com a loja")}</p>` : "",
+      DISPONIBILIDADE: local && x.restam ? `<p class="product-availability product-restam">Restam só ${x.restam} ${x.restam === 1 ? "unidade" : "unidades"}</p>` : local ? `<p class="product-availability">${attr(({ disponivel: "Disponível, conforme informado pela loja", "sob-encomenda": "Sob encomenda", consulte: "Consulte a disponibilidade com a loja" })[disponibilidade] ?? "Consulte a disponibilidade com a loja")}</p>` : "",
       LOCAL_DETALHES: localDetalhes ? `<p class="product-local-details">${localDetalhes}</p>` : "",
       SELETORES_VARIACOES: seletoresVariacoes,
       IMAGEM: imagemHtml, PRECO_ANTIGO: x.precoAntigo > x.preco ? `<del>${attr(x.precoAntigo.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }))}</del>` : "",
       PRECO: attr(x.preco.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })),
       DESCONTO: x.precoAntigo > x.preco ? `<span class="pct">${Math.round((1 - x.preco / x.precoAntigo) * 100)}% OFF</span>` : "",
-      BOTAO_COMPRA_ONLINE: x.compraOnline
+      BOTAO_COMPRA_ONLINE: esgotado ? `<p class="compra-esgotada">Esgotado no momento</p>` : x.compraOnline
         ? `<button type="button" class="buybtn product-buy" data-comprar="${attr(x.id)}" data-entrega="${attr(x.entrega ?? "")}">Comprar com Pix ou cartão</button>`
         : x.soPeloSite ? `<p class="compra-em-breve">Compra pelo site disponível em breve.</p>` : "",
       CLASSE_COMPRA: x.compraOnline ? "zapbtn product-buy" : "buybtn product-buy",
       BOTAO_FAVORITO: `<button type="button" class="favbtn" data-favorito="${attr(x.id)}" aria-pressed="false"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg><span>Salvar nos favoritos</span></button>`,
-      BOTAO_ALERTA: `<button type="button" class="alertabtn" data-alerta="${attr(x.id)}"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0"/></svg>Avisar quando baixar o preço</button>`,
-      BOTAO_CARRINHO: local && (x.compraOnline || !x.soPeloSite)
+      BOTAO_ALERTA: esgotado ? `<button type="button" class="alertabtn" data-alerta="${attr(x.id)}" data-tipo="estoque"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0"/></svg>Avise-me quando voltar</button>` : `<button type="button" class="alertabtn" data-alerta="${attr(x.id)}"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0"/></svg>Avisar quando baixar o preço</button>`,
+      BOTAO_CARRINHO: local && !esgotado && (x.compraOnline || !x.soPeloSite)
         ? `<button type="button" class="favbtn carrinhobtn" data-carrinho="${attr(x.id)}" data-loja="${attr(x.lojaId)}"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.4 11h11L21 7H6.2M9 20a1 1 0 1 0 0-.1M18 20a1 1 0 1 0 0-.1"/></svg><span>Adicionar ao carrinho</span></button>`
         : "",
-      ATTR_PEDIDO: x.soPeloSite ? "hidden" : local ? `data-pedir-zap="${attr(x.id)}" data-entrega="${attr(x.entrega ?? "")}"` : "",
+      ATTR_PEDIDO: x.soPeloSite || esgotado ? "hidden" : local ? `data-pedir-zap="${attr(x.id)}" data-entrega="${attr(x.entrega ?? "")}"` : "",
       LINK_COMPRA: attr(destino), ALVO_COMPRA: local ? "_self" : "_blank",
       REL_COMPRA: local ? "" : "sponsored nofollow noopener",
       TEXTO_COMPRA: local ? "Pedir pelo WhatsApp da loja ↗" : `Comprar na ${NOME_LOJA[x.loja] ?? "loja parceira"} ↗`,
-      AVISO_COMPRA: x.compraOnline
+      AVISO_COMPRA: esgotado
+        ? `Este produto esgotou. Deixe seu WhatsApp e avisamos quando ${attr(x.lojaNome)} tiver de novo.`
+        : x.compraOnline
         ? `Pague aqui com Pix ou cartão pelo Mercado Pago. ${attr(x.lojaNome)} recebe o pedido e combina a entrega com você pelo WhatsApp.`
         : x.soPeloSite
         ? `${attr(x.lojaNome)} vende pelo CIT Shopping com Pix ou cartão. A loja está ativando os pagamentos.`

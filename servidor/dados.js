@@ -43,6 +43,12 @@ export function lojaVisivel(loja, agora = Date.now()) {
   return agora <= Date.parse(loja.testeAte) || loja.assinatura?.status === "authorized";
 }
 
+/** Estoque: modo "quantidade" (número; vazio = sem contagem, conta como "tem") ou "simples" (padrão: tem ou esgotado). */
+export function temEstoque(produto, loja) {
+  if (loja?.modoEstoque === "quantidade") return produto.estoque == null || produto.estoque > 0;
+  return !produto.esgotado;
+}
+
 export function statusLoja(loja, agora = Date.now()) {
   if (loja.suspensa) return "suspensa";
   if (loja.modeloCobranca === "comissao_fixa") return "parceira";

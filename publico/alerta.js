@@ -1,4 +1,5 @@
 // Sino "Avisar quando baixar o preço": botões com data-alerta="<id do produto>" (vitrine e /p/<id>).
+// Com data-tipo="estoque" (produto esgotado) vira "Avise-me quando voltar".
 // O cliente deixa o WhatsApp e recebe um aviso quando o preço cair. Arquivo externo por causa da CSP.
 (() => {
   const dlg = document.createElement('dialog');
@@ -17,7 +18,11 @@
   const form = dlg.querySelector('form');
   const erro = dlg.querySelector('.compra-erro');
   const enviar = form.querySelector('button[type="submit"]');
-  let produtoId = null;
+  let produtoId = null, tipo = 'preco';
+  const TEXTOS = {
+    preco: ['Avisar quando baixar', 'Quando o preço deste produto cair, mandamos um aviso no seu WhatsApp com o link. É um aviso só, e você pode cancelar quando quiser.', 'Quero ser avisado'],
+    estoque: ['Avise-me quando voltar', 'Quando este produto voltar ao estoque, mandamos um aviso no seu WhatsApp com o link. É um aviso só, e você pode cancelar quando quiser.', 'Quero ser avisado'],
+  };
   dlg.querySelector('.compra-fechar').onclick = () => dlg.close();
 
   document.addEventListener('click', (e) => {
@@ -25,6 +30,9 @@
     if (!botao) return;
     e.preventDefault();
     produtoId = botao.dataset.alerta;
+    tipo = botao.dataset.tipo === 'estoque' ? 'estoque' : 'preco';
+    dlg.querySelector('#alertaTitulo').textContent = TEXTOS[tipo][0];
+    dlg.querySelector('.compra-ajuda').textContent = TEXTOS[tipo][1];
     erro.hidden = true;
     enviar.disabled = false;
     enviar.textContent = 'Quero ser avisado';
@@ -37,7 +45,7 @@
     enviar.disabled = true;
     erro.hidden = true;
     try {
-      const res = await fetch('/api/alertas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ produtoId, whatsapp: form.whatsapp.value }) });
+      const res = await fetch('/api/alertas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ produtoId, tipo, whatsapp: form.whatsapp.value }) });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.erro || 'Não foi possível criar o alerta. Tente de novo.');
       enviar.textContent = 'Pronto! Você será avisado';

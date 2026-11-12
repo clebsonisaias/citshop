@@ -67,7 +67,94 @@
       <button class="btn" id="assinar" hidden>Assinar R$ 49,90/mês</button>
     </div>
 
-    <div class="box">
+    <nav class="abas" id="abas" aria-label="Seções do painel">
+      <a href="#inicio">Início</a>
+      <a href="#pedidos">Pedidos <span class="n" id="abaNovos" hidden></span></a>
+      <a href="#produtos">Produtos</a>
+      <a href="#loja">Loja</a>
+    </nav>
+
+    <div data-aba="inicio">
+      <div class="aviso-mp" id="avisoMp" hidden>
+        <div>
+          <b>Conecte o Mercado Pago para começar a vender</b>
+          <p>Seus clientes pagam com Pix ou cartão direto no site e o dinheiro cai na sua conta. Leva 1 minuto.</p>
+        </div>
+        <a class="btn" href="/api/painel/mercadopago/conectar">Conectar Mercado Pago</a>
+      </div>
+      <div class="cartoes" id="cartoes"></div>
+      <div class="box" id="proximos" hidden>
+        <h2>Próximos passos</h2>
+        <ul class="proximos" id="listaProximos"></ul>
+      </div>
+      <div class="box" id="blocoEstoqueBaixo" hidden>
+        <h2>Estoque</h2>
+        <ul class="proximos" id="listaEstoqueBaixo"></ul>
+      </div>
+      <div class="box">
+        <h2>O que mais chama a atenção</h2>
+        <div class="ranking-duo">
+          <div><b style="font-size:13px">Mais pedidos</b><ol class="ranking" id="rankPedidos"></ol></div>
+          <div><b style="font-size:13px">Mais cliques no WhatsApp</b><ol class="ranking" id="rankVistos"></ol></div>
+        </div>
+      </div>
+    </div>
+
+    <div data-aba="pedidos" hidden>
+    <div class="box" id="blocoPedidos" style="margin-top:16px">
+      <div class="pedidos-topo"><h2>Vendas e pedidos</h2><a class="btn sec" href="/api/painel/pedidos.csv" download>Baixar planilha</a></div>
+      <p class="note" style="font-size:13px;margin:-4px 0 12px">Clientes que pagaram pelo site ou pediram pelo seu WhatsApp, com nome, contato e entrega. Os dados ficam aqui por 12 meses.</p>
+      <div class="pedidos-filtros">
+        <label>Origem<select id="fOrigem"><option value="">Todas</option><option value="site">Pago no site</option><option value="whatsapp">Pedido no WhatsApp</option></select></label>
+        <label>Situação<select id="fEtapa"><option value="">Todas</option><option value="novo">Novo</option><option value="atendimento">Em atendimento</option><option value="vendido">Vendido</option><option value="cancelado">Cancelado</option></select></label>
+        <label>Buscar<input id="fBusca" type="search" placeholder="Nome, telefone ou pedido"></label>
+      </div>
+      <div class="msg" id="mPedidos" hidden role="status"></div>
+      <div class="vendas" id="pedidos"></div>
+    </div>
+
+    </div>
+
+    <div data-aba="produtos" hidden>
+    <div class="box" style="margin-top:16px">
+      <div class="head" style="margin-bottom:12px"><h2 style="margin:0">Meus produtos</h2><button class="btn" id="novo">+ Novo produto</button></div>
+      <div class="modo-estoque">
+        <label>Como controlar o estoque<select id="modoEstoque">
+          <option value="simples">Simples: eu marco quando acabar</option>
+          <option value="quantidade">Por quantidade: o site desconta a cada venda</option>
+        </select></label>
+        <p class="note" id="modoEstoqueAjuda" style="font-size:13px;margin:6px 0 0"></p>
+      </div>
+      <form class="form" id="fProd" hidden>
+        <h2 id="fProdTit">Novo produto</h2>
+        <label>Nome do produto<input name="nome" required maxlength="90" placeholder="Ex.: Vestido midi estampado"></label>
+        <div class="dois">
+          <label>Departamento<select name="dept" id="pDept" required></select></label>
+          <label>Preço (R$)<input name="preco" required inputmode="decimal" placeholder="89,90"></label>
+        </div>
+        <label>Disponibilidade<select name="disponibilidade">
+          <option value="consulte">Consultar disponibilidade</option>
+          <option value="disponivel">Disponível, informado pela loja</option>
+          <option value="sob-encomenda">Sob encomenda</option>
+        </select></label>
+        <label class="est-simples">Estoque<select name="esgotado"><option value="false">Tem estoque</option><option value="true">Esgotado</option></select></label>
+        <label class="est-qtd" hidden>Quantidade em estoque <small>vazio = sem contagem</small><input name="estoque" type="number" min="0" max="99999" inputmode="numeric" placeholder="Ex.: 12"></label>
+        <label>Preço antigo (R$) <small>opcional, para mostrar o desconto</small><input name="precoAntigo" inputmode="decimal" placeholder="129,90"></label>
+        <label>Descrição <small>tamanhos, cores, como entrega</small><textarea name="descricao" maxlength="1000"></textarea></label>
+        <div><b style="font-size:13px">Fotos</b> <small class="note">até 4, JPG ou PNG</small>
+          <div class="fotos" id="fotos" style="margin-top:8px"></div>
+          <input type="file" id="fArq" accept="image/jpeg,image/png,image/webp" multiple style="margin-top:8px">
+        </div>
+        <div class="msg erro" id="eProd" hidden role="alert"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="salvarProd">Salvar produto</button><button type="button" class="btn sec" id="cancProd">Cancelar</button></div>
+      </form>
+      <div class="lista" id="lista"></div>
+    </div>
+
+    </div>
+
+    <div data-aba="loja" hidden>
+    <div class="box" style="margin-top:16px">
       <h2>Aparência da loja</h2>
       <p class="note" style="font-size:13px;margin:-4px 0 14px">É assim que o topo da sua página aparece pros clientes.</p>
       <div class="sellerhead loja-cor" id="amostra"></div>
@@ -87,42 +174,13 @@
       </form>
     </div>
 
-    <div class="box">
-      <div class="head" style="margin-bottom:12px"><h2 style="margin:0">Meus produtos</h2><button class="btn" id="novo">+ Novo produto</button></div>
-      <form class="form" id="fProd" hidden>
-        <h2 id="fProdTit">Novo produto</h2>
-        <label>Nome do produto<input name="nome" required maxlength="90" placeholder="Ex.: Vestido midi estampado"></label>
-        <div class="dois">
-          <label>Departamento<select name="dept" id="pDept" required></select></label>
-          <label>Preço (R$)<input name="preco" required inputmode="decimal" placeholder="89,90"></label>
-        </div>
-        <label>Disponibilidade<select name="disponibilidade">
-          <option value="consulte">Consultar disponibilidade</option>
-          <option value="disponivel">Disponível, informado pela loja</option>
-          <option value="sob-encomenda">Sob encomenda</option>
-        </select></label>
-        <label>Preço antigo (R$) <small>opcional, para mostrar o desconto</small><input name="precoAntigo" inputmode="decimal" placeholder="129,90"></label>
-        <label>Descrição <small>tamanhos, cores, como entrega</small><textarea name="descricao" maxlength="1000"></textarea></label>
-        <div><b style="font-size:13px">Fotos</b> <small class="note">até 4, JPG ou PNG</small>
-          <div class="fotos" id="fotos" style="margin-top:8px"></div>
-          <input type="file" id="fArq" accept="image/jpeg,image/png,image/webp" multiple style="margin-top:8px">
-        </div>
-        <div class="msg erro" id="eProd" hidden role="alert"></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="salvarProd">Salvar produto</button><button type="button" class="btn sec" id="cancProd">Cancelar</button></div>
-      </form>
-      <div class="lista" id="lista"></div>
-    </div>
-
-    <div class="box" id="blocoPedidos">
-      <div class="pedidos-topo"><h2>Vendas e pedidos</h2><a class="btn sec" href="/api/painel/pedidos.csv" download>Baixar planilha</a></div>
-      <p class="note" style="font-size:13px;margin:-4px 0 12px">Clientes que pagaram pelo site ou pediram pelo seu WhatsApp, com nome, contato e entrega. Os dados ficam aqui por 12 meses.</p>
-      <div class="pedidos-filtros">
-        <label>Origem<select id="fOrigem"><option value="">Todas</option><option value="site">Pago no site</option><option value="whatsapp">Pedido no WhatsApp</option></select></label>
-        <label>Situação<select id="fEtapa"><option value="">Todas</option><option value="novo">Novo</option><option value="atendimento">Em atendimento</option><option value="vendido">Vendido</option><option value="cancelado">Cancelado</option></select></label>
-        <label>Buscar<input id="fBusca" type="search" placeholder="Nome, telefone ou pedido"></label>
-      </div>
-      <div class="msg" id="mPedidos" hidden role="status"></div>
-      <div class="vendas" id="pedidos"></div>
+    <div class="box" id="blocoPagamento">
+      <h2>Receber vendas pelo Mercado Pago</h2>
+      <p class="note" style="font-size:13px;margin:-4px 0 14px">Conecte a conta Mercado Pago da loja. O valor de cada venda feita no site cai direto nela; a CIT Shopping recebe só a taxa combinada.</p>
+      <p id="mpStatus" role="status"></p>
+      <div class="msg" id="mPagamento" hidden role="status"></div>
+      <a class="btn" id="mpConectar" href="/api/painel/mercadopago/conectar">Conectar Mercado Pago</a>
+      <button class="btn sec" id="mpDesconectar" type="button" hidden>Desconectar</button>
     </div>
 
     <div class="box" id="blocoCupons">
@@ -138,15 +196,6 @@
         <button class="btn">Publicar cupom</button>
       </form>
       <div class="vendas" id="listaCupons"></div>
-    </div>
-
-    <div class="box" id="blocoPagamento">
-      <h2>Receber vendas pelo Mercado Pago</h2>
-      <p class="note" style="font-size:13px;margin:-4px 0 14px">Conecte a conta Mercado Pago da loja. O valor de cada venda feita no site cai direto nela; a CIT Shopping recebe só a taxa combinada.</p>
-      <p id="mpStatus" role="status"></p>
-      <div class="msg" id="mPagamento" hidden role="status"></div>
-      <a class="btn" id="mpConectar" href="/api/painel/mercadopago/conectar">Conectar Mercado Pago</a>
-      <button class="btn sec" id="mpDesconectar" type="button" hidden>Desconectar</button>
     </div>
 
     <details class="box">
@@ -186,6 +235,7 @@
         <button class="btn">Trocar senha</button>
       </form>
     </details>
+    </div>
   </section>
 </main>
 </body>

@@ -61,6 +61,10 @@ test("pedidos: WhatsApp registra com código, loja vê só os dela, muda situaç
   const painelA = await (await fetch(`${base}/api/painel/eu`, { headers: { cookie: cookieA } })).json();
   assert.deepEqual(painelA.pedidos.map((p) => p.id).sort(), [pedido, rc.pedido].sort());
   assert.equal(painelA.pedidos.find((p) => p.id === pedido).comprador.whatsapp, "5584988887777");
+  // Resumo do Início: 2 pedidos novos, nenhuma venda ainda, produtos pedidos no ranking
+  assert.equal(painelA.resumo.novos, 2);
+  assert.deepEqual(painelA.resumo.mes, { qtd: 0, valor: 0 });
+  assert.deepEqual(painelA.resumo.maisPedidos[0], { nome: "Laço a", quantidade: 5 });
   const painelB = await (await fetch(`${base}/api/painel/eu`, { headers: { cookie: cookieB } })).json();
   assert.equal(painelB.pedidos.length, 0);
 
@@ -70,6 +74,7 @@ test("pedidos: WhatsApp registra com código, loja vê só os dela, muda situaç
   assert.equal((await patch(cookieA, "qualquer")).status, 400);
   const mudou = await (await patch(cookieA, "vendido")).json();
   assert.equal(mudou.pedidos.find((p) => p.id === pedido).etapa, "vendido");
+  assert.deepEqual([mudou.resumo.novos, mudou.resumo.hoje.qtd, mudou.resumo.hoje.valor], [1, 1, 19], "vendido entra no faturamento e sai dos novos");
 
   // Planilha da loja A
   const csv = await fetch(`${base}/api/painel/pedidos.csv`, { headers: { cookie: cookieA } });
