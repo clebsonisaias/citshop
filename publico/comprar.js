@@ -1,5 +1,7 @@
-// Compra pelo site (Pix ou cartão no Mercado Pago) para lojas que pagam por venda, como a Mimos da Delly.
-// Qualquer botão com data-comprar="<id do produto>" abre o formulário; usado na vitrine e na página /p/<id>.
+// Formulário de pedido das lojas locais, usado na vitrine e na página /p/<id>:
+// - data-comprar="<id>": compra no site (Pix ou cartão no Mercado Pago), para lojas que pagam por venda;
+// - data-pedir-zap="<id>": pedido pelo WhatsApp da loja (todas as lojas locais), registrado com código.
+// Nos dois casos o cliente informa nome e WhatsApp e o pedido aparece em "Vendas e pedidos" no painel da loja.
 // Arquivo externo porque a CSP do site (script-src 'self') bloqueia script inline.
 (() => {
   const AVISOS = {
@@ -26,8 +28,8 @@
   dlg.setAttribute('aria-labelledby', 'compraTitulo');
   dlg.innerHTML = `
     <form class="compra-form" novalidate>
-      <div class="compra-topo"><h2 id="compraTitulo">Seus dados para a compra</h2><button type="button" class="compra-fechar" aria-label="Fechar">×</button></div>
-      <p class="compra-ajuda">A loja usa esses dados para combinar a entrega com você. Depois você paga com Pix ou cartão no Mercado Pago.</p>
+      <div class="compra-topo"><h2 id="compraTitulo"></h2><button type="button" class="compra-fechar" aria-label="Fechar">×</button></div>
+      <p class="compra-ajuda"></p>
       <label>Seu nome<input name="nome" autocomplete="name" required maxlength="80"></label>
       <label>Seu WhatsApp com DDD<input name="whatsapp" type="tel" inputmode="tel" autocomplete="tel" placeholder="(84) 99999-9999" required></label>
       <fieldset class="compra-receber"><legend>Como quer receber</legend>
@@ -38,14 +40,18 @@
       <label>Quantidade<input name="quantidade" type="number" min="1" max="10" value="1" required></label>
       <label>Observação para a loja <small>opcional</small><textarea name="observacao" rows="2" maxlength="300" placeholder="Cor, tamanho, recado..."></textarea></label>
       <p class="compra-erro" role="alert" hidden></p>
-      <button class="buybtn" type="submit">Ir para o pagamento</button>
-      <p class="compra-seguro">Pagamento processado pelo Mercado Pago. O CIT Shopping não vê os dados do seu cartão.</p>
+      <button class="buybtn" type="submit"></button>
+      <p class="compra-seguro">Seus dados vão só para a loja, para combinar o pedido, e ficam guardados por 12 meses. <a href="/privacidade.html" target="_blank">Privacidade</a></p>
     </form>`;
   document.body.append(dlg);
   const form = dlg.querySelector('form');
   const erro = dlg.querySelector('.compra-erro');
   const endereco = dlg.querySelector('.compra-endereco');
-  let produtoId = null;
+  let produtoId = null, modo = 'site';
+  const MODOS = {
+    site: { titulo: 'Seus dados para a compra', ajuda: 'A loja usa esses dados para combinar a entrega com você. Depois você paga com Pix ou cartão no Mercado Pago, que cuida dos dados do cartão.', enviar: 'Ir para o pagamento', enviando: 'Abrindo o pagamento...', rota: '/api/pagamento/split', destino: (d) => d.initPoint },
+    zap: { titulo: 'Seus dados para o pedido', ajuda: 'Seu pedido vai para o WhatsApp da loja, que combina com você o pagamento e a entrega.', enviar: 'Enviar pedido pelo WhatsApp', enviando: 'Abrindo o WhatsApp...', rota: '/api/pedidos/whatsapp', destino: (d) => d.url },
+  };
 
   const atualizarEntrega = () => { endereco.hidden = form.receber.value !== 'entrega'; };
   form.addEventListener('change', atualizarEntrega);
@@ -60,10 +66,15 @@
   }
 
   document.addEventListener('click', (e) => {
-    const botao = e.target.closest('[data-comprar]');
+    const botao = e.target.closest('[data-comprar], [data-pedir-zap]');
     if (!botao) return;
     e.preventDefault();
-    produtoId = botao.dataset.comprar;
+    modo = botao.dataset.comprar ? 'site' : 'zap';
+    produtoId = botao.dataset.comprar || botao.dataset.pedirZap;
+    const m = MODOS[modo];
+    dlg.querySelector('#compraTitulo').textContent = m.titulo;
+    dlg.querySelector('.compra-ajuda').textContent = m.ajuda;
+    form.querySelector('button[type="submit"]').textContent = m.enviar;
     const entrega = botao.dataset.entrega; // retirada | entrega | ambos | vazio
     const so = entrega === 'retirada' || entrega === 'entrega' ? entrega : null;
     form.querySelectorAll('input[name="receber"]').forEach((r) => {
@@ -80,11 +91,12 @@
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const enviar = form.querySelector('button[type="submit"]');
+    const m = MODOS[modo];
     enviar.disabled = true;
-    enviar.textContent = 'Abrindo o pagamento...';
+    enviar.textContent = m.enviando;
     erro.hidden = true;
     try {
-      const res = await fetch('/api/pagamento/split', {
+      const res = await fetch(m.rota, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -94,13 +106,13 @@
         }),
       });
       const d = await res.json().catch(() => ({}));
-      if (!res.ok || !d.initPoint) throw new Error(d.erro || 'Não foi possível abrir o pagamento. Tente de novo.');
-      location.href = d.initPoint;
+      if (!res.ok || !m.destino(d)) throw new Error(d.erro || 'Não foi possível enviar agora. Tente de novo.');
+      location.href = m.destino(d);
     } catch (err) {
       erro.textContent = err.message;
       erro.hidden = false;
       enviar.disabled = false;
-      enviar.textContent = 'Ir para o pagamento';
+      enviar.textContent = m.enviar;
     }
   });
 })();

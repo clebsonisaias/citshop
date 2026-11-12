@@ -282,6 +282,62 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   }
 
   // Conta o redirecionamento ao WhatsApp sem persistir IP ou identidade do visitante.
+  // ---------- pedidos: vendas pagas no site e pedidos pelo WhatsApp, com os dados do cliente ----------
+  // Os dados do cliente servem só para a loja combinar o pedido e ficam 12 meses (LGPD: o necessário).
+  const DIAS_GUARDA_PEDIDOS = 365;
+  const ETAPAS = ["novo", "atendimento", "vendido", "cancelado"];
+  const limitePedido = new S.Limitador({ maximo: 20, janelaMs: 10 * 60_000 });
+  function limparPedidosVencidos() {
+    const limite = agora() - DIAS_GUARDA_PEDIDOS * DIA;
+    const antes = banco.d.pedidos?.length ?? 0;
+    banco.d.pedidos = (banco.d.pedidos ?? []).filter((p) => Date.parse(p.criadoEm) >= limite);
+    if (banco.d.pedidos.length !== antes) banco.salvar();
+  }
+  limparPedidosVencidos();
+  function lerComprador(c = {}) {
+    const comprador = {
+      nome: txt(c.nome, 80), whatsapp: whatsapp(c.whatsapp),
+      receber: c.receber === "entrega" ? "entrega" : "retirada", endereco: txt(c.endereco, 200), observacao: txt(c.observacao, 300),
+    };
+    if (comprador.nome.length < 2) return { erro: "Informe seu nome." };
+    if (!comprador.whatsapp) return { erro: "Informe seu WhatsApp com DDD." };
+    if (comprador.receber === "entrega" && comprador.endereco.length < 8) return { erro: "Informe o endereço de entrega." };
+    return { comprador };
+  }
+  const quantidadeDe = (v) => Math.min(10, Math.max(1, Math.floor(Number(v)) || 1));
+  const reais = (n) => Number(n).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  // Pedido pelo WhatsApp: registra o pedido (com código) e devolve o link do WhatsApp da loja já com a mensagem.
+  app.post("/api/pedidos/whatsapp", (req, res) => {
+    if (!limitePedido.registrar(`ped|${S.ipDe(req)}`).permitido) return erro(res, 429, "Muitos pedidos seguidos. Espere alguns minutos.");
+    const x = produtoPorId(String(req.body?.produtoId ?? ""));
+    if (!x || x.loja !== "local") return erro(res, 404, "Produto não encontrado.");
+    const { comprador, erro: msg } = lerComprador(req.body?.comprador);
+    if (msg) return erro(res, 400, msg);
+    const qtd = quantidadeDe(req.body?.quantidade);
+    const pedido = {
+      id: `P-${randomBytes(3).toString("hex").toUpperCase()}`, origem: "whatsapp", lojaId: x.lojaId, produtoId: x.id, produtoNome: x.nome,
+      quantidade: qtd, valorTotal: Math.round(x.preco * qtd * 100) / 100, comprador, etapa: "novo", criadoEm: iso(),
+    };
+    limparPedidosVencidos();
+    (banco.d.pedidos ??= []).push(pedido);
+    banco.registrarCliqueContato(`produto:${x.id.slice(2)}`, iso());
+    banco.salvar();
+    const mensagem = [
+      "Olá! Vi no CIT Shopping e quero fazer um pedido:",
+      `🛍️ *${qtd}x ${x.nome}* (${reais(pedido.valorTotal)})`,
+      `🧾 Pedido ${pedido.id}`,
+      "",
+      `👤 ${comprador.nome}`,
+      comprador.receber === "entrega" ? `🚚 Entrega em: ${comprador.endereco}` : "🏪 Vou retirar na loja",
+      ...(comprador.observacao ? [`📝 ${comprador.observacao}`] : []),
+      "",
+      `🔗 ${urlPublica}/p/${encodeURIComponent(x.id)}`,
+    ].join("\n");
+    res.json({ ok: true, pedido: pedido.id, url: `https://wa.me/${encodeURIComponent(x.whatsapp)}?text=${encodeURIComponent(mensagem)}` });
+  });
+
+  // Link antigo/sem JavaScript: vai direto ao WhatsApp, sem registrar pedido.
   app.get("/contato/:id", (req, res) => {
     const x = produtoPorId(req.params.id);
     if (!x || x.loja !== "local") return res.status(404).sendFile(join(publico, "404.html"));
@@ -324,12 +380,16 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   });
 
   // ---------- painel da loja ----------
+  // Pedidos da loja, do mais novo ao mais antigo. Compra no site sem pagamento iniciado ("criado") não conta.
+  const pedidosDa = (loja) => (banco.d.pedidos ?? [])
+    .filter((p) => p.lojaId === loja.id && !(p.origem !== "whatsapp" && p.status === "criado"))
+    .sort((x, y) => y.criadoEm.localeCompare(x.criadoEm));
   function painelDe(loja) {
     const t = agora();
     const { senhaHash, mpConta, mpOauth, ...dados } = loja;
     return {
       loja: { ...dados, mpConectado: Boolean(mpConta) },
-      vendas: (banco.d.pedidos ?? []).filter((p) => p.lojaId === loja.id && p.status !== "criado").slice(-30).reverse(),
+      pedidos: pedidosDa(loja).slice(0, 200),
       status: statusLoja(loja, t),
       diasTeste: Math.max(0, Math.ceil((Date.parse(loja.testeAte) - t) / DIA)),
       preco: PRECO_PLANO,
@@ -547,6 +607,29 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       res.redirect("/painel?mp=erro");
     }
   }));
+  app.patch("/api/painel/pedidos/:id", exigirLoja, (req, res) => {
+    const p = (banco.d.pedidos ?? []).find((x) => x.id === req.params.id && x.lojaId === req.loja.id);
+    if (!p) return erro(res, 404, "Pedido não encontrado.");
+    if (!ETAPAS.includes(req.body?.etapa)) return erro(res, 400, "Situação inválida.");
+    Object.assign(p, { etapa: req.body.etapa, atualizadoEm: iso() });
+    banco.salvar();
+    res.json(painelDe(req.loja));
+  });
+  // Planilha (CSV com ; e BOM, abre direto no Excel em português).
+  app.get("/api/painel/pedidos.csv", exigirLoja, (req, res) => {
+    const cel = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const ETAPA = { novo: "Novo", atendimento: "Em atendimento", vendido: "Vendido", cancelado: "Cancelado" };
+    const linhas = [["Data", "Pedido", "Origem", "Pagamento", "Situação", "Produto", "Qtd", "Valor", "Cliente", "WhatsApp", "Receber", "Endereço", "Observação"]];
+    for (const p of pedidosDa(req.loja)) {
+      const c = p.comprador ?? {};
+      linhas.push([new Date(p.criadoEm).toLocaleString("pt-BR", { timeZone: "America/Fortaleza" }), p.id, p.origem === "whatsapp" ? "Pedido no WhatsApp" : "Pago no site",
+        p.origem === "whatsapp" ? "" : p.status, ETAPA[p.etapa ?? "novo"], p.produtoNome, p.quantidade, String(p.valorTotal).replace(".", ","),
+        c.nome, c.whatsapp, c.receber === "entrega" ? "Entrega" : "Retirada", c.endereco, c.observacao]);
+    }
+    res.set("Content-Type", "text/csv; charset=utf-8").set("Content-Disposition", `attachment; filename="pedidos-${req.loja.slug}.csv"`)
+      .set("Cache-Control", "no-store").send("\ufeff" + linhas.map((l) => l.map(cel).join(";")).join("\r\n"));
+  });
+
   app.post("/api/painel/mercadopago/desconectar", exigirLoja, (req, res) => {
     delete req.loja.mpConta;
     banco.salvar();
@@ -563,16 +646,10 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     if (!loja) return erro(res, 404, "Loja não encontrada.");
     if (!prod.compraOnline) return erro(res, 409, "Esta loja ainda não recebe pagamentos pelo site. Peça pelo WhatsApp.");
     // Quem compra: a loja precisa saber com quem combinar a entrega.
-    const c = req.body?.comprador ?? {};
-    const comprador = {
-      nome: txt(c.nome, 80), whatsapp: whatsapp(c.whatsapp),
-      receber: c.receber === "entrega" ? "entrega" : "retirada", endereco: txt(c.endereco, 200), observacao: txt(c.observacao, 300),
-    };
-    if (comprador.nome.length < 2) return erro(res, 400, "Informe seu nome.");
-    if (!comprador.whatsapp) return erro(res, 400, "Informe seu WhatsApp com DDD.");
-    if (comprador.receber === "entrega" && comprador.endereco.length < 8) return erro(res, 400, "Informe o endereço de entrega.");
+    const { comprador, erro: msgComprador } = lerComprador(req.body?.comprador);
+    if (msgComprador) return erro(res, 400, msgComprador);
 
-    const qtd = Math.min(10, Math.max(1, Math.floor(Number(quantidade)) || 1));
+    const qtd = quantidadeDe(quantidade);
     const valorTotal = Math.round(Number(prod.preco) * qtd * 100) / 100;
     const taxaMarketplace = loja.modeloCobranca === "comissao_fixa" ? Number(loja.comissaoPorVenda ?? 1) : 0;
     if (!(taxaMarketplace < valorTotal)) return erro(res, 400, "Valor da compra menor que a taxa da plataforma.");
@@ -583,7 +660,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const titulo = `${prod.nome} · ${loja.nome}`;
     const webhookUrl = `${urlPublica}/webhook/mercadopago?loja=${encodeURIComponent(loja.id)}`;
     banco.d.pedidos ??= [];
-    const pedido = { id: referencia, lojaId: loja.id, produtoId: prod.id, produtoNome: prod.nome, quantidade: qtd, valorTotal, taxaMarketplace, metodo, comprador, status: "criado", criadoEm: iso() };
+    limparPedidosVencidos();
+    const pedido = { id: referencia, origem: "site", lojaId: loja.id, produtoId: prod.id, produtoNome: prod.nome, quantidade: qtd, valorTotal, taxaMarketplace, metodo, comprador, status: "criado", etapa: "novo", criadoEm: iso() };
     try {
       const tokenVendedor = await tokenDaLoja(loja);
       if (metodo === "pix") {
@@ -706,6 +784,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const t = agora();
     res.json(banco.lojas.map(({ senhaHash, mpConta, mpOauth, ...l }) => ({
       ...l, status: statusLoja(l, t), mpConectado: Boolean(mpConta),
+      pedidos: (() => { const ps = pedidosDa(l); return { total: ps.length, pagos: ps.filter((p) => p.status === "approved").length, whatsapp: ps.filter((p) => p.origem === "whatsapp").length }; })(),
       cliquesContatoLoja: banco.cliquesContato(`loja:${l.id}`),
       produtos: banco.produtos.filter((p) => p.lojaId === l.id).map((p) => ({
         id: p.id, nome: p.nome, preco: p.preco, foto: p.fotos[0], ativo: p.ativo, bloqueado: p.bloqueado,
@@ -1233,9 +1312,10 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
         ? `<button type="button" class="buybtn product-buy" data-comprar="${attr(x.id)}" data-entrega="${attr(x.entrega ?? "")}">Comprar com Pix ou cartão</button>`
         : "",
       CLASSE_COMPRA: x.compraOnline ? "zapbtn product-buy" : "buybtn product-buy",
+      ATTR_PEDIDO: local ? `data-pedir-zap="${attr(x.id)}" data-entrega="${attr(x.entrega ?? "")}"` : "",
       LINK_COMPRA: attr(destino), ALVO_COMPRA: local ? "_self" : "_blank",
       REL_COMPRA: local ? "" : "sponsored nofollow noopener",
-      TEXTO_COMPRA: x.compraOnline ? "Tirar dúvidas no WhatsApp da loja ↗" : local ? "Pedir pelo WhatsApp da loja ↗" : `Comprar na ${NOME_LOJA[x.loja] ?? "loja parceira"} ↗`,
+      TEXTO_COMPRA: local ? "Pedir pelo WhatsApp da loja ↗" : `Comprar na ${NOME_LOJA[x.loja] ?? "loja parceira"} ↗`,
       AVISO_COMPRA: x.compraOnline
         ? `Pague aqui com Pix ou cartão pelo Mercado Pago. ${attr(x.lojaNome)} recebe o pedido e combina a entrega com você pelo WhatsApp.`
         : local

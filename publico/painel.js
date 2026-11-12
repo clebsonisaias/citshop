@@ -62,6 +62,39 @@
   const ROTULO = { parceira: 'Loja Parceira', teste: 'Teste grátis', ativa: 'Assinatura ativa', vencida: 'Fora da vitrine', suspensa: 'Suspensa' };
   const ROTULO_DISPONIBILIDADE = { disponivel: 'Disponível', 'sob-encomenda': 'Sob encomenda', consulte: 'Consultar disponibilidade' };
 
+  // ---------- vendas e pedidos ----------
+  const PAGAMENTO = { approved: 'Pago', pending: 'Aguardando pagamento', in_process: 'Pagamento em análise', rejected: 'Pagamento recusado', cancelled: 'Pagamento cancelado', refunded: 'Pagamento devolvido' };
+  const ETAPA = { novo: 'Novo', atendimento: 'Em atendimento', vendido: 'Vendido', cancelado: 'Cancelado' };
+  function renderPedidos() {
+    const origem = $('fOrigem').value, etapa = $('fEtapa').value, busca = $('fBusca').value.trim().toLowerCase();
+    const digitos = busca.replace(/\D/g, '');
+    const lista = (estado.pedidos ?? []).filter((p) => {
+      const c = p.comprador ?? {};
+      return (!origem || (p.origem === 'whatsapp' ? 'whatsapp' : 'site') === origem) && (!etapa || (p.etapa ?? 'novo') === etapa)
+        && (!busca || (c.nome ?? '').toLowerCase().includes(busca) || p.id.toLowerCase().includes(busca) || (digitos && (c.whatsapp ?? '').includes(digitos)));
+    });
+    $('pedidos').innerHTML = lista.length ? lista.map((p) => {
+      const c = p.comprador ?? {};
+      const doSite = p.origem !== 'whatsapp';
+      return `<div class="venda">
+        <div class="venda-selos"><span class="st">${doSite ? 'Pago no site' : 'Pedido no WhatsApp'}</span>${doSite ? `<span class="st ${esc(p.status)}">${esc(PAGAMENTO[p.status] ?? p.status)}</span>` : ''}<small>${esc(p.id.startsWith('P-') ? p.id : '')}</small></div>
+        <b>${esc(String(p.quantidade))}x ${esc(p.produtoNome ?? '')} · ${brl.format(p.valorTotal)}</b>
+        <span>${esc(c.nome ?? '')}${c.whatsapp ? ` · <a href="https://wa.me/${esc(c.whatsapp)}" target="_blank" rel="noopener">WhatsApp do cliente</a>` : ''}</span>
+        <span>${c.receber === 'entrega' ? `Entregar em: ${esc(c.endereco ?? '')}` : 'Vai retirar na loja'}${c.observacao ? ` · ${esc(c.observacao)}` : ''}</span>
+        <div class="venda-rodape"><small>${new Date(p.criadoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</small>
+          <label>Situação <select data-pedido="${esc(p.id)}" aria-label="Situação do pedido ${esc(p.id)}">${Object.entries(ETAPA).map(([k, n]) => `<option value="${k}"${(p.etapa ?? 'novo') === k ? ' selected' : ''}>${n}</option>`).join('')}</select></label></div>
+      </div>`;
+    }).join('') : `<p class="note" style="font-size:13px;margin:0">${(estado.pedidos ?? []).length ? 'Nenhum pedido com esses filtros.' : 'Nenhum pedido ainda. Quando um cliente pagar pelo site ou pedir pelo seu WhatsApp, ele aparece aqui.'}</p>`;
+  }
+  ['fOrigem', 'fEtapa', 'fBusca'].forEach((id) => $(id).addEventListener('input', renderPedidos));
+  $('pedidos').addEventListener('change', async (e) => {
+    const sel = e.target.closest('select[data-pedido]');
+    if (!sel) return;
+    sel.disabled = true;
+    try { mostrar(await api(`/api/painel/pedidos/${encodeURIComponent(sel.dataset.pedido)}`, { metodo: 'PATCH', json: { etapa: sel.value } })); }
+    catch (err) { mostrarMsg($('mPedidos'), err.message); sel.disabled = false; }
+  });
+
   function mostrar(s) {
     estado = s;
     $('vAuth').hidden = true;
@@ -80,15 +113,7 @@
     $('mpStatus').textContent = s.loja.mpConectado ? 'Conta Mercado Pago conectada: as vendas pelo site caem nela.' : 'Nenhuma conta conectada ainda.';
     $('mpConectar').textContent = s.loja.mpConectado ? 'Conectar outra conta' : 'Conectar Mercado Pago';
     $('mpDesconectar').hidden = !s.loja.mpConectado;
-    const ST = { approved: 'Pago', pending: 'Aguardando pagamento', in_process: 'Em análise', rejected: 'Recusado', cancelled: 'Cancelado', refunded: 'Devolvido' };
-    $('vendas').innerHTML = (s.vendas ?? []).length ? s.vendas.map((v) => {
-      const c = v.comprador ?? {};
-      return `<div class="venda"><span class="st ${esc(v.status)}">${esc(ST[v.status] ?? v.status)}</span>
-        <b>${esc(String(v.quantidade))}x ${esc(v.produtoNome ?? '')} · ${brl.format(v.valorTotal)}</b>
-        <span>${esc(c.nome ?? '')}${c.whatsapp ? ` · <a href="https://wa.me/${esc(c.whatsapp)}" target="_blank" rel="noopener">WhatsApp do cliente</a>` : ''}</span>
-        <span>${c.receber === 'entrega' ? `Entregar em: ${esc(c.endereco ?? '')}` : 'Vai retirar na loja'}${c.observacao ? ` · ${esc(c.observacao)}` : ''}</span>
-        <small>${new Date(v.criadoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</small></div>`;
-    }).join('') : '<p class="note" style="font-size:13px;margin:0">Nenhuma venda pelo site ainda. Quando um cliente pagar, ela aparece aqui e você recebe um aviso no WhatsApp.</p>';
+    renderPedidos();
     $('vCor').value = s.loja.cor || '#036271';
     $('vSobre').value = s.loja.sobre ?? '';
     $('tirarLogo').hidden = !s.loja.logo;

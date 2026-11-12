@@ -241,11 +241,14 @@ import { filtrarCatalogo } from './catalogo.js';
     $('mcomprar').dataset.comprar = x.id;
     $('mcomprar').dataset.entrega = x.entrega ?? '';
     $('mbuy').className = local && x.compraOnline ? 'zapbtn' : 'buybtn';
+    // Loja local: "Pedir pelo WhatsApp" abre o formulário do pedido (comprar.js) e registra o pedido para a loja.
+    if (local) { $('mbuy').dataset.pedirZap = x.id; $('mbuy').dataset.entrega = x.entrega ?? ''; }
+    else { delete $('mbuy').dataset.pedirZap; delete $('mbuy').dataset.entrega; }
     if (local) {
       const baseContato = `/contato/${encodeURIComponent(x.id)}`;
       $('mbuy').href = baseContato;
       $('mbuy').rel = 'noopener';
-      $('mbuy').textContent = x.compraOnline ? 'Tirar dúvidas no WhatsApp da loja ↗' : 'Pedir pelo WhatsApp da loja ↗';
+      $('mbuy').textContent = 'Pedir pelo WhatsApp da loja ↗';
       const disponibilidade = DISPONIBILIDADE[x.disponibilidade] ?? DISPONIBILIDADE.consulte;
       $('mnote').textContent = `Vendido por ${x.lojaNome}, ${x.cidade}${x.entrega ? ` · ${window.CIT.textoEntrega(x.entrega)}` : ''} · ${disponibilidade}. ${x.compraOnline ? 'Pague aqui com Pix ou cartão; a loja combina a entrega com você pelo WhatsApp.' : 'Combine pagamento e entrega direto com a loja.'}`;
 
