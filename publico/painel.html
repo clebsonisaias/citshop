@@ -81,12 +81,13 @@
       <button class="btn" id="assinar" hidden>Assinar R$ 49,90/mês</button>
     </div>
 
-    <nav class="abas" id="abas" aria-label="Seções do painel">
-      <a href="#inicio">Início</a>
-      <a href="#pedidos">Pedidos <span class="n" id="abaNovos" hidden></span></a>
-      <a href="#produtos">Produtos</a>
-      <a href="#entrega">Entrega</a>
-      <a href="#loja">Loja</a>
+    <!-- No celular vira a barra fixa embaixo (como num app); no computador fica no topo. -->
+    <nav class="abas-app" id="abas" aria-label="Seções do painel">
+      <a href="#inicio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Início</span></a>
+      <a href="#pedidos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8v4H8zM6 5H5v16h14V5h-1M9 12h6M9 16h4"/></svg><span>Pedidos</span><span class="n" id="abaNovos" hidden></span></a>
+      <a href="#produtos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12V4h8l10 10-8 8zM8 8h.01"/></svg><span>Produtos</span></a>
+      <a href="#entrega"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 7h12v9H2zM14 10h4l3 3v3h-7M6 19a2 2 0 1 0 0-.1M17 19a2 2 0 1 0 0-.1"/></svg><span>Entrega</span></a>
+      <a href="#loja"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v10h16V10M3 10l2-6h14l2 6zM9 20v-6h6v6"/></svg><span>Loja</span></a>
     </nav>
 
     <div data-aba="inicio">
@@ -241,7 +242,7 @@
     </div>
 
     <details class="box">
-      <summary style="font-weight:800;cursor:pointer;min-height:32px">Dados da loja</summary>
+      <summary style="font-weight:800;cursor:pointer;min-height:44px;display:flex;align-items:center">Dados da loja</summary>
       <form class="form" id="fLoja" style="margin-top:12px">
         <div class="dois">
           <label>Nome da loja<input name="nome" required maxlength="60"></label>
@@ -267,7 +268,7 @@
     </details>
 
     <details class="box">
-      <summary style="font-weight:800;cursor:pointer;min-height:32px">Trocar senha</summary>
+      <summary style="font-weight:800;cursor:pointer;min-height:44px;display:flex;align-items:center">Trocar senha</summary>
       <form class="form" id="fSenha" style="margin-top:12px">
         <div class="dois">
           <label>Senha atual<input name="atual" type="password" required autocomplete="current-password"></label>

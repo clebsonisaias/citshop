@@ -24,7 +24,7 @@
       <td>${l.produtos.length ? `<details><summary>${l.produtos.length} ${l.produtos.length === 1 ? 'produto' : 'produtos'}</summary>` : ''}${l.produtos.map((p) => `<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
           <img src="${esc(p.foto)}" alt="" style="width:32px;height:32px;object-fit:cover;border-radius:6px">
           <span style="flex:1">${esc(p.nome)} · ${brl.format(p.preco)}<br><small class="note">${esc(DISPONIBILIDADE[p.disponibilidade] ?? DISPONIBILIDADE.consulte)} · ${p.cliquesContato ?? 0} cliques WhatsApp${p.ativo ? '' : ' · pausado'}</small></span>
-          <button class="btn sec" style="min-height:32px;padding:4px 8px;font-size:11px" data-bloq="${p.id}" data-v="${!p.bloqueado}">${p.bloqueado ? 'Mostrar' : 'Ocultar'}</button></div>`).join('') || '<small class="note">nenhum</small>'}${l.produtos.length ? '</details>' : ''}</td>
+          <button class="btn sec" style="min-height:40px;padding:4px 10px;font-size:12px" data-bloq="${p.id}" data-v="${!p.bloqueado}">${p.bloqueado ? 'Mostrar' : 'Ocultar'}</button></div>`).join('') || '<small class="note">nenhum</small>'}${l.produtos.length ? '</details>' : ''}</td>
       <td class="acoes-loja">
         <button class="btn sec" data-modelo="${l.id}" data-atual="${l.modeloCobranca || 'mensalidade'}">${l.modeloCobranca === 'comissao_fixa' ? 'Mudar p/ Mensalidade' : 'Mudar p/ Parceira (R$ 1/venda)'}</button>
         <button class="btn sec" data-susp="${l.id}" data-v="${!l.suspensa}">${l.suspensa ? 'Reativar' : 'Suspender'}</button>
@@ -558,6 +558,15 @@
     document.querySelectorAll('#abas a').forEach((a) => a.toggleAttribute('aria-current', a.getAttribute('href') === `#${aba}`));
   }
   addEventListener('hashchange', irPara);
+  // Botões "copiar" (ex.: link da bio). O onclick embutido no HTML era bloqueado pela CSP.
+  document.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-copiar-texto]');
+    if (!b) return;
+    const antes = b.textContent;
+    try { await navigator.clipboard.writeText(b.dataset.copiarTexto); b.textContent = 'Copiado!'; }
+    catch { b.textContent = b.dataset.copiarTexto; }
+    setTimeout(() => { b.textContent = antes; }, 2000);
+  });
   // No celular as tabelas viram cartões: cada célula ganha o nome da coluna (o CSS mostra como rótulo).
   function rotular() {
     document.querySelectorAll('#vAdm table.tabela').forEach((t) => {

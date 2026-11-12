@@ -94,9 +94,10 @@
         ${p.itens?.length > 1
           ? `<b>${p.itens.length} produtos · ${brl.format(p.valorTotal)}</b><ul class="venda-itens">${p.itens.map((i) => `<li>${esc(String(i.quantidade))}x ${esc(i.nome)}${i.observacao ? ` <small>(${esc(i.observacao)})</small>` : ''} · ${brl.format(i.preco * i.quantidade)}</li>`).join('')}</ul>`
           : `<b>${esc(String(p.quantidade))}x ${esc(p.produtoNome ?? '')} · ${brl.format(p.valorTotal)}</b>${p.itens?.[0]?.observacao ? `<span>${esc(p.itens[0].observacao)}</span>` : ''}`}
-        <span>${esc(c.nome ?? '')}${c.whatsapp ? ` · <a href="https://wa.me/${esc(c.whatsapp)}" target="_blank" rel="noopener">WhatsApp do cliente</a>` : ''}</span>
+        <span>${esc(c.nome ?? '')}</span>
         <span>${c.receber === 'entrega' ? `Entregar em: ${esc(c.endereco ?? '')}` : 'Vai retirar na loja'}${c.observacao ? ` · ${esc(c.observacao)}` : ''}</span>
-        ${p.entrega ? `<span>Entrega ${esc(String(p.entrega.km).replace('.', ','))} km: ${p.entrega.valor ? brl.format(p.entrega.valor) : 'grátis'} · <a href="https://www.google.com/maps?q=${esc(p.entrega.lat)},${esc(p.entrega.lng)}" target="_blank" rel="noopener">Abrir no mapa</a></span>` : ''}
+        ${p.entrega ? `<span>Entrega ${esc(String(p.entrega.km).replace('.', ','))} km: ${p.entrega.valor ? brl.format(p.entrega.valor) : 'grátis'}</span>` : ''}
+        ${c.whatsapp || p.entrega ? `<div class="acoes-pedido">${c.whatsapp ? `<a class="acao-pedido zap" href="https://wa.me/${esc(c.whatsapp)}" target="_blank" rel="noopener">Chamar no WhatsApp</a>` : ''}${p.entrega ? `<a class="acao-pedido" href="https://www.google.com/maps?q=${esc(p.entrega.lat)},${esc(p.entrega.lng)}" target="_blank" rel="noopener">Abrir no mapa</a>` : ''}</div>` : ''}
         <div class="venda-rodape"><small>${new Date(p.criadoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</small>
           <label>Situação <select data-pedido="${esc(p.id)}" aria-label="Situação do pedido ${esc(p.id)}">${Object.entries(ETAPA).map(([k, n]) => `<option value="${k}"${(p.etapa ?? 'novo') === k ? ' selected' : ''}>${n}</option>`).join('')}</select></label></div>
       </div>`;
@@ -132,7 +133,8 @@
     document.querySelectorAll('#abas a').forEach((a) => { a.toggleAttribute('aria-current', a.getAttribute('href') === `#${aba}`); });
     if (aba === 'entrega' && estado) abrirEntrega();
   }
-  addEventListener('hashchange', irPara);
+  // Trocou de aba (barra de baixo no celular): começa do topo da seção.
+  addEventListener('hashchange', () => { irPara(); window.scrollTo(0, 0); });
 
   // ---------- entrega por distância: pino da loja no mapa + faixas de km ----------
   const CORES_FAIXA = ['#00C896', '#008B87', '#036271', '#E0A800', '#E07A00', '#C8323A'];
