@@ -98,3 +98,14 @@ test("conector real da Shopee: link com subIds e relatório paginado com o canal
   assert.equal(r.conversoes.length, 2, "leu as duas páginas pelo scrollId");
   assert.deepEqual(vendasPorCanal(r.conversoes), { whatsapp: { pedidos: 1, estimada: 0, confirmada: 3.5, cancelados: 0 }, site: { pedidos: 1, estimada: 0, confirmada: 3.5, cancelados: 0 } });
 });
+
+test("link que chega depois do tempo de espera fica guardado para os próximos cliques", async (t) => {
+  const dir = mkdtempSync(join(tmpdir(), "cit-canal-atraso-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const shopee = { estaConfigurado: () => true, gerarLinkComSubIds: (url, ids) => new Promise((ok) => setTimeout(() => ok(`https://s.shopee.com.br/${ids.join("-")}`), 80)) };
+  const canais = new CanaisAfiliado({ dadosDir: dir, shopee, esperaMs: 20, log: { warn() {} } });
+  const p = { id: "shopee-9", loja: "shopee", link: "https://s.shopee.com.br/padrao", linkOriginal: "https://shopee.com.br/x-i.1.9" };
+  assert.equal(await canais.destino(p, "site"), "https://s.shopee.com.br/padrao", "este clique não espera");
+  await new Promise((ok) => setTimeout(ok, 120));
+  assert.equal(await canais.destino(p, "site"), "https://s.shopee.com.br/citshop-site", "o próximo já sai marcado");
+});

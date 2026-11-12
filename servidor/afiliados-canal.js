@@ -20,8 +20,8 @@ const DESTINO_OK = /^https:\/\/([a-z0-9-]+\.)*(shopee\.com\.br|shope\.ee|amazon\
 const TTL_LINK = 30 * 24 * 60 * 60 * 1000;
 
 export class CanaisAfiliado {
-  constructor({ dadosDir, shopee = null, agora = Date.now, log = console }) {
-    Object.assign(this, { dadosDir, shopee, agora, log });
+  constructor({ dadosDir, shopee = null, agora = Date.now, log = console, esperaMs = 4000 }) {
+    Object.assign(this, { dadosDir, shopee, agora, log, esperaMs });
     this.arqLinks = join(dadosDir, "links-canal.json");
     this.arqCliques = join(dadosDir, "cliques-canal.json");
     this.links = this.lerJson(this.arqLinks, {});
@@ -56,17 +56,18 @@ export class CanaisAfiliado {
     if (produto.loja !== "shopee" || !produto.linkOriginal || !this.shopee?.estaConfigurado?.()) return padrao;
     const chave = `${produto.id}|${canal}`, g = this.links[chave];
     if (g && this.agora() - g.em < TTL_LINK && DESTINO_OK.test(g.link)) return g.link;
-    try {
-      if (!this.gerando.has(chave)) this.gerando.set(chave, this.shopee.gerarLinkComSubIds(produto.linkOriginal, ["citshop", canal]).finally(() => this.gerando.delete(chave)));
-      const link = await Promise.race([this.gerando.get(chave), new Promise((ok) => setTimeout(() => ok(null), 4000))]);
-      if (link && DESTINO_OK.test(link)) {
-        this.links[chave] = { link, em: this.agora() };
-        if (Object.keys(this.links).length > 20000) for (const k of Object.keys(this.links).slice(0, 5000)) delete this.links[k];
-        this.gravar(this.arqLinks, this.links);
-        return link;
-      }
-    } catch (e) { this.log.warn?.(`[canal] link ${chave}: ${e.message}`); }
-    return padrao;
+    // Gera uma vez e guarda quando chegar, mesmo que passe dos 4 s: este clique vai pelo link padrão, os próximos já saem marcados.
+    if (!this.gerando.has(chave)) this.gerando.set(chave, this.shopee.gerarLinkComSubIds(produto.linkOriginal, ["citshop", canal])
+      .then((link) => (link && DESTINO_OK.test(link) ? (this.guardar(chave, link), link) : null))
+      .catch((e) => { this.log.warn?.(`[canal] link ${chave}: ${e.message}`); return null; })
+      .finally(() => this.gerando.delete(chave)));
+    const link = await Promise.race([this.gerando.get(chave), new Promise((ok) => setTimeout(() => ok(null), this.esperaMs).unref?.())]);
+    return link ?? padrao;
+  }
+  guardar(chave, link) {
+    this.links[chave] = { link, em: this.agora() };
+    if (Object.keys(this.links).length > 20000) for (const k of Object.keys(this.links).slice(0, 5000)) delete this.links[k];
+    this.gravar(this.arqLinks, this.links);
   }
   cliquesNoPeriodo(desdeDia) {
     const total = {};
