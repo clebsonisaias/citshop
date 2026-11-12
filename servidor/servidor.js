@@ -6,9 +6,9 @@ import { rodarColeta } from "./coletor.js";
 
 const PORTA = Number(process.env.PORT ?? 3000);
 
-let app, banco, dadosDir, sincronizarAssinaturas, verificarAlertas, publicarStoryDoDia, agendadorOfertas, tarefa, canais, sincronizarComissoesShopee, atualizarCampanhasShopee;
+let app, banco, dadosDir, sincronizarAssinaturas, verificarAlertas, publicarStoryDoDia, agendadorOfertas, tarefa, canais, sincronizarComissoesShopee, atualizarCampanhasShopee, postarInstagramDoDia, buscas;
 try {
-  ({ app, banco, dadosDir, sincronizarAssinaturas, verificarAlertas, publicarStoryDoDia, agendadorOfertas, tarefa, canais, sincronizarComissoesShopee, atualizarCampanhasShopee } = criarApp({ log: { info: console.log, warn: console.warn, error: console.error } }));
+  ({ app, banco, dadosDir, sincronizarAssinaturas, verificarAlertas, publicarStoryDoDia, agendadorOfertas, tarefa, canais, sincronizarComissoesShopee, atualizarCampanhasShopee, postarInstagramDoDia, buscas } = criarApp({ log: { info: console.log, warn: console.warn, error: console.error } }));
 } catch (e) {
   console.error(`[fatal] ${e.message}`);
   process.exit(1);
@@ -55,15 +55,19 @@ backup();
 setInterval(backup, 24 * 60 * 60 * 1000).unref();
 
 // Comissão de afiliado: cliques por canal gravados a cada minuto; comissões da Shopee lançadas no livro a cada 6 h.
-setInterval(() => { try { canais.descarregar(); } catch (e) { console.error(`[canal] ${e.message}`); } }, 60_000).unref();
+setInterval(() => { try { canais.descarregar(); buscas.descarregar(); } catch (e) { console.error(`[canal] ${e.message}`); } }, 60_000).unref();
 const comissoes = tarefa("comissoes-shopee", async () => { const n = await sincronizarComissoesShopee(); if (n) console.log(`[comissoes] ${n} lançamento(s) da Shopee`); });
 setTimeout(comissoes, 3 * 60_000).unref();
 setInterval(comissoes, 6 * 60 * 60 * 1000).unref();
 const campanhas = tarefa("campanhas-shopee", async () => console.log(`[campanhas] ${await atualizarCampanhasShopee()} campanha(s) da Shopee`));
 setTimeout(campanhas, 2 * 60_000).unref();
 setInterval(campanhas, 3 * 60 * 60 * 1000).unref();
+// Instagram: postagem diária nos horários do admin (confere a cada 10 min; falha e token vencido aparecem em /saude).
+const instagramDiario = tarefa("instagram", () => postarInstagramDoDia());
+setTimeout(instagramDiario, 90_000).unref();
+setInterval(instagramDiario, 10 * 60_000).unref();
 
 const servidor = app.listen(PORTA, () => console.log(`[citshop] ouvindo na porta ${PORTA}`));
-const encerrar = () => { try { canais.descarregar(); } catch { /* sem disco */ } servidor.close(() => process.exit(0)); };
+const encerrar = () => { try { canais.descarregar(); buscas.descarregar(); } catch { /* sem disco */ } servidor.close(() => process.exit(0)); };
 process.on("SIGTERM", encerrar);
 process.on("SIGINT", encerrar);

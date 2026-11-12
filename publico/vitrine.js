@@ -469,6 +469,8 @@ import { filtrarCatalogo } from './catalogo.js';
   $('sf').addEventListener('submit', (e) => {
     e.preventDefault();
     const q = $('q').value.trim(), dep = $('sdept').value;
+    // Só o texto da busca (sem dado de quem buscou): o "mais buscado da semana" vira post no Instagram.
+    if (q.length >= 3) fetch('/api/busca', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ q }), keepalive: true }).catch(() => {});
     showResults(q ? `Resultados para "${q}"` : dep ? D[dep].n : 'Todos os produtos', P, '', { q, dept: dep });
   });
 

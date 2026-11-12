@@ -1075,3 +1075,9 @@ body.kds { background: #0f1416; color: #f2f5f5; min-height: 100dvh; margin: 0; }
 .camp-card span { display: grid; gap: 4px; padding: 12px 14px; }
 .camp-card b { font-size: 15px; line-height: 1.3; white-space: normal; overflow-wrap: anywhere; }
 .camp-card small { color: var(--hot, #c2410c); font-weight: 700; font-size: 13px; }
+.insta-diario { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 14px 0 0; display: grid; gap: 10px; }
+.insta-diario legend { font-weight: 800; padding: 0 4px; }
+.insta-diario label { display: grid; gap: 4px; font-weight: 700; font-size: 14px; }
+.insta-diario .insta-ck { display: flex; align-items: center; gap: 8px; font-weight: 400; min-height: 44px; }
+.insta-diario input:not([type=checkbox]) { min-height: 44px; border: 1.5px solid var(--line); border-radius: 10px; padding: 0 10px; font-size: 16px; }
+.insta-diario .erro { color: #9a3a1c; }

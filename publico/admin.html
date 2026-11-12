@@ -324,6 +324,16 @@
           <span><b>Story diário da loja local:</b> 1 Story por dia (a partir das 10h) com um produto de uma loja de mensalidade ativa, em rodízio</span>
         </label>
         <p class="note" id="instaUltimoStory" style="font-size:13px;margin:6px 0 0"></p>
+        <fieldset class="insta-diario">
+          <legend>Postagem diária</legend>
+          <label class="insta-ck"><input type="checkbox" id="instaDiarioAtivo"> <span><b>Postar todo dia</b> nos horários abaixo, com ou sem promoção</span></label>
+          <label>Horários (Brasília)<input id="instaDiarioHorarios" placeholder="11:00, 19:00" inputmode="numeric"></label>
+          <label class="insta-ck"><input type="checkbox" id="instaDiarioStory"> <span>Também publicar no Story</span></label>
+          <p class="note">Escolha: primeiro o que mais buscaram no site na semana (ex.: "capa de celular" → a melhor capa da vitrine; "roupa de menina" → produto de loja da cidade); sem busca suficiente, alterna loja da cidade e melhor oferta. Não repete produto em 14 dias.</p>
+          <p class="note" id="instaTokenInfo"></p>
+          <p class="note" id="instaBuscas"></p>
+          <div id="instaHistorico" class="lista-adm"></div>
+        </fieldset>
         <div style="margin-top:12px;padding:10px;background:#f1f5f9;border-radius:8px;font-size:13px">
           <b>URL do Webhook para resposta "EU QUERO" no Direct:</b><br>
           <code>https://shop.citmax.com.br/api/webhook/instagram</code><br>

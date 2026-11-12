@@ -542,6 +542,16 @@
         $('instaPostarAutomatico').checked = Boolean(st.postarAutomatico);
       }
       if ($('instaStoryDiario')) $('instaStoryDiario').checked = Boolean(st.storyDiario);
+      // Postagem diária, validade do token, mais buscados e histórico
+      $('instaDiarioAtivo').checked = Boolean(st.diario?.ativo);
+      $('instaDiarioStory').checked = Boolean(st.diario?.story);
+      $('instaDiarioHorarios').value = (st.diario?.horarios ?? []).join(', ');
+      const tk = st.token ?? {};
+      $('instaTokenInfo').innerHTML = st.conexaoErro
+        ? `<b class="erro">Instagram desconectado:</b> ${esc(st.conexaoErro)}. Gere um token novo na Meta e cole em "Meta Access Token" abaixo.`
+        : `Token ${tk.expiraEm ? `vence em <b>${new Date(tk.expiraEm).toLocaleDateString('pt-BR')}</b>` : '<b>sem data de vencimento</b>'}${tk.tipo ? ` (${tk.tipo === 'PAGE' ? 'de Página' : tk.tipo === 'USER' ? 'de usuário' : esc(tk.tipo)})` : ''}.`;
+      $('instaBuscas').textContent = st.maisBuscados?.length ? `Mais buscados da semana: ${st.maisBuscados.map((b) => `${b.termo} (${b.n})`).join(', ')}` : 'Ainda sem buscas registradas no site.';
+      $('instaHistorico').innerHTML = (st.historicoDiario ?? []).map((h) => `<div class="item-adm"><p>${new Date(h.em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })} · ${h.ok ? 'Publicado' : '<b>Falhou</b>'} · ${esc(h.nome ?? '-')}</p><p class="note">${esc(h.motivo ?? '')}${h.erro ? ` · ${esc(h.erro)}` : ''}</p></div>`).join('') || '<p class="note">Nenhuma postagem diária ainda.</p>';
       if ($('instaUltimoStory')) $('instaUltimoStory').textContent = st.ultimoStory ? `Último Story: ${st.ultimoStory.produto} (${st.ultimoStory.loja}), em ${new Date(`${st.ultimoStory.dia}T12:00:00`).toLocaleDateString('pt-BR')}` : 'Nenhum Story de loja publicado ainda.';
 
       const v = await api('/api/vitrine');
@@ -617,8 +627,11 @@
           accessToken: $('instaToken').value.trim(),
           postarAutomatico: $('instaPostarAutomatico')?.checked || false,
           storyDiario: $('instaStoryDiario')?.checked || false,
+          diario: { ativo: $('instaDiarioAtivo').checked, story: $('instaDiarioStory').checked, horarios: $('instaDiarioHorarios').value },
         });
+        $('instaToken').value = '';
         alert('Configurações do Instagram salvas com sucesso!');
+        carregarInstagram();
       } catch (err) {
         alert('Erro ao salvar: ' + err.message);
       }

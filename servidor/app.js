@@ -21,6 +21,8 @@ import { TIPOS_LANCAMENTO, estornarComissao, lancar, lancarComissao, registrarEv
 import { MARKETPLACE, criarClienteAmazon } from "./amazon.js";
 import { atualizarAfiliados } from "./afiliados.js";
 import { instalarFood } from "./food.js";
+import { Buscas } from "./buscas.js";
+import { HORARIOS_PADRAO, brasilia, escolherPelaBusca, escolherProduto, horarioDaVez, lerHorarios, pareceTapado, prepararToken, semSegredos } from "./instagram-diario.js";
 import { CanaisAfiliado, canalValido, filtrarCampanhas, lancarComissoesShopee, vendasPorCanal } from "./afiliados-canal.js";
 import { MonitoramentoMotor } from "./tarefas/monitoramento.js";
 import { AgendadorOfertas } from "./tarefas/agendador.js";
@@ -164,9 +166,10 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
 
   // Carrega credenciais salvas em motor-config.json no volume persistente
   monitoramentoMotor.obterConfiguracao().then((cfg) => {
-    if (cfg?.instagram?.accountId && !conectorInstagram.accountId) conectorInstagram.accountId = cfg.instagram.accountId;
-    if (cfg?.instagram?.accessToken && !conectorInstagram.accessToken) conectorInstagram.accessToken = cfg.instagram.accessToken;
-    if (cfg?.instagram?.pageAccessToken && !conectorInstagram.pageAccessToken) conectorInstagram.pageAccessToken = cfg.instagram.pageAccessToken;
+    // O que foi salvo pelo admin é o mais novo: vale mais que a variável de ambiente (que pode ter um token vencido).
+    if (cfg?.instagram?.accountId) conectorInstagram.accountId = cfg.instagram.accountId;
+    if (cfg?.instagram?.accessToken && !pareceTapado(cfg.instagram.accessToken)) conectorInstagram.accessToken = cfg.instagram.accessToken;
+    if (cfg?.instagram?.pageAccessToken && !pareceTapado(cfg.instagram.pageAccessToken)) conectorInstagram.pageAccessToken = cfg.instagram.pageAccessToken;
     if (cfg?.telegram?.botToken && !conectorTelegram.botToken) conectorTelegram.botToken = cfg.telegram.botToken;
     if (cfg?.telegram?.chatId && !conectorTelegram.chatId) conectorTelegram.chatId = cfg.telegram.chatId;
   }).catch(() => {});
@@ -685,6 +688,51 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     banco.salvar();
     log.info?.(`[story] ${l.slug}: ${produto.nome}`);
     return { publicado: true, loja: l.slug, produto: id };
+  }
+
+  // ---------- Instagram: postagem diária programada (servidor/instagram-diario.js) ----------
+  // Roda a cada 10 min. No horário da vez, posta 1 produto no Feed (e Story, se ligado). Falha: tenta de novo até 3 vezes
+  // e lança erro (aparece em /saude e no alerta do WhatsApp). Uma vez por dia confere o token, mesmo sem post.
+  // Buscas do site (só o texto), para escolher o que postar. O navegador manda quando a pessoa para de digitar.
+  const buscas = new Buscas({ dadosDir, agora });
+  const limiteBusca = new S.Limitador({ maximo: 40, janelaMs: 10 * 60_000 });
+  app.post("/api/busca", (req, res) => {
+    if (limiteBusca.registrar(`b|${S.ipDe(req)}`).permitido) buscas.registrar(req.body?.q);
+    res.status(204).end();
+  });
+  async function postarInstagramDoDia() {
+    const cfg = await monitoramentoMotor.obterConfiguracao();
+    const d = { ativo: true, story: false, horarios: HORARIOS_PADRAO, ...(cfg.instagram?.diario ?? {}) }; // ligada por padrão: todo dia tem post
+    const reg = (banco.d.instagramDiario ??= { feitos: {}, tentativas: {}, historico: [] });
+    const hoje = brasilia(agora()).data;
+    if (!d?.ativo || !conectorInstagram.estaConfigurado()) return { postado: false, motivo: "desligado" };
+    if (reg.tokenChecado !== hoje) { await conectorInstagram.obterPerfil(); reg.tokenChecado = hoje; banco.salvar(); } // token vencido = erro aqui
+    const horarios = d.horarios?.length ? d.horarios : HORARIOS_PADRAO;
+    const slot = horarioDaVez(horarios, reg.feitos, agora());
+    if (!slot) return { postado: false, motivo: "fora do horário" };
+    const indice = Object.keys(reg.feitos).length;
+    // Produto local com o tipo da loja no texto (ex.: "Laços e Acessórios Infantis"), para a busca achar.
+    const categoriaLoja = new Map(banco.lojas.map((l) => [l.slug, l.categoria ?? ""]));
+    const produtos = vitrine().produtos.map((p) => (p.loja === "local" ? { ...p, descricao: `${p.descricao ?? ""} ${categoriaLoja.get(p.lojaSlug) ?? ""}` } : p));
+    const pelaBusca = escolherPelaBusca(produtos, reg.historico, buscas.top(7, 15), agora());
+    const x = pelaBusca?.produto ?? escolherProduto(produtos, reg.historico, indice, agora());
+    const motivo = pelaBusca ? `mais buscado da semana: "${pelaBusca.termo}"` : indice % 2 === 0 ? "rodízio: loja da cidade" : "rodízio: melhor oferta";
+    const registrar = (extra) => { reg.historico.push({ em: iso(), slot, produtoId: x?.id ?? null, nome: x?.nome ?? null, lojaSlug: x?.lojaSlug ?? null, termo: pelaBusca?.termo ?? null, motivo, ...extra }); reg.historico = reg.historico.slice(-200); };
+    if (!x) { reg.feitos[slot] = "sem produto"; registrar({ ok: false, erro: "nenhum produto com foto disponível" }); banco.salvar(); return { postado: false, motivo: "sem produto" }; }
+    try {
+      const r = await conectorInstagram.publicarFeed({ urlImagem: `${urlPublica}/api/instagram/card/${encodeURIComponent(x.id)}`, legenda: conectorInstagram.formatarLegenda(x, { urlPublica }), produtoId: x.id });
+      if (d.story) await conectorInstagram.publicarStory({ urlImagem: `${urlPublica}/api/instagram/card-stories/${encodeURIComponent(x.id)}` }).catch((e) => log.warn?.(`[instagram] story: ${e.message}`));
+      reg.feitos[slot] = "ok"; registrar({ ok: true, mediaId: r?.mediaId ?? null });
+      for (const k of Object.keys(reg.feitos)) if (k < `${new Date(agora() - 30 * DIA).toISOString().slice(0, 10)}`) delete reg.feitos[k];
+      banco.salvar();
+      log.info?.(`[instagram] ${slot}: ${x.nome}`);
+      return { postado: true, produto: x.id };
+    } catch (e) {
+      reg.tentativas[slot] = (reg.tentativas[slot] ?? 0) + 1;
+      if (reg.tentativas[slot] >= 3) { reg.feitos[slot] = "falhou"; registrar({ ok: false, erro: e.message.slice(0, 200) }); }
+      banco.salvar();
+      throw e;
+    }
   }
 
   // Link antigo/sem JavaScript: vai direto ao WhatsApp, sem registrar pedido.
@@ -1664,13 +1712,14 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const af = ler("afiliados.json", { produtos: [] });
     res.json({
       ...st,
+      configuracao: semSegredos(st.configuracao), // tokens nunca vão para o navegador
       produtosPublicados: af.produtos || [],
     });
   }));
 
   app.put("/api/admin/central-ofertas/config", exigirAdmin, express.json(), a(async (req, res) => {
     const salva = await monitoramentoMotor.salvarConfiguracao(req.body || {});
-    res.json({ ok: true, configuracao: salva });
+    res.json({ ok: true, configuracao: semSegredos(salva) });
   }));
 
   app.post("/api/admin/central-ofertas/executar", exigirAdmin, express.json(), a(async (req, res) => {
@@ -1930,11 +1979,29 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       postarAutomatico: Boolean(cfg.instagram?.postarAutomatico ?? cfg.radar?.postarInstagram),
       storyDiario: Boolean(cfg.instagram?.storyDiario),
       ultimoStory: banco.d.storiesLojas?.ultimo ?? null,
+      token: { expiraEm: cfg.instagram?.tokenExpiraEm ?? null, tipo: cfg.instagram?.tokenTipo ?? null, atualizadoEm: cfg.instagram?.tokenAtualizadoEm ?? null },
+      diario: { ativo: true, story: false, horarios: HORARIOS_PADRAO, ...(cfg.instagram?.diario ?? {}) },
+      historicoDiario: (banco.d.instagramDiario?.historico ?? []).slice(-15).reverse(),
+      maisBuscados: buscas.top(7, 10).map(({ termo, n }) => ({ termo, n })),
     });
   }));
 
   app.post("/api/admin/instagram/config", exigirAdmin, express.json(), a(async (req, res) => {
     const cfgAtual = await monitoramentoMotor.obterConfiguracao();
+    const b = { ...(req.body || {}) };
+    for (const k of ["accessToken", "pageAccessToken", "userAccessToken"]) if (!b[k] || pareceTapado(b[k])) delete b[k]; // campo vazio não apaga o token salvo
+    if (b.diario) b.diario = { ativo: Boolean(b.diario.ativo), story: Boolean(b.diario.story), horarios: lerHorarios(b.diario.horarios).length ? lerHorarios(b.diario.horarios) : HORARIOS_PADRAO };
+    if (b.accessToken) {
+      // Confere na Meta e troca por token longo / de Página (não vence). Token ruim não é salvo.
+      try {
+        const t = await prepararToken({ token: b.accessToken, accountId: b.accountId || conectorInstagram.accountId, appSecret: env.INSTAGRAM_APP_SECRET, fetchImpl });
+        const teste = new ConectorInstagram({ accountId: b.accountId || conectorInstagram.accountId, accessToken: t.token, fetchImpl });
+        await teste.obterPerfil();
+        Object.assign(b, { accessToken: t.token, tokenExpiraEm: t.expiraEm, tokenTipo: t.tipo, tokenAtualizadoEm: iso(), ...(t.tipo === "PAGE" && { pageAccessToken: t.token }) });
+        auditar("instagram_token", { tipo: t.tipo, expiraEm: t.expiraEm });
+      } catch (e) { return erro(res, 400, `Token não aceito pela Meta: ${e.message}`); }
+    }
+    req.body = b;
     const postarAuto = req.body?.postarAutomatico !== undefined ? Boolean(req.body.postarAutomatico) : Boolean(cfgAtual.instagram?.postarAutomatico);
     const novaCfg = {
       ...cfgAtual,
@@ -1952,7 +2019,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     if (req.body?.accessToken) conectorInstagram.accessToken = req.body.accessToken;
     if (req.body?.pageAccessToken) conectorInstagram.pageAccessToken = req.body.pageAccessToken;
     await monitoramentoMotor.salvarConfiguracao(novaCfg);
-    res.json({ ok: true, instagram: novaCfg.instagram });
+    res.json({ ok: true, instagram: semSegredos({ instagram: novaCfg.instagram }).instagram });
   }));
 
   app.post("/api/admin/instagram/publicar", exigirAdmin, express.json(), a(async (req, res) => {
@@ -2255,5 +2322,5 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     erro(res, 500, "Algo deu errado do nosso lado. Tente de novo.");
   });
 
-  return { app, banco, dadosDir, sincronizarAssinaturas, verificarAlertas, publicarStoryDoDia, monitoramentoMotor, agendadorOfertas, tarefa, tarefas, canais, sincronizarComissoesShopee, atualizarCampanhasShopee };
+  return { app, banco, dadosDir, sincronizarAssinaturas, verificarAlertas, publicarStoryDoDia, monitoramentoMotor, agendadorOfertas, tarefa, tarefas, canais, sincronizarComissoesShopee, atualizarCampanhasShopee, postarInstagramDoDia, buscas };
 }
