@@ -49,3 +49,19 @@ test("saúde: /saude público sem detalhes; falha repetida avisa no WhatsApp só
   assert.equal(await rodar(), 1);
   assert.deepEqual((await (await fetch(`${base}/saude`)).json()).tarefasComFalha, []);
 });
+
+test("backup: uma cópia por dia, guarda as 14 mais novas e não mexe no banco", async (t) => {
+  const { Banco } = await import("../servidor/dados.js");
+  const { readdirSync, readFileSync } = await import("node:fs");
+  const dir = mkdtempSync(join(tmpdir(), "cit-backup-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const b = new Banco(dir);
+  b.lojas.push({ id: "x" }); b.salvar();
+  const dia = Date.parse("2026-11-01T12:00:00Z");
+  for (let i = 0; i < 20; i++) b.backup(dia + i * 86_400_000);
+  b.backup(dia + 19 * 86_400_000); // mesmo dia: sobrescreve
+  const lista = readdirSync(join(dir, "backups")).sort();
+  assert.deepEqual([lista.length, lista[0], lista.at(-1)], [14, "citshop-2026-11-07.json", "citshop-2026-11-20.json"]);
+  assert.deepEqual(JSON.parse(readFileSync(join(dir, "backups", lista[0]), "utf8")).lojas, [{ id: "x" }]);
+  assert.deepEqual(JSON.parse(readFileSync(join(dir, "citshop.json"), "utf8")).lojas, [{ id: "x" }]);
+});

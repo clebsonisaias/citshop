@@ -3,7 +3,7 @@
  * ponytail: JSON em memória aguenta centenas de lojas e milhares de produtos;
  * passar para SQLite se crescer além disso.
  */
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 export const DIAS_TESTE = 30;
@@ -33,6 +33,18 @@ export class Banco {
     const tmp = `${this.caminho}.tmp`;
     writeFileSync(tmp, JSON.stringify(this.d));
     renameSync(tmp, this.caminho);
+  }
+  /** Cópia do dia em backups/citshop-AAAA-MM-DD.json (a do dia é sobrescrita); guarda as `manter` mais novas. */
+  backup(agora = Date.now(), manter = 14) {
+    const dir = join(this.caminho, "..", "backups");
+    mkdirSync(dir, { recursive: true });
+    const nome = `citshop-${new Date(agora).toISOString().slice(0, 10)}.json`;
+    const tmp = join(dir, `${nome}.tmp`);
+    writeFileSync(tmp, JSON.stringify(this.d)); // do que está na memória: é o que o salvar() gravou por último
+    renameSync(tmp, join(dir, nome));
+    const antigos = readdirSync(dir).filter((f) => /^citshop-\d{4}-\d{2}-\d{2}\.json$/.test(f)).sort().slice(0, -manter);
+    for (const f of antigos) rmSync(join(dir, f));
+    return { arquivo: nome, apagados: antigos.length };
   }
 }
 

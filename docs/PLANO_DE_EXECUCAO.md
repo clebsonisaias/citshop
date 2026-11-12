@@ -67,8 +67,8 @@ Regra: nada vai para `main` (que publica sozinho no Coolify) sem autorização e
 - [x] Testes (`teste/saude.test.js`)
 
 ## Fase 9 · Escalabilidade
-- [ ] Backup automático do `citshop.json` com rotação
-- [ ] Proposta de PostgreSQL (modelo, migração, backup, rollback) — **migração só com autorização**
+- [x] Backup automático do `citshop.json`: na subida e a cada 24 h, 14 dias em `<DADOS_DIR>/backups` (fora da pasta pública), registrado como tarefa (alerta se falhar)
+- [x] Proposta de PostgreSQL (`docs/PROPOSTA_POSTGRESQL.md`): gatilhos, modelo, migração, backup, rollback — **migração só com autorização**
 
 ## Fase 10 · Homologação
 - [ ] Suíte completa, segurança, navegador/responsivo, documentação (README, ARQUITETURA, MODELO_COMERCIAL, FINANCEIRO_E_SPLIT, AFILIADOS, SEGURANCA, TESTES, DEPLOY, CHANGELOG, DESIGN_SYSTEM)

@@ -6,9 +6,9 @@ import { rodarColeta } from "./coletor.js";
 
 const PORTA = Number(process.env.PORT ?? 3000);
 
-let app, dadosDir, sincronizarAssinaturas, verificarAlertas, publicarStoryDoDia, agendadorOfertas, tarefa;
+let app, banco, dadosDir, sincronizarAssinaturas, verificarAlertas, publicarStoryDoDia, agendadorOfertas, tarefa;
 try {
-  ({ app, dadosDir, sincronizarAssinaturas, verificarAlertas, publicarStoryDoDia, agendadorOfertas, tarefa } = criarApp({ log: { info: console.log, warn: console.warn, error: console.error } }));
+  ({ app, banco, dadosDir, sincronizarAssinaturas, verificarAlertas, publicarStoryDoDia, agendadorOfertas, tarefa } = criarApp({ log: { info: console.log, warn: console.warn, error: console.error } }));
 } catch (e) {
   console.error(`[fatal] ${e.message}`);
   process.exit(1);
@@ -48,6 +48,11 @@ setInterval(conferirAlertas, 60 * 60 * 1000).unref();
 // Story diário da loja local (se ligado no /admin): confere a cada hora; publica 1 por dia a partir das 10h.
 const storyDoDia = tarefa("story", () => publicarStoryDoDia());
 setInterval(storyDoDia, 60 * 60 * 1000).unref();
+
+// Backup do banco (citshop.json): na subida e a cada 24 h, guarda 14 dias em <DADOS_DIR>/backups.
+const backup = tarefa("backup", async () => console.log(`[backup] ${banco.backup().arquivo}`));
+backup();
+setInterval(backup, 24 * 60 * 60 * 1000).unref();
 
 const servidor = app.listen(PORTA, () => console.log(`[citshop] ouvindo na porta ${PORTA}`));
 const encerrar = () => servidor.close(() => process.exit(0));
