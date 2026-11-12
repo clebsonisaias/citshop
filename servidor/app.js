@@ -17,6 +17,7 @@ import {
   aplicarCupomAssinatura, beneficioAtivo, cnpjNormalizado, cupomValendo, estadoAssinatura, garantirComercial, precoComDesconto,
   precoMensalOficial, precoParaAssinar, registrarEstadoAssinatura, reais2, validarCupomAssinatura,
 } from "./planos.js";
+import { estornarComissao, lancar, lancarComissao, registrarEvento, retratoFinanceiro } from "./financeiro.js";
 import { MARKETPLACE, criarClienteAmazon } from "./amazon.js";
 import { atualizarAfiliados } from "./afiliados.js";
 import { MonitoramentoMotor } from "./tarefas/monitoramento.js";
@@ -440,6 +441,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const pedido = {
       id: `P-${randomBytes(3).toString("hex").toUpperCase()}`, origem: "whatsapp", lojaId: x.lojaId, ...resumo,
       ...(entrega ? { entrega, valorTotal: arredonda(lido.valorTotal + entrega.valor, 2) } : {}),
+      // Retrato financeiro (loja de mensalidade: comissão sempre zero).
+      financeiro: retratoFinanceiro({ loja: banco.loja(x.lojaId), unidades: lido.unidades, valorProdutos: lido.valorTotal, frete: entrega?.valor ?? 0 }),
       comprador, etapa: "novo", criadoEm: iso(),
     };
     limparPedidosVencidos();
@@ -1136,8 +1139,9 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     if (msgEntrega) return erro(res, stEntrega, msgEntrega);
     const total = arredonda(lido.valorTotal + (entrega?.valor ?? 0), 2); // produtos + frete
 
-    // Comissão da CIT: R$ 1 (comissaoPorVenda) por unidade vendida, só nas lojas que pagam por venda.
-    const taxaMarketplace = loja.modeloCobranca === "comissao_fixa" ? Math.round(Number(loja.comissaoPorVenda ?? 1) * unidades * 100) / 100 : 0;
+    // Comissão da CIT: R$ 1 (comissaoPorVenda) por unidade vendida, só nas lojas que pagam por venda. Fica no retrato do pedido.
+    const financeiro = retratoFinanceiro({ loja, unidades, valorProdutos: lido.valorTotal, frete: entrega?.valor ?? 0 });
+    const taxaMarketplace = financeiro.comissaoTotal;
     if (!(taxaMarketplace < total)) return erro(res, 400, "Valor da compra menor que a taxa da plataforma.");
     const email = String(emailComprador ?? "").trim().toLowerCase();
     if (metodo === "pix" && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return erro(res, 400, "Informe seu e-mail para gerar o Pix.");
@@ -1147,7 +1151,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const webhookUrl = `${urlPublica}/webhook/mercadopago?loja=${encodeURIComponent(loja.id)}`;
     banco.d.pedidos ??= [];
     limparPedidosVencidos();
-    const pedido = { id: referencia, origem: "site", lojaId: loja.id, ...resumo, ...(entrega ? { entrega, valorTotal: total } : {}), taxaMarketplace, metodo, comprador, status: "criado", etapa: "novo", criadoEm: iso() };
+    const pedido = { id: referencia, origem: "site", lojaId: loja.id, ...resumo, ...(entrega ? { entrega, valorTotal: total } : {}), taxaMarketplace, financeiro, metodo, comprador, status: "criado", etapa: "novo", criadoEm: iso() };
     try {
       const tokenVendedor = await tokenDaLoja(loja);
       if (metodo === "pix") {
@@ -1235,13 +1239,25 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
         if (pedido) {
           const acabouDeAprovar = pg.status === "approved" && pedido.status !== "approved";
           Object.assign(pedido, { status: pg.status, mpPagamentoId: pg.id, atualizadoEm: iso() });
-          if (acabouDeAprovar) { pedido.vendidoEm = iso(); moverEstoque(loja, pedido, 1); }
-          if (["refunded", "cancelled", "charged_back"].includes(pg.status)) moverEstoque(loja, pedido, -1);
+          if (acabouDeAprovar) { pedido.vendidoEm = iso(); moverEstoque(loja, pedido, 1); lancarComissao(banco, pedido, agora()); }
+          if (["refunded", "cancelled", "charged_back"].includes(pg.status)) { moverEstoque(loja, pedido, -1); estornarComissao(banco, pedido, pg.status, agora()); }
+          registrarEvento(banco, { tipo: "payment", id: pg.id, status: pg.status, lojaId: loja.id, pedidoId: pedido.id }, agora());
           banco.salvar();
           log.info?.(`[mp] venda ${pedido.id}: ${pg.status}`);
           if (acabouDeAprovar) avisarLojaVenda(loja, pedido);
         }
       }
+    }
+    // Cobrança mensal da assinatura: entra no livro como mensalidade (uma vez por cobrança).
+    if (tipo === "subscription_authorized_payment" && dataId && mp.configurado) {
+      const ap = await mp.consultarPagamentoAssinatura(dataId);
+      const loja = ap.preapprovalId && banco.lojas.find((l) => l.assinatura?.preapprovalId === ap.preapprovalId);
+      if (loja && ap.pagamentoStatus === "approved") {
+        const { novo } = lancar(banco, { chave: `mensalidade:${ap.id}`, tipo: "mensalidade", valor: ap.valor, lojaId: loja.id, referencia: ap.pagamentoId, detalhe: { preapprovalId: ap.preapprovalId, beneficio: loja.plano?.beneficio ?? null } }, agora());
+        if (novo) log.info?.(`[mp] ${loja.slug}: mensalidade ${ap.valor} registrada`);
+      }
+      registrarEvento(banco, { tipo, id: ap.id, status: ap.pagamentoStatus ?? ap.status, lojaId: loja?.id ?? null }, agora());
+      banco.salvar();
     }
     if (tipo.includes("preapproval") && dataId && mp.configurado) {
       const pa = await mp.consultarPreapproval(dataId);

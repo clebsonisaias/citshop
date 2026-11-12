@@ -23,11 +23,12 @@ Regra: nada vai para `main` (que publica sozinho no Coolify) sem autorização e
 - [x] Admin → Planos: preço oficial, cupons (criar, prorrogar, ativar, limite, usos), beneficiários, registro de alterações
 
 ## Fase 3 · Financeiro
-- [ ] Livro de lançamentos imutável (mensalidade, comissão, afiliado, reembolso, chargeback, ajuste)
-- [ ] Snapshot financeiro no pedido (unidades, comissão por unidade, total)
-- [ ] Webhook idempotente com registro de eventos processados
-- [ ] Mensalidades pagas registradas (pagamentos autorizados da assinatura)
-- [ ] Testes: 1/5/10 unidades, zero, recusado, aprovado, reembolso, chargeback, webhook repetido, estoque; loja mensal com 1/100/1000 unidades = comissão zero
+- [x] Livro de lançamentos imutável (mensalidade, comissão, afiliado, reembolso, chargeback, ajuste)
+- [x] Snapshot financeiro no pedido (unidades, comissão por unidade, total)
+- [x] Webhook idempotente com registro de eventos processados
+- [x] Mensalidades pagas registradas (pagamentos autorizados da assinatura)
+- [x] Testes: 1/5/10 unidades, zero, recusado, aprovado, reembolso, chargeback, webhook repetido, estoque; loja mensal com 1/100/1000 unidades = comissão zero
+- [ ] Validar `authorized_payments` com credenciais de teste do Mercado Pago (depende de conta de teste)
 
 ## Fase 4 · Painel administrativo
 - [ ] Dashboard com dados reais (lojas por situação, MRR, comissões, pedidos, produtos sem estoque, conversão do teste)

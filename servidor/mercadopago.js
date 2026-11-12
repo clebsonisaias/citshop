@@ -68,6 +68,14 @@ export function criarMercadoPago({ token, clientId = null, clientSecret = null, 
       });
       return { id: d.id, initPoint: d.init_point };
     },
+    /** Cobrança mensal de uma assinatura (tópico subscription_authorized_payment). */
+    async consultarPagamentoAssinatura(id) {
+      const d = await mp(`/authorized_payments/${encodeURIComponent(id)}`);
+      return {
+        id: String(d.id), preapprovalId: d.preapproval_id ?? null, valor: Number(d.transaction_amount), status: d.status ?? null,
+        pagamentoId: d.payment?.id != null ? String(d.payment.id) : null, pagamentoStatus: d.payment?.status ?? null,
+      };
+    },
     async consultarPreapproval(id) {
       const d = await mp(`/preapproval/${encodeURIComponent(id)}`);
       return { id: d.id, status: d.status, externalReference: d.external_reference ?? null };
