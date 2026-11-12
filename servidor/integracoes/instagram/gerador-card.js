@@ -140,7 +140,7 @@ export class GeradorCardInstagram {
       <!-- Chamada Instagram -->
       <rect x="710" y="930" width="280" height="60" rx="30" fill="#25d366"/>
       <text x="850" y="967" font-family="Helvetica, Arial, sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">Comente "QUERO"</text>
-      <text x="850" y="1010" font-family="Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">@shopcitmax · Link na Bio</text>
+      <text x="850" y="1010" font-family="Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">@citshopping · Link na Bio</text>
     </svg>
     `;
 
@@ -264,7 +264,7 @@ export class GeradorCardInstagram {
       <text x="540" y="1695" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="rgba(255,255,255,0.8)" text-anchor="middle">Ou acesse: shop.citmax.com.br/bio</text>
 
       <!-- Rodapé -->
-      <text x="540" y="1860" font-family="Helvetica, Arial, sans-serif" font-size="20" font-weight="bold" fill="rgba(255,255,255,0.6)" text-anchor="middle">@shopcitmax · CITshop</text>
+      <text x="540" y="1860" font-family="Helvetica, Arial, sans-serif" font-size="20" font-weight="bold" fill="rgba(255,255,255,0.6)" text-anchor="middle">@citshopping · CITshop</text>
     </svg>
     `;
 

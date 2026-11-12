@@ -780,7 +780,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     res.json({
       configurado: conectorInstagram.estaConfigurado(),
       accountId: conectorInstagram.accountId || cfg.instagram?.accountId || null,
-      perfil: "@shopcitmax",
+      perfil: "@citshopping",
       linkBio: `${urlPublica}/bio`,
       postarAutomatico: Boolean(cfg.instagram?.postarAutomatico ?? cfg.radar?.postarInstagram),
     });

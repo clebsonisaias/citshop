@@ -1,6 +1,6 @@
 /**
  * Conector oficial da Meta Graph API para Instagram Graph API (v21.0).
- * Permite publicar imagens de ofertas no Feed e Stories do perfil @shopcitmax.
+ * Permite publicar imagens de ofertas no Feed e Stories do perfil @citshopping.
  */
 
 const GRAPH_API = "https://graph.facebook.com/v21.0";
@@ -21,7 +21,7 @@ export class ConectorInstagram {
   }
 
   /**
-   * Formata uma legenda magnética e persuasiva para o post no Instagram @shopcitmax.
+   * Formata uma legenda magnética e persuasiva para o post no Instagram @citshopping.
    */
   formatarLegenda(produto, { urlPublica = "https://shop.citmax.com.br" } = {}) {
     const temDesconto = produto.precoAntigo > produto.preco;
@@ -43,7 +43,7 @@ export class ConectorInstagram {
         "",
         "👉 Quer pedir agora escolhendo tamanho, modelo e cor?",
         "Comente \"EU QUERO\" que enviamos o link direto no seu direct!",
-        `Ou acesse pelo link na nossa bio: @shopcitmax 📲`,
+        `Ou acesse pelo link na nossa bio: @citshopping 📲`,
         "",
         "#comerciolocal #comprarlocal #rn #parnamirim #macaiba #citshop"
       );
@@ -64,7 +64,7 @@ export class ConectorInstagram {
         "",
         "👉 Quer o link com desconto antes que acabe o estoque?",
         "Comente \"EU QUERO\" que te envio o link direto no direct!",
-        `Ou acesse agora mesmo pelo link da bio: @shopcitmax 📲`,
+        `Ou acesse agora mesmo pelo link da bio: @citshopping 📲`,
         "",
         "#achados #promocoes #descontos #shopee #1111shopee #radar #citshop #ofertas"
       );

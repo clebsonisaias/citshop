@@ -22,7 +22,7 @@ test("ConectorInstagram formata legenda com chamada EU QUERO e preço formatado"
   assert.ok(legenda.includes("R$ 29,90"));
   assert.ok(legenda.includes("70% OFF"));
   assert.ok(legenda.includes('Comente "EU QUERO"'));
-  assert.ok(legenda.includes("@shopcitmax"));
+  assert.ok(legenda.includes("@citshopping"));
 });
 
 test("GeradorCardInstagram gera imagem JPEG 1080x1080 válida", async () => {
@@ -104,7 +104,7 @@ test("Rotas /bio e /api/instagram/card/:id respondem corretamente", async () => 
     const resBio = await fetch(`${base}/bio`);
     assert.equal(resBio.status, 200);
     const htmlBio = await resBio.text();
-    assert.ok(htmlBio.includes("@shopcitmax"));
+    assert.ok(htmlBio.includes("@citshopping"));
     assert.ok(htmlBio.includes("Canal VIP no WhatsApp"));
 
     // 2. Testa rota /api/instagram/card/l-p1

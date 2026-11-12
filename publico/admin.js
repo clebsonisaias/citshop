@@ -355,7 +355,7 @@
     };
   }
 
-  // Instagram @shopcitmax
+  // Instagram @citshopping
   let produtosInsta = [];
   async function carregarInstagram() {
     try {
@@ -417,7 +417,7 @@
       if (!id) return;
       $('instaMsg').hidden = false;
       $('instaMsg').className = 'msg';
-      $('instaMsg').textContent = 'Publicando no feed do @shopcitmax via Meta Graph API...';
+      $('instaMsg').textContent = 'Publicando no feed do @citshopping via Meta Graph API...';
 
       try {
         const res = await api('/api/admin/instagram/publicar', 'POST', { produtoId: id, legenda });
