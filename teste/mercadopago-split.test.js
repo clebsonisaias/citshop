@@ -93,6 +93,18 @@ test("split: loja conecta o MP, cobrança sai com o token dela e o webhook de pa
   const pedCarrinho = b.d.pedidos.at(-1);
   assert.deepEqual([pedCarrinho.valorTotal, pedCarrinho.quantidade, pedCarrinho.itens.length], [31, 3, 2]);
 
+  // 3c. Entrega por km: o frete entra no Mercado Pago como item e no total; a comissão da CIT continua por unidade
+  const lojaD = b.loja("loja-d");
+  lojaD.local = { lat: -5.8, lng: -35.2 }; lojaD.frete = { faixas: [{ ateKm: 3, valor: 5 }, { ateKm: 6, valor: 8 }], gratisAcima: null };
+  assert.equal((await post("/api/pagamento/split", { produtoId: "l-p1", comprador })).status, 400, "entrega sem calcular o frete");
+  const rf = await post("/api/pagamento/split", { produtoId: "l-p1", quantidade: 2, comprador: { ...comprador, lat: -5.782, lng: -35.2 } });
+  assert.equal(rf.status, 200);
+  const prefFrete = chamadas.filter((c) => c.u.endsWith("/checkout/preferences")).at(-1);
+  assert.deepEqual(prefFrete.corpo.items.map((i) => [i.title, i.quantity, i.unit_price]), [["Laço", 2, 9.5], ["Entrega (2 km)", 1, 5]]);
+  assert.equal(prefFrete.corpo.marketplace_fee, 2);
+  assert.equal((await rf.json()).valorTotal, 24);
+  delete lojaD.local; delete lojaD.frete;
+
   // 3. Pix exige e-mail e vai com chave de idempotência
   assert.equal((await post("/api/pagamento/split", { produtoId: "l-p1", metodo: "pix", comprador })).status, 400);
   const r2 = await (await post("/api/pagamento/split", { produtoId: "l-p1", metodo: "pix", emailComprador: "cliente@exemplo.com", comprador })).json();

@@ -29,6 +29,7 @@
         <button class="btn sec" data-modelo="${l.id}" data-atual="${l.modeloCobranca || 'mensalidade'}">${l.modeloCobranca === 'comissao_fixa' ? 'Mudar p/ Mensalidade' : 'Mudar p/ Parceira (R$ 1/venda)'}</button>
         <button class="btn sec" data-susp="${l.id}" data-v="${!l.suspensa}">${l.suspensa ? 'Reativar' : 'Suspender'}</button>
         <button class="btn sec" data-senha="${l.id}">Senha provisória</button>
+        <button class="btn sec" data-acesso="${l.id}">Definir acesso</button>
         <button class="btn perigo" data-excluir="${l.id}">Excluir loja</button></td></tr>`).join('');
   }
   async function carregar() { lojas = await api('/api/admin/lojas'); render(); carregarCupons(); }
@@ -66,12 +67,22 @@
         if (!confirm(`Excluir ${loja.nome} com todos os produtos e fotos? Isso não pode ser desfeito.`)) return;
         await api(`/api/admin/lojas/${loja.id}`, 'DELETE');
       }
+      if (b.dataset.acesso) {
+        const loja = lojas.find((l) => l.id === b.dataset.acesso);
+        const email = prompt(`E-mail de acesso de ${loja.nome}:`, loja.email ?? '');
+        if (!email) return;
+        const senha = prompt('Senha provisória (mínimo 8 caracteres). No primeiro acesso a loja é obrigada a trocar:');
+        if (!senha) return;
+        await api(`/api/admin/lojas/${loja.id}/acesso`, 'PUT', { email, senha });
+        $('aviso').hidden = false;
+        $('aviso').textContent = `Acesso de ${loja.nome} definido: ${email.trim().toLowerCase()}. No primeiro login a loja precisa escolher uma senha nova.`;
+      }
       if (b.dataset.senha) {
         const loja = lojas.find((l) => l.id === b.dataset.senha);
         if (!confirm(`Gerar uma senha provisória para ${loja.nome}? A senha atual deixa de funcionar.`)) return;
         const { senha } = await api(`/api/admin/lojas/${b.dataset.senha}/senha`, 'POST');
         $('aviso').hidden = false;
-        $('aviso').textContent = `Senha provisória de ${loja.nome}: ${senha} (envie para a loja e peça que troque no painel).`;
+        $('aviso').textContent = `Senha provisória de ${loja.nome}: ${senha} (envie para a loja: no primeiro login ela será obrigada a escolher uma senha nova).`;
       }
       await carregar();
     } catch (err) { alert(err.message); }

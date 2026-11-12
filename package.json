@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "description": "CITshop: vitrine de afiliados e lojas da região, da CITmax.",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "node --env-file=.env servidor/servidor.js",
     "start": "node servidor/servidor.js",
@@ -13,6 +15,7 @@
   },
   "dependencies": {
     "express": "^4.21.2",
+    "leaflet": "1.9.4",
     "multer": "^2.0.2",
     "sharp": "^0.34.1"
   }

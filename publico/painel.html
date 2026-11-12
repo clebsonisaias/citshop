@@ -56,6 +56,19 @@
     </form>
   </section>
 
+  <!-- Primeiro acesso com senha provisória -->
+  <section id="vTroca" hidden>
+    <h1>Escolha a sua senha</h1>
+    <p class="note">Você entrou com uma senha provisória. Por segurança, escolha uma senha só sua para continuar.</p>
+    <form class="form" id="fTroca">
+      <label>Senha provisória<input name="atual" type="password" required autocomplete="current-password"></label>
+      <label>Nova senha <small>mínimo 8 caracteres</small><input name="nova" type="password" required minlength="8" autocomplete="new-password"></label>
+      <label>Repita a nova senha<input name="repita" type="password" required minlength="8" autocomplete="new-password"></label>
+      <div class="msg erro" id="eTroca" hidden role="alert"></div>
+      <button class="btn">Salvar nova senha</button>
+    </form>
+  </section>
+
   <!-- Painel -->
   <section id="vPainel" hidden>
     <h1 id="pNome"></h1>
@@ -71,6 +84,7 @@
       <a href="#inicio">Início</a>
       <a href="#pedidos">Pedidos <span class="n" id="abaNovos" hidden></span></a>
       <a href="#produtos">Produtos</a>
+      <a href="#entrega">Entrega</a>
       <a href="#loja">Loja</a>
     </nav>
 
@@ -151,6 +165,33 @@
       <div class="lista" id="lista"></div>
     </div>
 
+    </div>
+
+    <div data-aba="entrega" hidden>
+      <div class="box" style="margin-top:16px">
+        <h2>Localização e entrega por distância</h2>
+        <p class="note" style="font-size:13px;margin:-4px 0 12px">Marque onde a loja fica. O pino serve para calcular a entrega e só você o vê: os clientes nunca veem onde ele está. Depois defina quanto cobrar em cada faixa de distância (em linha reta); o cliente vê o valor da entrega antes de pagar.</p>
+        <div class="entrega-busca">
+          <input id="eBusca" type="search" placeholder="Endereço da loja: rua, número e cidade" aria-label="Endereço da loja" maxlength="200">
+          <button type="button" class="btn sec" id="eBuscar">Buscar</button>
+          <button type="button" class="btn sec" id="eGps">Usar minha localização</button>
+        </div>
+        <div id="eMapa" class="mapa" role="application" aria-label="Mapa com a loja e as faixas de entrega"></div>
+        <p class="note" id="eAjuda" style="font-size:13px;margin:8px 0 0">Toque no mapa ou arraste o pino para marcar o ponto exato da loja.</p>
+        <div class="mostrar-local">
+          <label><input type="checkbox" id="eMostrar"> Mostrar o endereço da loja para os clientes</label>
+          <p class="note" style="font-size:13px;margin:6px 0 0">Desmarcado, o endereço fica escondido (bom para quem trabalha em casa) e a retirada é combinada com o cliente pelo WhatsApp. Marcado, o texto do campo "Endereço da loja" aparece na página da loja e dos produtos, com link para o mapa. Apague o número se quiser mostrar só a rua ou o bairro.</p>
+        </div>
+        <form class="form" id="fEntrega" style="margin-top:16px">
+          <b style="font-size:14px">Faixas de entrega</b>
+          <div class="faixas" id="eFaixas"></div>
+          <button type="button" class="btn sec" id="eAddFaixa">+ Adicionar faixa</button>
+          <label>Entrega grátis em compras acima de (R$) <small>opcional</small><input name="gratisAcima" inputmode="decimal" placeholder="Ex.: 100,00"></label>
+          <p class="note" style="font-size:13px;margin:0">Sem faixas, só a localização é salva e a entrega fica combinada com a loja pelo WhatsApp. Passou da última faixa, o cliente vê que a loja não entrega naquele endereço (a retirada continua). Sem entrega por distância, a entrega fica combinada com a loja pelo WhatsApp.</p>
+          <div class="msg" id="mEntrega" hidden role="status"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn">Salvar entrega</button><button type="button" class="btn perigo" id="eDesativar" hidden>Desativar entrega por distância</button></div>
+        </form>
+      </div>
     </div>
 
     <div data-aba="loja" hidden>

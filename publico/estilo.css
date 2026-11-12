@@ -765,7 +765,7 @@ body.na-loja .carrinho-flutuante { bottom: max(16px, env(safe-area-inset-bottom)
 /* ---------- painel do lojista: abas e início ---------- */
 .abas { display: flex; gap: 0; margin-top: 16px; overflow-x: auto; border-bottom: 1px solid var(--line); scrollbar-width: none; }
 .abas::-webkit-scrollbar { display: none; }
-.abas a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 12px; font-weight: 700; color: var(--muted); text-decoration: none; border-bottom: 3px solid transparent; white-space: nowrap; }
+.abas a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 6px; font-size: 14px; font-weight: 700; color: var(--muted); text-decoration: none; border-bottom: 3px solid transparent; white-space: nowrap; }
 .abas a[aria-current] { color: var(--deep); border-bottom-color: var(--brand); }
 .abas .n { min-width: 20px; padding: 1px 6px; border-radius: 99px; background: var(--hot); color: #fff; font-size: 12px; text-align: center; }
 .cartoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 16px; }
@@ -795,3 +795,24 @@ body.na-loja .carrinho-flutuante { bottom: max(16px, env(safe-area-inset-bottom)
 .est-linha .btn { min-height: 36px; padding: 6px 12px; font-size: 12px; }
 .est-input { width: 110px; min-height: 40px; }
 .modo-estoque select { width: 100%; box-sizing: border-box; min-height: 44px; }
+
+/* ---------- aba Entrega: mapa e faixas ---------- */
+.entrega-busca { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.entrega-busca input { flex: 1 1 220px; min-height: 44px; }
+.mapa { height: 340px; border-radius: 14px; border: 1px solid var(--line); overflow: hidden; z-index: 0; }
+.pino-loja span { display: block; width: 28px; height: 28px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: var(--deep); border: 3px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.4); box-sizing: border-box; }
+.faixas { display: grid; gap: 8px; }
+.faixa { display: grid; grid-template-columns: 1fr 1fr 44px; gap: 8px; align-items: end; }
+.faixa-rm { min-height: 44px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--hot); font-size: 16px; cursor: pointer; }
+
+/* ---------- entrega por distância no formulário do cliente ---------- */
+.compra-frete { display: grid; gap: 8px; padding: 12px; border: 1.5px solid var(--line); border-radius: 12px; background: #F4FAF9; }
+.compra-frete[hidden] { display: none; }
+.compra-frete p { margin: 0; font-size: 13px; }
+.compra-frete small { color: var(--muted); font-size: 12px; }
+.frete-botoes { display: flex; gap: 8px; flex-wrap: wrap; }
+.frete-botoes .btn { min-height: 44px; font-size: 13px; }
+.frete-resultado { font-weight: 700; color: var(--deep); }
+.mostrar-local { margin-top: 12px; padding: 12px; border: 1.5px solid var(--line); border-radius: 12px; }
+.mostrar-local label { display: flex; align-items: center; gap: 10px; font-weight: 700; min-height: 32px; }
+.mostrar-local input { width: 20px; height: 20px; }

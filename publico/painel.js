@@ -1,4 +1,4 @@
-// Painel da loja: abas (Início, Pedidos, Produtos, Loja), cadastro, login, produtos com fotos, dados e assinatura.
+// Painel da loja: abas (Início, Pedidos, Produtos, Entrega, Loja), cadastro, login, produtos com fotos, dados e assinatura.
 (() => {
   const { DEPTS, D, esc, brl } = window.CIT;
   const $ = (id) => document.getElementById(id);
@@ -83,6 +83,7 @@
           : `<b>${esc(String(p.quantidade))}x ${esc(p.produtoNome ?? '')} · ${brl.format(p.valorTotal)}</b>${p.itens?.[0]?.observacao ? `<span>${esc(p.itens[0].observacao)}</span>` : ''}`}
         <span>${esc(c.nome ?? '')}${c.whatsapp ? ` · <a href="https://wa.me/${esc(c.whatsapp)}" target="_blank" rel="noopener">WhatsApp do cliente</a>` : ''}</span>
         <span>${c.receber === 'entrega' ? `Entregar em: ${esc(c.endereco ?? '')}` : 'Vai retirar na loja'}${c.observacao ? ` · ${esc(c.observacao)}` : ''}</span>
+        ${p.entrega ? `<span>Entrega ${esc(String(p.entrega.km).replace('.', ','))} km: ${p.entrega.valor ? brl.format(p.entrega.valor) : 'grátis'} · <a href="https://www.google.com/maps?q=${esc(p.entrega.lat)},${esc(p.entrega.lng)}" target="_blank" rel="noopener">Abrir no mapa</a></span>` : ''}
         <div class="venda-rodape"><small>${new Date(p.criadoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</small>
           <label>Situação <select data-pedido="${esc(p.id)}" aria-label="Situação do pedido ${esc(p.id)}">${Object.entries(ETAPA).map(([k, n]) => `<option value="${k}"${(p.etapa ?? 'novo') === k ? ' selected' : ''}>${n}</option>`).join('')}</select></label></div>
       </div>`;
@@ -116,8 +117,106 @@
     const aba = document.querySelector(`[data-aba="${nome}"]`) ? nome : 'inicio';
     document.querySelectorAll('[data-aba]').forEach((el) => { el.hidden = el.dataset.aba !== aba; });
     document.querySelectorAll('#abas a').forEach((a) => { a.toggleAttribute('aria-current', a.getAttribute('href') === `#${aba}`); });
+    if (aba === 'entrega' && estado) abrirEntrega();
   }
   addEventListener('hashchange', irPara);
+
+  // ---------- entrega por distância: pino da loja no mapa + faixas de km ----------
+  const CORES_FAIXA = ['#00C896', '#008B87', '#036271', '#E0A800', '#E07A00', '#C8323A'];
+  const num = (v) => Number(String(v).trim().replace(',', '.'));
+  let mapa = null, pino = null, circulos = [], aviso = null;
+  // O Leaflet só carrega quando a aba Entrega abre (arquivo do próprio site, por causa da CSP).
+  function carregarLeaflet() {
+    if (window.L) return Promise.resolve();
+    return new Promise((ok, falha) => {
+      const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = '/vendor/leaflet/leaflet.css'; document.head.append(css);
+      const js = document.createElement('script'); js.src = '/vendor/leaflet/leaflet.js'; js.onload = ok; js.onerror = falha; document.head.append(js);
+    });
+  }
+  function linhaFaixa(f = {}) {
+    const d = document.createElement('div');
+    d.className = 'faixa';
+    d.innerHTML = `<label>Até (km)<input data-km inputmode="decimal" placeholder="3" value="${f.ateKm ?? ''}"></label>
+      <label>Cobrar (R$)<input data-valor inputmode="decimal" placeholder="5,00" value="${f.valor != null ? String(f.valor).replace('.', ',') : ''}"></label>
+      <button type="button" class="faixa-rm" aria-label="Remover faixa">✕</button>`;
+    return d;
+  }
+  const faixasDoForm = () => [...$('eFaixas').querySelectorAll('.faixa')].map((d) => ({ ateKm: num(d.querySelector('[data-km]').value), valor: num(d.querySelector('[data-valor]').value || 0) })).filter((f) => f.ateKm > 0);
+  function desenharCirculos() {
+    circulos.forEach((c) => c.remove());
+    circulos = [];
+    if (!mapa || !pino) return;
+    const ponto = pino.getLatLng();
+    // Maior primeiro: as faixas menores ficam por cima e continuam clicáveis.
+    [...faixasDoForm()].sort((x, y) => y.ateKm - x.ateKm).forEach((f) => {
+      const i = faixasDoForm().sort((x, y) => x.ateKm - y.ateKm).findIndex((g) => g.ateKm === f.ateKm);
+      const cor = CORES_FAIXA[i % CORES_FAIXA.length];
+      circulos.push(L.circle(ponto, { radius: f.ateKm * 1000, color: cor, weight: 2, fillColor: cor, fillOpacity: 0.1 }).bindTooltip(`até ${f.ateKm} km: ${brl.format(f.valor)}`).addTo(mapa));
+    });
+  }
+  function marcarLoja(lat, lng, ajustar = true) {
+    if (!pino) {
+      pino = L.marker([lat, lng], { draggable: true, keyboard: true, title: 'Sua loja', icon: L.divIcon({ className: 'pino-loja', html: '<span></span>', iconSize: [28, 28], iconAnchor: [14, 28] }) }).addTo(mapa);
+      pino.on('drag dragend', desenharCirculos);
+    } else pino.setLatLng([lat, lng]);
+    desenharCirculos();
+    // Enquadra a faixa maior para a loja ver todos os círculos; sem faixas, aproxima do pino.
+    if (ajustar) circulos.length ? mapa.fitBounds(circulos[0].getBounds(), { padding: [12, 12], animate: false }) : mapa.setView([lat, lng], 14);
+  }
+  async function abrirEntrega() {
+    if (mapa) { setTimeout(() => mapa.invalidateSize(), 50); return; }
+    try { await carregarLeaflet(); } catch { return mostrarMsg($('mEntrega'), 'Não foi possível carregar o mapa. Atualize a página e tente de novo.'); }
+    const l = estado.loja;
+    mapa = L.map('eMapa', { center: [l.local?.lat ?? -14.2, l.local?.lng ?? -51.9], zoom: l.local ? 14 : 4, scrollWheelZoom: false });
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' }).addTo(mapa);
+    mapa.on('click', (e) => marcarLoja(e.latlng.lat, e.latlng.lng, false));
+    $('eFaixas').replaceChildren(...(l.frete?.faixas?.length ? l.frete.faixas : [{ ateKm: 3, valor: 5 }, { ateKm: 6, valor: 8 }]).map(linhaFaixa));
+    $('fEntrega').gratisAcima.value = l.frete?.gratisAcima ? String(l.frete.gratisAcima).replace('.', ',') : '';
+    $('eBusca').value = l.local?.endereco ?? '';
+    $('eMostrar').checked = Boolean(l.local?.publico);
+    $('eDesativar').hidden = !l.frete;
+    if (l.local) marcarLoja(l.local.lat, l.local.lng);
+    else { // sem ponto ainda: tenta começar pela cidade da loja
+      try { const g = await api(`/api/painel/geocodificar?q=${encodeURIComponent(`${l.cidade}, Brasil`)}`); mapa.setView([g.lat, g.lng], 13); } catch { /* fica no Brasil inteiro */ }
+    }
+    setTimeout(() => mapa.invalidateSize(), 50);
+  }
+  $('eBuscar').addEventListener('click', async () => {
+    const q = $('eBusca').value.trim();
+    if (q.length < 6) return mostrarMsg($('mEntrega'), 'Digite o endereço completo: rua, número e cidade.');
+    try { const g = await api(`/api/painel/geocodificar?q=${encodeURIComponent(q)}`); marcarLoja(g.lat, g.lng); mostrarMsg($('mEntrega'), `Encontramos: ${g.nome}.${g.aproximado ? ' Localizamos só a rua: arraste o pino até o ponto exato da loja.' : ' Confira o pino e ajuste se precisar.'}`, 'ok'); }
+    catch (err) { mostrarMsg($('mEntrega'), err.message); }
+  });
+  $('eGps').addEventListener('click', () => {
+    if (!navigator.geolocation) return mostrarMsg($('mEntrega'), 'Este aparelho não informa a localização. Busque pelo endereço.');
+    navigator.geolocation.getCurrentPosition((p) => { marcarLoja(p.coords.latitude, p.coords.longitude); mostrarMsg($('mEntrega'), 'Localização marcada. Confira o pino.', 'ok'); },
+      () => mostrarMsg($('mEntrega'), 'Não conseguimos pegar sua localização. Permita o acesso ou busque pelo endereço.'), { enableHighAccuracy: true, timeout: 10000 });
+  });
+  $('eAddFaixa').addEventListener('click', () => {
+    if ($('eFaixas').children.length >= 6) return mostrarMsg($('mEntrega'), 'No máximo 6 faixas.');
+    $('eFaixas').append(linhaFaixa());
+  });
+  $('eFaixas').addEventListener('click', (e) => { if (e.target.closest('.faixa-rm')) { e.target.closest('.faixa').remove(); desenharCirculos(); } });
+  $('eFaixas').addEventListener('input', desenharCirculos);
+  $('fEntrega').addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (!pino) return mostrarMsg($('mEntrega'), 'Marque no mapa onde a loja fica.');
+    enviando(e.submitter, async () => {
+      try {
+        const { lat, lng } = pino.getLatLng();
+        const s = await api('/api/painel/entrega', { metodo: 'PUT', json: { local: { lat, lng, endereco: $('eBusca').value }, mostrarLocal: $('eMostrar').checked, faixas: faixasDoForm(), gratisAcima: $('fEntrega').gratisAcima.value ? num($('fEntrega').gratisAcima.value) : null } });
+        estado.loja = s.loja;
+        $('eDesativar').hidden = !s.loja.frete;
+        amostra();
+        mostrarMsg($('mEntrega'), s.loja.frete ? 'Salvo. Os clientes já veem o valor da entrega antes de pagar.' : 'Localização salva. A entrega por distância está desligada: a entrega fica combinada com a loja.', 'ok');
+      } catch (err) { mostrarMsg($('mEntrega'), err.message); }
+    });
+  });
+  $('eDesativar').addEventListener('click', async () => {
+    if (!confirm('Desativar a entrega por distância? A entrega volta a ser combinada com o cliente pelo WhatsApp.')) return;
+    try { estado.loja = (await api('/api/painel/entrega', { metodo: 'DELETE' })).loja; $('eDesativar').hidden = true; mostrarMsg($('mEntrega'), 'Entrega por distância desativada.', 'ok'); }
+    catch (err) { mostrarMsg($('mEntrega'), err.message); }
+  });
 
   // ---------- início: números do dia e próximos passos ----------
   function renderInicio() {
@@ -160,8 +259,25 @@
   setInterval(atualizar, 60_000);
   document.addEventListener('visibilitychange', atualizar);
 
+  // Primeiro acesso com senha provisória: só aparece a troca de senha, até a loja escolher a dela.
+  $('fTroca').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const d = dados(e.target);
+    if (d.nova !== d.repita) return mostrarMsg($('eTroca'), 'As duas senhas novas não são iguais.');
+    enviando(e.submitter, async () => {
+      try {
+        await api('/api/painel/senha', { metodo: 'POST', json: { atual: d.atual, nova: d.nova } });
+        e.target.reset();
+        mostrarMsg($('eTroca'), '');
+        mostrar(await api('/api/painel/eu'));
+      } catch (err) { mostrarMsg($('eTroca'), err.message); }
+    });
+  });
+
   function mostrar(s) {
     estado = s;
+    $('vTroca').hidden = !s.loja.trocarSenha;
+    if (s.loja.trocarSenha) { $('vAuth').hidden = true; $('vPainel').hidden = true; $('sair').hidden = false; return; }
     $('vAuth').hidden = true;
     $('vPainel').hidden = false;
     $('sair').hidden = false;
@@ -197,6 +313,7 @@
     const f = $('fLoja');
     $('amostra').outerHTML = window.CIT.cabecalhoLoja({
       ...estado.loja, cor: $('vCor').value, sobre: $('vSobre').value,
+      localEndereco: estado.loja.local?.publico ? estado.loja.local.endereco : '', // como o cliente vê (só se a loja escolheu mostrar)
       horario: f.horario.value, bairrosAtendidos: f.bairrosAtendidos.value, prazoEntrega: f.prazoEntrega.value,
     }).replace('class="sellerhead', 'id="amostra" class="sellerhead');
   };

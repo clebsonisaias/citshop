@@ -69,6 +69,28 @@ function lerProduto(b) {
   return { p };
 }
 
+// Entrega por distância: a loja marca onde fica (loja.local) e cobra por faixas de km em linha reta (loja.frete).
+const arredonda = (n, casas) => Math.round(n * 10 ** casas) / 10 ** casas;
+function kmEntre(a, b) { // haversine
+  const r = Math.PI / 180, dLat = (b.lat - a.lat) * r, dLng = (b.lng - a.lng) * r;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.sqrt(h));
+}
+const freteAtivo = (loja) => Boolean(loja?.local && loja.frete?.faixas?.length);
+/** { km, valor, gratis } dentro da área, ou { km, fora: true }. `subtotal` vale para "entrega grátis acima de". */
+function freteDe(loja, ponto, subtotal) {
+  const km = arredonda(kmEntre(loja.local, ponto), 1);
+  const faixa = loja.frete.faixas.find((f) => km <= f.ateKm);
+  if (!faixa) return { km, fora: true };
+  const gratis = Boolean(loja.frete.gratisAcima) && subtotal >= loja.frete.gratisAcima;
+  return { km, valor: gratis ? 0 : faixa.valor, gratis };
+}
+function pontoDe(c) {
+  if (c?.lat == null || c?.lat === "" || c?.lng == null || c?.lng === "") return null;
+  const lat = Number(c.lat), lng = Number(c.lng);
+  return Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { lat: arredonda(lat, 6), lng: arredonda(lng, 6) } : null;
+}
+
 export function criarApp({ env = process.env, log = console, agora = () => Date.now(), fetchImpl = fetch } = {}) {
   const segredo = env.SESSAO_SEGREDO ?? "";
   if (segredo.length < 32) throw new Error("SESSAO_SEGREDO precisa ter pelo menos 32 caracteres.");
@@ -197,6 +219,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const loja = banco.loja(sessao(req, "loja")?.id);
     if (!loja) return erro(res, 401, "Entre na sua conta.");
     req.loja = loja;
+    // Senha provisória: até trocar, a loja só vê o painel e troca a senha; o resto fica bloqueado.
+    if (loja.trocarSenha && req.path !== "/api/painel/eu" && req.path !== "/api/painel/senha") return erro(res, 403, "Escolha uma nova senha para continuar.");
     next();
   }
   function exigirAdmin(req, res, next) {
@@ -243,6 +267,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     logo: l.logo ?? null, cor: l.cor ?? null, sobre: l.sobre ?? "", entrega: l.entrega ?? null,
     horario: l.horario ?? "", bairrosAtendidos: l.bairrosAtendidos ?? "", prazoEntrega: l.prazoEntrega ?? "",
     modeloCobranca: l.modeloCobranca ?? "mensalidade",
+    // Só o texto que a loja escolheu mostrar; o ponto do mapa (lat/lng) nunca sai do servidor.
+    localEndereco: l.local?.publico && l.local.endereco ? l.local.endereco : "",
   });
   const produtoLocal = (p, l) => ({
     id: `l-${p.id}`, nome: p.nome, descricao: p.descricao, dept: p.dept, loja: "local",
@@ -254,6 +280,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     bairrosAtendidos: l.bairrosAtendidos ?? "", prazoEntrega: l.prazoEntrega ?? "",
     modeloCobranca: l.modeloCobranca ?? "mensalidade",
     comissaoPorVenda: l.comissaoPorVenda ?? 1.00,
+    localEndereco: l.local?.publico && l.local.endereco ? l.local.endereco : "",
     esgotado: !temEstoque(p, l),
     // Poucas unidades: avisa o cliente (só no modo por quantidade).
     restam: l.modoEstoque === "quantidade" && p.estoque > 0 && p.estoque <= 5 ? p.estoque : null,
@@ -320,6 +347,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     if (comprador.nome.length < 2) return { erro: "Informe seu nome." };
     if (!comprador.whatsapp) return { erro: "Informe seu WhatsApp com DDD." };
     if (comprador.receber === "entrega" && comprador.endereco.length < 8) return { erro: "Informe o endereço de entrega." };
+    Object.assign(comprador, pontoDe(c)); // lat/lng de quem escolheu entrega e calculou o frete
     return { comprador };
   }
   const quantidadeDe = (v) => Math.min(10, Math.max(1, Math.floor(Number(v)) || 1));
@@ -352,6 +380,16 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const resumo = { produtoId: itens[0].produtoId, produtoNome: itens.length === 1 ? itens[0].nome : `${itens.length} produtos`, quantidade: unidades, valorTotal, itens };
     return { x: produtos[0], itens, valorTotal, unidades, resumo };
   }
+  const mapaDe = (e) => `https://www.google.com/maps?q=${e.lat},${e.lng}`;
+  // Frete do pedido: recalculado aqui a partir do ponto do cliente; o valor que vem do aparelho nunca vale.
+  function lerEntrega(loja, comprador, subtotal) {
+    if (comprador.receber !== "entrega" || !freteAtivo(loja)) return {};
+    if (comprador.lat == null) return { status: 400, erro: "Calcule a entrega antes de continuar: use sua localização ou o botão do endereço." };
+    const f = freteDe(loja, comprador, subtotal);
+    if (f.fora) return { status: 400, erro: `Seu endereço fica a ${f.km} km, fora da área de entrega desta loja (até ${loja.frete.faixas.at(-1).ateKm} km).` };
+    return { entrega: { km: f.km, valor: f.valor, lat: comprador.lat, lng: comprador.lng } };
+  }
+  const linhaEntrega = (e) => `🚚 Entrega (${String(e.km).replace(".", ",")} km): ${e.valor ? reais(e.valor) : "grátis"}\n📍 ${mapaDe(e)}`;
   const linhaItem = (i) => `${i.quantidade}x ${i.nome} (${reais(i.preco * i.quantidade)})${i.observacao ? ` · ${i.observacao}` : ""}`;
   const itensDo = (p) => p.itens ?? [{ nome: p.produtoNome ?? p.produtoId, quantidade: p.quantidade, preco: p.valorTotal / (p.quantidade || 1) }];
 
@@ -383,8 +421,11 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     if (x.soPeloSite) return erro(res, 409, "Esta loja vende só pelo site, com Pix ou cartão.");
     const { comprador, erro: msg } = lerComprador(req.body?.comprador);
     if (msg) return erro(res, 400, msg);
+    const { entrega, erro: msgEntrega, status: stEntrega } = lerEntrega(banco.loja(x.lojaId), comprador, lido.valorTotal);
+    if (msgEntrega) return erro(res, stEntrega, msgEntrega);
     const pedido = {
       id: `P-${randomBytes(3).toString("hex").toUpperCase()}`, origem: "whatsapp", lojaId: x.lojaId, ...resumo,
+      ...(entrega ? { entrega, valorTotal: arredonda(lido.valorTotal + entrega.valor, 2) } : {}),
       comprador, etapa: "novo", criadoEm: iso(),
     };
     limparPedidosVencidos();
@@ -394,17 +435,74 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const mensagem = [
       "Olá! Vi no CIT Shopping e quero fazer um pedido:",
       ...itens.map((i) => `🛍️ *${linhaItem(i)}*`),
-      ...(itens.length > 1 ? [`💰 Total: ${reais(pedido.valorTotal)}`] : []),
+      ...(itens.length > 1 || entrega ? [`💰 Total: ${reais(pedido.valorTotal)}`] : []),
       `🧾 Pedido ${pedido.id}`,
       "",
       `👤 ${comprador.nome}`,
       comprador.receber === "entrega" ? `🚚 Entrega em: ${comprador.endereco}` : "🏪 Vou retirar na loja",
+      ...(entrega ? [linhaEntrega(entrega)] : []),
       ...(comprador.observacao ? [`📝 ${comprador.observacao}`] : []),
       "",
       `🔗 ${urlPublica}/${itens.length > 1 ? encodeURIComponent(x.lojaSlug) : `p/${encodeURIComponent(x.id)}`}`,
     ].join("\n");
     res.json({ ok: true, pedido: pedido.id, url: `https://wa.me/${encodeURIComponent(x.whatsapp)}?text=${encodeURIComponent(mensagem)}` });
   });
+
+  // ---------- entrega por distância: geocodificação e cotação ----------
+  // O endereço digitado vira coordenada no Nominatim (OpenStreetMap): no máximo 1 consulta por segundo (fila), cache de 30 dias.
+  // ponytail: cache em memória (zera ao reiniciar); vira arquivo se o volume de consultas pedir.
+  const cacheGeo = new Map();
+  let filaGeo = Promise.resolve(), ultimaGeo = 0;
+  // Uma consulta ao Nominatim, na fila (1 por segundo). Devolve o ponto ou null; erro de rede/HTTP lança.
+  function buscaNominatim(q) {
+    const consulta = filaGeo.then(async () => {
+      const espera = 1100 - (Date.now() - ultimaGeo);
+      if (espera > 0) await new Promise((ok) => setTimeout(ok, espera));
+      ultimaGeo = Date.now();
+      const r = await fetchImpl(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=br&accept-language=pt-BR&q=${encodeURIComponent(q)}`,
+        { headers: { "User-Agent": "CIT-Shopping/1.0" }, signal: AbortSignal.timeout(6000) });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const [d] = await r.json();
+      const ponto = d && pontoDe({ lat: d.lat, lng: d.lon });
+      return ponto ? { ...ponto, nome: txt(d.display_name, 160) } : null;
+    });
+    filaGeo = consulta.catch(() => {});
+    return consulta;
+  }
+  // O OpenStreetMap quase nunca tem o número da casa no Brasil: se o endereço completo não for achado,
+  // tenta de novo sem os números e devolve o ponto da rua com `aproximado: true`.
+  async function geocodificar(texto) {
+    const chave = txt(texto, 200).toLowerCase();
+    if (chave.length < 6) return null;
+    const hit = cacheGeo.get(chave);
+    if (hit && agora() - hit.em < 30 * DIA) return hit.r;
+    const semNumero = chave.replace(/\b\d[\d-]*[a-z]?\b/g, " ").replace(/\s+,/g, ",").replace(/\s+/g, " ").trim();
+    try {
+      let r = await buscaNominatim(chave);
+      if (!r && semNumero.length >= 6 && semNumero !== chave) { r = await buscaNominatim(semNumero); if (r) r = { ...r, aproximado: true }; }
+      cacheGeo.set(chave, { r, em: agora() });
+      if (cacheGeo.size > 2000) cacheGeo.delete(cacheGeo.keys().next().value);
+      return r;
+    } catch (e) { log.warn?.(`[geo] ${e.message}`); return null; }
+  }
+  // Cotação para o formulário do cliente: mesmo corpo do pedido (produtoId/itens) + ponto (lat/lng) ou endereço.
+  const limiteFrete = new S.Limitador({ maximo: 60, janelaMs: 10 * 60_000 });
+  app.post("/api/frete", a(async (req, res) => {
+    if (!limiteFrete.registrar(`frete|${S.ipDe(req)}`).permitido) return erro(res, 429, "Muitas consultas seguidas. Espere um pouco.");
+    const lido = lerItens(req.body);
+    if (lido.erro) return erro(res, lido.status, lido.erro);
+    const loja = banco.loja(lido.x.lojaId);
+    if (!freteAtivo(loja)) return res.json({ configurado: false });
+    const base = { configurado: true, faixas: loja.frete.faixas, gratisAcima: loja.frete.gratisAcima ?? null };
+    let ponto = pontoDe(req.body), encontrado = null, aproximado = false;
+    if (!ponto && txt(req.body?.endereco, 200)) {
+      const g = await geocodificar(req.body.endereco);
+      if (!g) return res.json({ ...base, naoEncontrado: true });
+      ponto = g; encontrado = g.nome; aproximado = Boolean(g.aproximado);
+    }
+    if (!ponto) return res.json(base);
+    res.json({ ...base, ...freteDe(loja, ponto, lido.valorTotal), lat: ponto.lat, lng: ponto.lng, encontrado, aproximado });
+  }));
 
   // ---------- cupons ----------
   // Cupons de verdade: o admin cadastra os das lojas parceiras (Shopee, Amazon, Mercado Livre, SHEIN) e cada loja
@@ -725,7 +823,9 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   app.post("/api/painel/senha", exigirLoja, (req, res) => {
     if (!S.conferirSenha(req.body?.atual, req.loja.senhaHash)) return erro(res, 400, "A senha atual não confere.");
     if (String(req.body?.nova ?? "").length < 8) return erro(res, 400, "A nova senha precisa ter pelo menos 8 caracteres.");
+    if (req.body.nova === req.body.atual) return erro(res, 400, "A nova senha precisa ser diferente da atual.");
     req.loja.senhaHash = S.gerarHashSenha(req.body.nova);
+    delete req.loja.trocarSenha;
     banco.salvar();
     res.json({ ok: true });
   });
@@ -773,6 +873,37 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     if (b.estoque !== undefined) req.produto.estoque = estoqueDe(b.estoque);
     banco.salvar();
     res.json(req.produto);
+  });
+  // Entrega por distância (painel): ponto da loja no mapa + faixas de km com valor (+ escolha de mostrar o endereço). DELETE desliga o frete.
+  app.get("/api/painel/geocodificar", exigirLoja, a(async (req, res) => {
+    const g = await geocodificar(req.query.q);
+    if (!g) return erro(res, 404, "Não encontramos esse endereço. Tente com rua, número e cidade, ou toque no mapa.");
+    res.json(g);
+  }));
+  app.put("/api/painel/entrega", exigirLoja, (req, res) => {
+    const b = req.body ?? {};
+    const ponto = pontoDe(b.local);
+    if (!ponto) return erro(res, 400, "Marque no mapa onde a loja fica.");
+    // O ponto do mapa serve para calcular a entrega e é sempre privado. O endereço (texto) só aparece para os clientes
+    // se a loja marcar "mostrar localização": quem trabalha em casa pode manter tudo escondido.
+    const mostrar = b.mostrarLocal === true, endereco = txt(b.local?.endereco, 200);
+    if (mostrar && endereco.length < 6) return erro(res, 400, "Escreva o endereço que os clientes vão ver.");
+    const faixas = (Array.isArray(b.faixas) ? b.faixas : []).map((f) => ({ ateKm: arredonda(Number(f?.ateKm), 1), valor: arredonda(Number(f?.valor), 2) }));
+    if (faixas.length > 6) return erro(res, 400, "No máximo 6 faixas de entrega.");
+    if (faixas.some((f) => !(f.ateKm > 0 && f.ateKm <= 100) || !(f.valor >= 0 && f.valor <= 500))) return erro(res, 400, "Confira as faixas: distância de 0,1 a 100 km e valor de R$ 0 a R$ 500.");
+    faixas.sort((x, y) => x.ateKm - y.ateKm);
+    if (new Set(faixas.map((f) => f.ateKm)).size !== faixas.length) return erro(res, 400, "Duas faixas têm a mesma distância.");
+    const gratis = Number(b.gratisAcima);
+    req.loja.local = { ...ponto, endereco, publico: mostrar };
+    if (faixas.length) req.loja.frete = { faixas, gratisAcima: gratis > 0 && gratis < 100000 ? arredonda(gratis, 2) : null };
+    else delete req.loja.frete; // só a localização: sem entrega por distância
+    banco.salvar();
+    res.json(painelDe(req.loja));
+  });
+  app.delete("/api/painel/entrega", exigirLoja, (req, res) => {
+    delete req.loja.frete; // desliga só a entrega por distância; a localização (e a escolha de mostrar) fica
+    banco.salvar();
+    res.json(painelDe(req.loja));
   });
   // Como a loja controla o estoque: "simples" (marca quando acaba) ou "quantidade" (o site desconta a cada venda).
   app.put("/api/painel/estoque", exigirLoja, (req, res) => {
@@ -871,14 +1002,14 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const cel = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
     const ETAPA = { novo: "Novo", atendimento: "Em atendimento", vendido: "Vendido", cancelado: "Cancelado" };
     // Uma linha por produto; o código do pedido agrupa as linhas de um mesmo carrinho.
-    const linhas = [["Data", "Pedido", "Origem", "Pagamento", "Situação", "Produto", "Opções", "Qtd", "Valor", "Total do pedido", "Cliente", "WhatsApp", "Receber", "Endereço", "Observação"]];
+    const linhas = [["Data", "Pedido", "Origem", "Pagamento", "Situação", "Produto", "Opções", "Qtd", "Valor", "Total do pedido", "Frete", "Cliente", "WhatsApp", "Receber", "Endereço", "Mapa", "Observação"]];
     const virgula = (n) => String(Math.round(n * 100) / 100).replace(".", ",");
     for (const p of pedidosDa(req.loja)) {
       const c = p.comprador ?? {};
       for (const i of itensDo(p)) {
         linhas.push([new Date(p.criadoEm).toLocaleString("pt-BR", { timeZone: "America/Fortaleza" }), p.id, p.origem === "whatsapp" ? "Pedido no WhatsApp" : "Pago no site",
-          p.origem === "whatsapp" ? "" : p.status, ETAPA[p.etapa ?? "novo"], i.nome, i.observacao, i.quantidade, virgula(i.preco * i.quantidade), virgula(p.valorTotal),
-          c.nome, c.whatsapp, c.receber === "entrega" ? "Entrega" : "Retirada", c.endereco, c.observacao]);
+          p.origem === "whatsapp" ? "" : p.status, ETAPA[p.etapa ?? "novo"], i.nome, i.observacao, i.quantidade, virgula(i.preco * i.quantidade), virgula(p.valorTotal), p.entrega ? virgula(p.entrega.valor) : "",
+          c.nome, c.whatsapp, c.receber === "entrega" ? "Entrega" : "Retirada", c.endereco, p.entrega ? mapaDe(p.entrega) : "", c.observacao]);
       }
     }
     res.set("Content-Type", "text/csv; charset=utf-8").set("Content-Disposition", `attachment; filename="pedidos-${req.loja.slug}.csv"`)
@@ -897,7 +1028,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const { emailComprador, metodo = "checkout_pro" } = req.body ?? {};
     const lido = lerItens(req.body);
     if (lido.erro) return erro(res, lido.status, lido.erro);
-    const { x: prod, itens, valorTotal, unidades, resumo } = lido;
+    const { x: prod, itens, unidades, resumo } = lido;
     const carrinho = Array.isArray(req.body?.itens);
     const loja = banco.loja(prod.lojaId);
     if (!loja) return erro(res, 404, "Loja não encontrada.");
@@ -905,10 +1036,13 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     // Quem compra: a loja precisa saber com quem combinar a entrega.
     const { comprador, erro: msgComprador } = lerComprador(req.body?.comprador);
     if (msgComprador) return erro(res, 400, msgComprador);
+    const { entrega, erro: msgEntrega, status: stEntrega } = lerEntrega(loja, comprador, lido.valorTotal);
+    if (msgEntrega) return erro(res, stEntrega, msgEntrega);
+    const total = arredonda(lido.valorTotal + (entrega?.valor ?? 0), 2); // produtos + frete
 
     // Comissão da CIT: R$ 1 (comissaoPorVenda) por unidade vendida, só nas lojas que pagam por venda.
     const taxaMarketplace = loja.modeloCobranca === "comissao_fixa" ? Math.round(Number(loja.comissaoPorVenda ?? 1) * unidades * 100) / 100 : 0;
-    if (!(taxaMarketplace < valorTotal)) return erro(res, 400, "Valor da compra menor que a taxa da plataforma.");
+    if (!(taxaMarketplace < total)) return erro(res, 400, "Valor da compra menor que a taxa da plataforma.");
     const email = String(emailComprador ?? "").trim().toLowerCase();
     if (metodo === "pix" && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return erro(res, 400, "Informe seu e-mail para gerar o Pix.");
 
@@ -917,18 +1051,21 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const webhookUrl = `${urlPublica}/webhook/mercadopago?loja=${encodeURIComponent(loja.id)}`;
     banco.d.pedidos ??= [];
     limparPedidosVencidos();
-    const pedido = { id: referencia, origem: "site", lojaId: loja.id, ...resumo, taxaMarketplace, metodo, comprador, status: "criado", etapa: "novo", criadoEm: iso() };
+    const pedido = { id: referencia, origem: "site", lojaId: loja.id, ...resumo, ...(entrega ? { entrega, valorTotal: total } : {}), taxaMarketplace, metodo, comprador, status: "criado", etapa: "novo", criadoEm: iso() };
     try {
       const tokenVendedor = await tokenDaLoja(loja);
       if (metodo === "pix") {
-        const pix = await mp.criarPixSplit({ tokenVendedor, titulo, valor: valorTotal, referencia, taxaMarketplace, emailComprador: email, webhookUrl });
+        const pix = await mp.criarPixSplit({ tokenVendedor, titulo, valor: total, referencia, taxaMarketplace, emailComprador: email, webhookUrl });
         banco.d.pedidos.push({ ...pedido, mpPagamentoId: pix.id, status: pix.status ?? "pending" });
         banco.salvar();
-        return res.json({ ok: true, pix, taxaMarketplace, valorTotal });
+        return res.json({ ok: true, pix, taxaMarketplace, valorTotal: total });
       }
       const pref = await mp.criarPreferenciaSplit({
-        tokenVendedor, titulo, valor: valorTotal, referencia, taxaMarketplace, webhookUrl,
-        itens: itens.map((i) => ({ titulo: i.observacao ? `${i.nome} (${i.observacao})`.slice(0, 120) : i.nome, quantidade: i.quantidade, preco: i.preco })),
+        tokenVendedor, titulo, valor: total, referencia, taxaMarketplace, webhookUrl,
+        itens: [
+          ...itens.map((i) => ({ titulo: i.observacao ? `${i.nome} (${i.observacao})`.slice(0, 120) : i.nome, quantidade: i.quantidade, preco: i.preco })),
+          ...(entrega?.valor ? [{ titulo: `Entrega (${String(entrega.km).replace(".", ",")} km)`, quantidade: 1, preco: entrega.valor }] : []),
+        ],
         // Carrinho volta para /carrinho (e tira dele os itens desta loja); compra de um produto volta para a página dele.
         retornos: Object.fromEntries([["success", "aprovada"], ["pending", "pendente"], ["failure", "falhou"]]
           .map(([k, v]) => [k, carrinho
@@ -937,7 +1074,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       });
       banco.d.pedidos.push(pedido);
       banco.salvar();
-      res.json({ ok: true, initPoint: pref.initPoint, taxaMarketplace, valorTotal });
+      res.json({ ok: true, initPoint: pref.initPoint, taxaMarketplace, valorTotal: total });
     } catch (e) {
       log.error?.(`[split-mp] ${loja.slug}: falha ao criar pagamento: ${e.message}`);
       erro(res, 502, "Não foi possível gerar o pagamento agora. Tente de novo em instantes.");
@@ -956,6 +1093,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       `👤 ${c.nome ?? "-"}`,
       c.whatsapp ? `📱 https://wa.me/${c.whatsapp}` : "",
       c.receber === "entrega" ? `🚚 Entregar em: ${c.endereco}` : "🏪 Vai retirar na loja",
+      p.entrega ? linhaEntrega(p.entrega) : "",
       c.observacao ? `📝 ${c.observacao}` : "",
       "",
       "Fale com o cliente para combinar a entrega.",
@@ -1064,8 +1202,20 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   app.post("/api/admin/lojas/:id/senha", exigirAdmin, lojaAdmin, (req, res) => {
     const senha = randomBytes(6).toString("base64url");
     req.loja.senhaHash = S.gerarHashSenha(senha);
+    req.loja.trocarSenha = true; // provisória: a loja escolhe a própria senha no primeiro acesso
     banco.salvar();
     res.json({ senha });
+  });
+  // O admin digita o e-mail e a senha provisória de uma loja (ex.: parceira nova): a loja é obrigada a trocar no primeiro acesso.
+  app.put("/api/admin/lojas/:id/acesso", exigirAdmin, lojaAdmin, (req, res) => {
+    const email = txt(req.body?.email, 120).toLowerCase(), senha = String(req.body?.senha ?? "");
+    if (!emailOk(email)) return erro(res, 400, "E-mail inválido.");
+    if (senha.length < 8) return erro(res, 400, "A senha precisa ter pelo menos 8 caracteres.");
+    const outra = banco.lojaPorEmail(email);
+    if (outra && outra.id !== req.loja.id) return erro(res, 409, "Já existe outra loja com este e-mail.");
+    Object.assign(req.loja, { email, senhaHash: S.gerarHashSenha(senha), trocarSenha: true, atualizadaEm: iso() });
+    banco.salvar();
+    res.json({ ok: true });
   });
   app.put("/api/admin/lojas/:id/modelo-cobranca", exigirAdmin, lojaAdmin, express.json(), (req, res) => {
     const { modeloCobranca, comissaoPorVenda } = req.body || {};
@@ -1441,6 +1591,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
 
   // ---------- páginas ----------
   const semCache = (res) => res.setHeader("Cache-Control", "no-cache");
+  // Mapa do painel (aba Entrega): o Leaflet sai do próprio site porque a CSP só aceita script de 'self'.
+  app.use("/vendor/leaflet", express.static(join(RAIZ, "node_modules/leaflet/dist"), { index: false, maxAge: "30d" }));
   app.use(express.static(publico, { extensions: ["html"], setHeaders: semCache }));
   app.get("/loja/:slug", (req, res) => { semCache(res); res.sendFile(join(publico, "index.html")); });
   app.get("/black-friday", (req, res) => { semCache(res); res.sendFile(join(publico, "index.html")); });
@@ -1508,6 +1660,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const disponibilidade = x.disponibilidade ?? "consulte";
     const localDetalhes = local ? [
       x.horario && `Horário: ${x.horario}`,
+      x.localEndereco && `Endereço: ${x.localEndereco}`,
       x.bairrosAtendidos && `Bairros atendidos: ${x.bairrosAtendidos}`,
       x.prazoEntrega && `Prazo de entrega informado: ${x.prazoEntrega}`,
     ].filter(Boolean).map(attr).join(" · ") : "";
