@@ -77,7 +77,7 @@ test("RadarOfertas formata mensagem para afiliados e lojas locais", () => {
   });
   assert.equal(msgAfiliado.tipo, "afiliado");
   assert.match(msgAfiliado.texto, /SUPER PROMOÇÃO/); // o número da campanha (12.12...) vem de servidor/campanha.js
-  assert.ok(msgAfiliado.texto.includes("https://s.shopee.com.br/teste123"));
+  assert.match(msgAfiliado.texto, /\/ir\/[^ ]+\?c=whatsapp/, "link pelo /ir com o canal WhatsApp");
   assert.ok(msgAfiliado.texto.includes("70% OFF"));
 
   // 2. Produto Loja Local

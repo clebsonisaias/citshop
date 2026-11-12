@@ -82,7 +82,7 @@ export class ConectorTelegram {
     }
 
     const legenda = this.formatarMensagemHTML(produto, { urlPublica });
-    const linkDestino = produto.link || `${urlPublica}/p/${encodeURIComponent(produto.id)}`;
+    const linkDestino = produto.link && !String(produto.id).startsWith("l-") ? `${urlPublica}/ir/${encodeURIComponent(produto.id)}?c=telegram` : `${urlPublica}/p/${encodeURIComponent(produto.id)}`;
     const linkDetalhes = `${urlPublica}/p/${encodeURIComponent(produto.id)}`;
     const urlFoto = produto.fotos?.[0] || produto.imagem || null;
 

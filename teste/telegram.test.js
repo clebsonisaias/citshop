@@ -40,5 +40,5 @@ test("ConectorTelegram formata texto HTML e botões corretamente", async () => {
 
   const botoes = payloadEnviado.body.reply_markup.inline_keyboard;
   assert.ok(botoes.length >= 1);
-  assert.equal(botoes[0][0].url, "https://s.shopee.com.br/teste123");
+  assert.match(botoes[0][0].url, /\/ir\/shopee-999\?c=telegram$/, "link pelo /ir com o canal Telegram");
 });

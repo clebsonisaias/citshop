@@ -221,7 +221,11 @@ test("Amazon da API fica na vitrine por até 1 hora e substitui o item manual de
   assert.deepEqual([tv[0].nome, tv[0].preco, tv[0].atualizadoEm], ["TV da API", 90, quando]);
   const paginaAfiliada = await (await req("/p/amazon-X")).text();
   assert.match(paginaAfiliada, /<h1>TV da API<\/h1>/);
-  assert.match(paginaAfiliada, /href="https:\/\/www\.amazon\.com\.br\/dp\/X\?tag=citshop-20" target="_blank" rel="sponsored nofollow noopener"/);
+  // O "Comprar" passa pelo /ir (clique contado no canal "produto") e cai no link de afiliado da loja.
+  assert.match(paginaAfiliada, /href="\/ir\/amazon-X\?c=produto" target="_blank" rel="sponsored nofollow noopener"/);
+  const ir = await req("/ir/amazon-X?c=produto", { redirect: "manual" });
+  assert.deepEqual([ir.status, ir.headers.get("location")], [302, "https://www.amazon.com.br/dp/X?tag=citshop-20"]);
+  assert.equal((await req("/ir/nao-existe", { redirect: "manual" })).headers.get("location"), "/");
   assert.equal((await req("/contato/amazon-X", { redirect: "manual" })).status, 404);
   assert.equal(Object.keys(JSON.parse(readFileSync(join(dir, "citshop.json"), "utf8")).metricasContato).length, 2);
   relogio += 61 * 60_000; // passou de 1 hora: o preço da API não pode mais aparecer

@@ -21,6 +21,7 @@ import { TIPOS_LANCAMENTO, estornarComissao, lancar, lancarComissao, registrarEv
 import { MARKETPLACE, criarClienteAmazon } from "./amazon.js";
 import { atualizarAfiliados } from "./afiliados.js";
 import { instalarFood } from "./food.js";
+import { CanaisAfiliado, canalValido, lancarComissoesShopee, vendasPorCanal } from "./afiliados-canal.js";
 import { MonitoramentoMotor } from "./tarefas/monitoramento.js";
 import { AgendadorOfertas } from "./tarefas/agendador.js";
 import { ConectorWaha } from "./integracoes/whatsapp/waha.js";
@@ -1607,6 +1608,42 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     }
   }));
 
+  // ---------- comissão de afiliado por canal (servidor/afiliados-canal.js) ----------
+  const canais = new CanaisAfiliado({ dadosDir, agora, log });
+  const conectorShopee = () => (canais.shopee ??= agendadorOfertas.coletor?.conectores?.shopee ?? null);
+  // Todo "Comprar" de afiliado passa aqui: conta o clique por canal e manda para o link com a origem marcada.
+  app.get("/ir/:id", a(async (req, res) => {
+    const p = (afiliados().produtos ?? []).find((x) => x.id === req.params.id); // a mesma lista da vitrine (Amazon da API, Amazon desligada)
+    res.set("Cache-Control", "no-store");
+    if (!p) return res.redirect(302, "/");
+    conectorShopee();
+    const canal = canalValido(req.query.c);
+    canais.registrarClique(canal, p.loja, String(req.headers["user-agent"] ?? ""));
+    const destino = await canais.destino(p, canal);
+    res.redirect(302, destino ?? `/p/${encodeURIComponent(p.id)}`);
+  }));
+  async function sincronizarComissoesShopee() {
+    const c = conectorShopee();
+    if (!c?.estaConfigurado?.()) return 0;
+    const { conversoes } = await c.relatorioConversoes({ dias: 60 });
+    const novos = lancarComissoesShopee(banco, conversoes, agora());
+    if (novos) banco.salvar();
+    return novos;
+  }
+  app.get("/api/admin/afiliados/canais", exigirAdmin, a(async (req, res) => {
+    const dias = Math.min(90, Math.max(1, Number(req.query.dias) || 30)), desde = agora() - dias * DIA;
+    canais.descarregar();
+    let vendas = {}, erro = null;
+    const c = conectorShopee();
+    if (c?.estaConfigurado?.()) {
+      try { vendas = vendasPorCanal((await c.relatorioConversoes({ dias })).conversoes); } catch (e) { erro = `Shopee: ${e.message}`; }
+    } else erro = "API de afiliados da Shopee não configurada.";
+    const livro = (banco.d.lancamentos ?? []).filter((l) => l.tipo === "afiliado" && Date.parse(l.em) >= desde);
+    const confirmadaNoLivro = {};
+    for (const l of livro) confirmadaNoLivro[l.detalhe?.canal ?? "sem_canal"] = Math.round(((confirmadaNoLivro[l.detalhe?.canal ?? "sem_canal"] ?? 0) + l.valor) * 100) / 100;
+    res.json({ dias, cliques: canais.cliquesNoPeriodo(new Date(desde).toISOString().slice(0, 10)), vendas, confirmadaNoLivro, totalNoLivro: resumoLivro(livro).afiliado, erro });
+  }));
+
   // ---------- Central de Ofertas (admin) ----------
   app.get("/api/admin/central-ofertas", exigirAdmin, a(async (req, res) => {
     const st = await monitoramentoMotor.obterStatus();
@@ -2073,7 +2110,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const preco = Number(x.preco).toFixed(2);
     const local = x.loja === "local";
     const esgotado = local && x.esgotado === true;
-    const destino = local ? `/contato/${encodeURIComponent(x.id)}` : x.link;
+    const destino = local ? `/contato/${encodeURIComponent(x.id)}` : `/ir/${encodeURIComponent(x.id)}?c=produto`; // afiliado: clique contado e origem marcada
     const infoLocal = local
       ? ` · ${attr(x.cidade)}${x.entrega ? ` · ${attr(x.entrega === "ambos" ? "Entrega ou retirada" : x.entrega === "entrega" ? "Entrega" : "Retirada na loja")}` : ""}`
       : "";
@@ -2204,5 +2241,5 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     erro(res, 500, "Algo deu errado do nosso lado. Tente de novo.");
   });
 
-  return { app, banco, dadosDir, sincronizarAssinaturas, verificarAlertas, publicarStoryDoDia, monitoramentoMotor, agendadorOfertas, tarefa, tarefas };
+  return { app, banco, dadosDir, sincronizarAssinaturas, verificarAlertas, publicarStoryDoDia, monitoramentoMotor, agendadorOfertas, tarefa, tarefas, canais, sincronizarComissoesShopee };
 }

@@ -51,3 +51,26 @@ O admin mostra esses dados na Central de Ofertas, e a Shopee tem relatório pró
 3. **Duas rotinas coletam Amazon e Shopee** (robô/coletor em `servidor.js` e o motor em `agendador.js`). Funciona, porque o publicador consolida, mas é trabalho repetido. Unificar exige decisão, já que muda a infraestrutura de coleta.
 
 As duas primeiras correções mudam o que é publicado. Por isso ficam para aprovação.
+
+## Comissão por canal (`servidor/afiliados-canal.js`)
+- Todo "Comprar" de oferta de afiliado passa por `/ir/<produto>?c=<canal>`. Canais:
+  - `site`: janela da vitrine;
+  - `produto`: página `/p`;
+  - `whatsapp`: Radar;
+  - `telegram`;
+  - `instagram`;
+  - `bio`;
+  - `outros`.
+- **Cliques:** contados por dia, canal e loja. Robôs de prévia de link (WhatsApp, Telegram, Facebook…) não contam.
+- **Gravação:** a cada minuto e ao desligar, em `<DADOS_DIR>/cliques-canal.json` (120 dias).
+- **Link por canal, só na Shopee:** gerado com `generateShortLink` e `subIds: ["citshop", canal]`, uma vez por produto+canal, e guardado 30 dias em `links-canal.json`.
+  - Usa o `linkOriginal` (productLink) que o motor guarda.
+  - Se a Shopee demora mais de 4 s, dá erro ou devolve destino fora das lojas parceiras, o clique vai para o link de afiliado de sempre: nunca fica preso nem sai do domínio das lojas.
+- **Vendas por canal:** o `conversionReport` traz `utmContent` com os subIds, e o admin (aba Afiliados → Comissão por canal) mostra:
+  - cliques;
+  - pedidos;
+  - comissão em andamento;
+  - comissão confirmada.
+  Vendas por links antigos ou diretos aparecem como "sem canal".
+- **Livro financeiro:** a tarefa `comissoes-shopee` (a cada 6 h, também em `/saude`) lança como `afiliado` a comissão de cada pedido CONCLUÍDO, uma vez por pedido. Se o pedido for cancelado ou devolvido depois, entra um `ajuste` negativo, também uma vez só.
+- **Não usado:** `validatedReport`. A documentação disponível não explica como obter o `validationId`. Hoje o livro usa o pedido concluído do `conversionReport`; dá para trocar quando houver a documentação oficial.

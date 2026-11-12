@@ -75,6 +75,7 @@ export function normalizarProduto(item) {
     fotos,
     imagem: fotos[0] || null,
     link: item.link || null,
+    linkOriginal: item.linkOriginal || null,
     disponibilidade: item.disponibilidade || "em_estoque",
     freteGratis: Boolean(item.freteGratis || preco >= 79 || item.loja === "local" || /frete gr[aá]tis/i.test(nome)),
     cupom: Boolean(item.cupom || (temPrecoAntigoValido && item.descontoPct >= 30) || /cupom/i.test(nome)),

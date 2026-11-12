@@ -146,7 +146,8 @@ export class RadarOfertas {
     }
 
     // Produto de Afiliado (Shopee, etc.)
-    const linkAfiliado = produto.link || linkCITShopping;
+    // Pelo /ir: o clique conta no canal WhatsApp e a venda volta marcada com a origem.
+    const linkAfiliado = produto.link ? `${this.urlPublica}/ir/${encodeURIComponent(produto.id)}?c=whatsapp` : linkCITShopping;
     const eh1111 = produto.selo === "11.11" || produto.superOferta || /11\.11/i.test(produto.nome);
 
     const cabecalho = eh1111

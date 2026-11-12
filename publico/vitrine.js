@@ -324,7 +324,7 @@ import { filtrarCatalogo } from './catalogo.js';
       $('mvariants').hidden = true;
       $('mvariants').innerHTML = '';
       $('mbuy').hidden = false;
-      $('mbuy').href = x.link;
+      $('mbuy').href = `/ir/${encodeURIComponent(x.id)}?c=site`; // clique contado e origem marcada (afiliados-canal.js)
       $('mbuy').rel = 'sponsored nofollow noopener';
       $('mbuy').textContent = `Comprar na ${STORE[x.loja]} ↗`;
       // Preço vindo de API com hora da consulta (hoje só a Amazon): mostra quando foi visto.

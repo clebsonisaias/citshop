@@ -36,7 +36,7 @@
         <button class="btn sec" data-acesso="${l.id}">Definir acesso</button>
         <button class="btn perigo" data-excluir="${l.id}">Excluir loja</button></td></tr>`).join('') : '<tr><td colspan="5" class="note">Nenhuma loja com esse filtro.</td></tr>';
   }
-  async function carregar() { lojas = await api('/api/admin/lojas'); render(); carregarCupons(); carregarConvites(); carregarComercial(); carregarDashboard(); carregarFinanceiro(); carregarAvaliacoes(); carregarFood(); }
+  async function carregar() { lojas = await api('/api/admin/lojas'); render(); carregarCupons(); carregarConvites(); carregarComercial(); carregarDashboard(); carregarFinanceiro(); carregarAvaliacoes(); carregarFood(); carregarCanais(); }
   ['fStatusLoja', 'fBuscaLoja'].forEach((id) => $(id).addEventListener('input', render));
   // ---------- visão geral (dados reais) ----------
   const cartao = (rotulo, valor, sub = '') => `<div class="cartao"><span>${esc(rotulo)}</span><b>${valor}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</div>`;
@@ -139,6 +139,18 @@
     await api(`/api/admin/convites/${encodeURIComponent(cancelar.dataset.cancelarConv)}`, 'DELETE').catch((err) => alert(err.message));
     carregarConvites();
   });
+  const NOME_CANAL = { site: 'Site (vitrine)', produto: 'Página do produto', whatsapp: 'WhatsApp (Radar)', telegram: 'Telegram', instagram: 'Instagram', bio: 'Link da bio', outros: 'Outros', sem_canal: 'Sem canal (links antigos ou diretos)' };
+  async function carregarCanais() {
+    const d = await api(`/api/admin/afiliados/canais?dias=${$('canalPeriodo').value}`).catch((e) => ({ erro: e.message, cliques: {}, vendas: {}, confirmadaNoLivro: {} }));
+    const canais = [...new Set([...Object.keys(NOME_CANAL), ...Object.keys(d.cliques), ...Object.keys(d.vendas)])]
+      .filter((c) => d.cliques[c] || d.vendas[c] || ['site', 'produto', 'whatsapp', 'telegram'].includes(c));
+    $('canalLinhas').innerHTML = canais.map((c) => {
+      const cl = d.cliques[c], v = d.vendas[c] ?? {};
+      return `<tr><td>${esc(NOME_CANAL[c] ?? c)}</td><td>${cl?.total ?? 0}${cl ? ` <small>(${Object.entries(cl.porLoja).map(([l, n]) => `${esc(l)} ${n}`).join(', ')})</small>` : ''}</td><td>${v.pedidos ?? 0}${v.cancelados ? ` <small>(${v.cancelados} cancelados)</small>` : ''}</td><td>${brl.format(v.estimada ?? 0)}</td><td>${brl.format(v.confirmada ?? 0)}</td></tr>`;
+    }).join('');
+    $('canalStatus').textContent = d.erro ? `Vendas: ${d.erro} Os cliques continuam sendo contados.` : `No Financeiro (comissão de afiliado confirmada no período): ${brl.format(d.totalNoLivro ?? 0)}.`;
+  }
+  $('canalPeriodo').addEventListener('change', carregarCanais);
   async function carregarFood() {
     const d = await api('/api/admin/food').catch(() => null);
     if (!d) return;
