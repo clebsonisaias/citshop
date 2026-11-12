@@ -7,7 +7,7 @@ import { filtrarCatalogo } from './catalogo.js';
   const DISPONIBILIDADE = { disponivel: 'Disponível, informado pela loja', 'sob-encomenda': 'Sob encomenda', consulte: 'Consulte disponibilidade' };
   const $ = (id) => document.getElementById(id);
   const num = new Intl.NumberFormat('pt-BR');
-  let P = [], LOJAS = [];
+  let P = [], LOJAS = [], CAMPANHA = null; // CAMPANHA: data especial em andamento (ex.: "12.12"), vem do servidor
 
   const off = (x) => (x.precoAntigo > x.preco ? Math.round((1 - x.preco / x.precoAntigo) * 100) : 0);
   // Quanto (em %) caiu desde o maior preço que a CIT Shopping viu nos últimos dias.
@@ -44,7 +44,7 @@ import { filtrarCatalogo } from './catalogo.js';
     const nota = x.nota ? `<div class="rate"><b>★ ${x.nota.toFixed(1).replace('.', ',')}</b>${x.vendidos ? ` · ${num.format(x.vendidos)} vendidos` : ''}</div>` : '';
     const ship = x.loja === 'local' ? `<div class="ship">${esc(window.CIT.textoEntrega(x.entrega))} em ${esc(x.cidade)}</div>` : x.queda ? `<div class="ship">↓ caiu ${brl.format(x.queda)}</div>` : '';
     const stock = x.loja === 'local' ? `<div class="availability-tag">${esc(DISPONIBILIDADE[x.disponibilidade] ?? DISPONIBILIDADE.consulte)}</div>` : '';
-    const selo = x.selo === '11.11' || x.superOferta ? '<div class="ship" style="color:#e63946;font-weight:700">🔥 Super Oferta 11.11</div>' : (x.menor30 && x.loja !== 'local' ? '<div class="ship"><b>Menor preço em 30 dias</b></div>' : '');
+    const selo = x.selo === '11.11' || x.superOferta ? `<div class="ship" style="color:#e63946;font-weight:700">🔥 Super Oferta${CAMPANHA ? ` ${esc(CAMPANHA)}` : ''}</div>` : (x.menor30 && x.loja !== 'local' ? '<div class="ship"><b>Menor preço em 30 dias</b></div>' : '');
     const tags = [];
     const temFrete = x.freteGratis || x.preco >= 79 || x.loja === 'local' || /frete gr[aá]tis/i.test(x.nome);
     const temCupom = x.cupom || (off(x) >= 30) || x.superOferta || x.selo === '11.11';
@@ -422,7 +422,9 @@ import { filtrarCatalogo } from './catalogo.js';
 
   fetch('/api/vitrine')
     .then((r) => r.json())
-    .then((d) => { P = d.produtos.map((x) => ({ ...x, categoriaNome: D[x.dept]?.n ?? x.dept })); LOJAS = d.lojas; montarHome(); rota();
+    .then((d) => { P = d.produtos.map((x) => ({ ...x, categoriaNome: D[x.dept]?.n ?? x.dept })); LOJAS = d.lojas; CAMPANHA = d.campanha ?? null;
+      if (CAMPANHA) { $('seloCampanha').textContent = `Especial ${CAMPANHA}`; $('seloCampanha').hidden = false; }
+      montarHome(); rota();
       // Link /#sellers (ex.: da /bio): a faixa só existe depois do fetch, então rola até ela aqui.
       if (location.hash === '#sellers') $('sellers').closest('section').scrollIntoView(); })
     .catch(() => { $('sellers').innerHTML = '<p class="empty">Não foi possível carregar as ofertas. Recarregue a página.</p>'; });

@@ -27,7 +27,7 @@ header.site { position: sticky; top: 0; z-index: 20; background: var(--deep); co
 .bar { display: grid; grid-template-columns: auto 1fr auto; gap: 20px; align-items: center; padding-block: 14px; }
 .logo { display: flex; align-items: center; text-decoration: none; }
 /* Logo oficial em branco: só sobre fundo escuro (cabeçalho e rodapé petróleo). */
-.logo img { display: block; height: 36px; width: auto; }
+.logo img { display: block; height: clamp(38px, 3vw + 26px, 52px); width: auto; } /* cresce com a tela, sem distorcer */
 .search { display: flex; background: #FFFFFF; border-radius: 12px; overflow: hidden; min-width: 0; }
 .search select { border: 0; background: #E9F3F2; color: #0B2E35; padding: 0 10px; font-size: 13px; font-weight: 600; max-width: 150px; }
 .search input { flex: 1; min-width: 0; border: 0; padding: 13px 14px; color: #0B2E35; background: #FFFFFF; }
@@ -547,7 +547,6 @@ footer.site a:hover { text-decoration: underline; }
 }
 @media (max-width: 480px) {
   .product-top .bar { gap: 8px; padding-block: 10px; }
-  .product-top .logo img { height: 30px; }
   .product-top .sell { display: none; }
   .product-crumb { margin-bottom: 12px; }
   .product-prices { margin-top: 14px; }

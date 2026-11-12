@@ -1,3 +1,4 @@
+import { campanhaAtual } from "../../campanha.js";
 /**
  * Conector oficial da Telegram Bot API para canais e grupos de ofertas do CIT Shopping.
  * Despacha fotos, legendas formatadas e botões inline interativos com link de afiliado.
@@ -53,7 +54,8 @@ export class ConectorTelegram {
     }
 
     const eh1111 = produto.selo === "11.11" || produto.superOferta || descPct >= 30;
-    const tituloSelo = eh1111 ? "🎯 <b>SUPER OFERTA 11.11 | CITSHOP</b> ⚡💥" : "🎯 <b>RADAR DE PREÇOS BAIXOS | CITSHOP</b> 📉💥";
+    const campanha = campanhaAtual();
+    const tituloSelo = eh1111 ? `🎯 <b>SUPER OFERTA${campanha ? ` ${campanha}` : ""} | CITSHOP</b> ⚡💥` : "🎯 <b>RADAR DE PREÇOS BAIXOS | CITSHOP</b> 📉💥";
 
     return [
       tituloSelo,

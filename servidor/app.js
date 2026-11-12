@@ -22,6 +22,7 @@ import { RadarOfertas } from "./motor-ofertas/radar.js";
 import { ConectorInstagram } from "./integracoes/instagram/conector.js";
 import { GeradorCardInstagram } from "./integracoes/instagram/gerador-card.js";
 import { aplicarCatalogo } from "./catalogo-loja.js";
+import { campanhaAtual } from "./campanha.js";
 import { ConectorTelegram } from "./integracoes/telegram/conector.js";
 
 export const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -260,6 +261,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const af = afiliados();
     return {
       atualizadoEm: af.atualizadoEm ?? null,
+      campanha: campanhaAtual(agora()),
       lojas: [...visiveis.values()].map(lojaPublica),
       produtos: ordenarVitrine([...locais, ...af.produtos.map(produtoAfiliado)]),
     };

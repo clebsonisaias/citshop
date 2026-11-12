@@ -6,6 +6,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { ConectorWaha } from "../integracoes/whatsapp/waha.js";
+import { campanhaAtual } from "../campanha.js";
 
 const ARQUIVO_ENVIADOS = "radar-enviados.json";
 
@@ -149,7 +150,7 @@ export class RadarOfertas {
     const eh1111 = produto.selo === "11.11" || produto.superOferta || /11\.11/i.test(produto.nome);
 
     const cabecalho = eh1111
-      ? "🎯 *SUPER PROMOÇÃO 11.11 | RADAR CITSHOP* ⚡💥"
+      ? `🎯 *SUPER PROMOÇÃO${campanhaAtual() ? ` ${campanhaAtual()}` : ""} | RADAR CITSHOP* ⚡💥`
       : "🎯 *RADAR DE PREÇOS BAIXOS | CITSHOP* 📉💥";
 
     const linhas = [
@@ -328,7 +329,7 @@ export class RadarOfertas {
       "",
       "✅ O robô de monitoramento de preços baixos está conectado com sucesso ao WhatsApp via WAHA!",
       "",
-      "🎯 Quando uma oferta tiver queda expressiva de preço ou super desconto do 11.11, ela será despachada automaticamente neste canal.",
+      `🎯 Quando uma oferta tiver queda expressiva de preço ou super desconto${campanhaAtual() ? ` do ${campanhaAtual()}` : ""}, ela será despachada automaticamente neste canal.`,
       "",
       `📅 Teste enviado em: ${new Date().toLocaleString("pt-BR")}`,
       `🌐 Vitrine: ${this.urlPublica}`,
