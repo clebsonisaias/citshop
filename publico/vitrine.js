@@ -236,13 +236,18 @@ import { filtrarCatalogo } from './catalogo.js';
     $('mdesc').textContent = x.descricao ?? '';
     // Link próprio do produto: o servidor monta a prévia (título, preço e foto) que o WhatsApp mostra.
     const link = `${location.origin}/p/${encodeURIComponent(x.id)}`;
+    // Comprar no site (Pix/cartão) só em lojas que pagam por venda e conectaram o Mercado Pago (comprar.js).
+    $('mcomprar').hidden = !(local && x.compraOnline);
+    $('mcomprar').dataset.comprar = x.id;
+    $('mcomprar').dataset.entrega = x.entrega ?? '';
+    $('mbuy').className = local && x.compraOnline ? 'zapbtn' : 'buybtn';
     if (local) {
       const baseContato = `/contato/${encodeURIComponent(x.id)}`;
       $('mbuy').href = baseContato;
       $('mbuy').rel = 'noopener';
-      $('mbuy').textContent = 'Pedir pelo WhatsApp da loja ↗';
+      $('mbuy').textContent = x.compraOnline ? 'Tirar dúvidas no WhatsApp da loja ↗' : 'Pedir pelo WhatsApp da loja ↗';
       const disponibilidade = DISPONIBILIDADE[x.disponibilidade] ?? DISPONIBILIDADE.consulte;
-      $('mnote').textContent = `Vendido por ${x.lojaNome}, ${x.cidade}${x.entrega ? ` · ${window.CIT.textoEntrega(x.entrega)}` : ''} · ${disponibilidade}. Combine pagamento e entrega direto com a loja.`;
+      $('mnote').textContent = `Vendido por ${x.lojaNome}, ${x.cidade}${x.entrega ? ` · ${window.CIT.textoEntrega(x.entrega)}` : ''} · ${disponibilidade}. ${x.compraOnline ? 'Pague aqui com Pix ou cartão; a loja combina a entrega com você pelo WhatsApp.' : 'Combine pagamento e entrega direto com a loja.'}`;
 
       const nomeLower = String(x.nome || '').toLowerCase();
       const ehCalcado = x.dept === 'calc' || /tenis|tênis|sapato|sandalia|sandália|chinelo|bota|chuteira/i.test(nomeLower);

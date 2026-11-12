@@ -36,6 +36,7 @@ test("split: loja conecta o MP, cobrança sai com o token dela e o webhook de pa
     if (u.endsWith("/checkout/preferences")) return ok({ id: "pref1", init_point: "https://mp.example/checkout" });
     if (u.endsWith("/v1/payments")) { referenciaPix = corpo.external_reference; return ok({ id: 99, status: "pending" }); }
     if (u.endsWith("/v1/payments/99")) return ok({ id: 99, status: "approved", external_reference: referenciaPix });
+    if (u.endsWith("/api/sendText")) return ok({ id: "msg" });
     return { ok: false, json: async () => ({}) };
   };
   const env = { SESSAO_SEGREDO: "s".repeat(40), DADOS_DIR: dir, URL_PUBLICA: "https://shop.citmax.com.br", ...AMBIENTE_MP };
@@ -54,18 +55,27 @@ test("split: loja conecta o MP, cobrança sai com o token dela e o webhook de pa
   assert.ok(!readFileSync(join(dir, "citshop.json"), "utf8").includes(TOKEN_LOJA), "token não fica em texto puro");
   assert.equal((await fetch(`${base}/mercadopago/retorno?code=c1&state=estado-1`, { redirect: "manual" })).headers.get("location"), "/painel?mp=erro", "state só vale uma vez");
 
-  // 2. Checkout Pro: token da loja, comissão da CIT, sem sponsor_id
-  const r1 = await (await post("/api/pagamento/split", { produtoId: "l-p1", quantidade: 2 })).json();
+  // 2. Produto da loja que paga por venda e conectou o MP pode ser comprado no site
+  const vitrine = await (await fetch(`${base}/api/vitrine`)).json();
+  assert.equal(vitrine.produtos.find((p) => p.id === "l-p1").compraOnline, true);
+  const comprador = { nome: "Ana Cliente", whatsapp: "(84) 98888-7777", receber: "entrega", endereco: "Rua A, 10, Centro, Macaíba", observacao: "cor: Rosa" };
+  assert.equal((await post("/api/pagamento/split", { produtoId: "l-p1" })).status, 400, "sem dados do comprador");
+  assert.equal((await post("/api/pagamento/split", { produtoId: "l-p1", comprador: { ...comprador, endereco: "" } })).status, 400, "entrega sem endereço");
+
+  // 3. Checkout Pro: token da loja, comissão da CIT, sem sponsor_id, volta para a página do produto
+  const r1 = await (await post("/api/pagamento/split", { produtoId: "l-p1", quantidade: 2, comprador })).json();
   assert.equal(r1.initPoint, "https://mp.example/checkout");
   const pref = chamadas.find((c) => c.u.endsWith("/checkout/preferences"));
   assert.equal(pref.auth, autorizacaoDaLoja);
   assert.equal(pref.corpo.marketplace_fee, 1);
   assert.equal(pref.corpo.items[0].unit_price, 19);
   assert.ok(!("sponsor_id" in pref.corpo));
+  assert.equal(pref.corpo.back_urls.success, "https://shop.citmax.com.br/p/l-p1?compra=aprovada");
+  assert.equal(b.d.pedidos[0].comprador.whatsapp, "5584988887777");
 
   // 3. Pix exige e-mail e vai com chave de idempotência
-  assert.equal((await post("/api/pagamento/split", { produtoId: "l-p1", metodo: "pix" })).status, 400);
-  const r2 = await (await post("/api/pagamento/split", { produtoId: "l-p1", metodo: "pix", emailComprador: "cliente@exemplo.com" })).json();
+  assert.equal((await post("/api/pagamento/split", { produtoId: "l-p1", metodo: "pix", comprador })).status, 400);
+  const r2 = await (await post("/api/pagamento/split", { produtoId: "l-p1", metodo: "pix", emailComprador: "cliente@exemplo.com", comprador })).json();
   assert.equal(r2.pix.id, "99");
   const pix = chamadas.find((c) => c.u.endsWith("/v1/payments"));
   assert.equal(pix.auth, autorizacaoDaLoja);
@@ -79,16 +89,26 @@ test("split: loja conecta o MP, cobrança sai com o token dela e o webhook de pa
   const v1 = createHmac("sha256", ASSINATURA_WEBHOOK).update(`id:99;request-id:${rid};ts:${ts};`).digest("hex");
   assert.equal((await post(caminho, { type: "payment", data: { id: "99" } }, { "x-signature": `ts=${ts},v1=${v1}`, "x-request-id": rid })).status, 200);
   assert.equal(b.d.pedidos.find((p) => p.id === referenciaPix).status, "approved");
+  // 5. Venda aprovada: a loja recebe o aviso no WhatsApp com o cliente e o endereço
+  await new Promise((r) => setTimeout(r, 30));
+  const aviso = chamadas.find((c) => c.u.endsWith("/api/sendText"));
+  assert.ok(aviso, "aviso da venda enviado");
+  assert.equal(aviso.corpo.chatId, "5584999999999@c.us");
+  assert.match(aviso.corpo.text, /Nova venda paga/);
+  assert.match(aviso.corpo.text, /Rua A, 10/);
   assert.equal(chamadas.find((c) => c.u.endsWith("/v1/payments/99")).auth, autorizacaoDaLoja);
 });
 
-test("split: loja sem conta conectada não gera cobrança na conta da CIT", async (t) => {
+test("split: loja sem conta conectada ou de mensalidade não tem compra no site", async (t) => {
   const dir = mkdtempSync(join(tmpdir(), "cit-split2-"));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   const agora = new Date().toISOString();
   const banco = new Banco(dir);
   banco.lojas.push({ id: "l2", slug: "l2", nome: "L2", cidade: "Natal", whatsapp: "5584999999999", criadaEm: agora, testeAte: agora, modeloCobranca: "comissao_fixa" });
   banco.produtos.push({ id: "p2", lojaId: "l2", nome: "Item", dept: "moda", preco: 5, fotos: ["/x.webp"], ativo: true, bloqueado: false, criadoEm: agora });
+  // Loja de mensalidade, mesmo com conta conectada, vende pelo WhatsApp
+  banco.lojas.push({ id: "l3", slug: "l3", nome: "L3", cidade: "Natal", whatsapp: "5584999999999", criadaEm: agora, testeAte: "2999-01-01T00:00:00Z", modeloCobranca: "mensalidade", mpConta: { userId: "1", token: "x", refresh: "x", expiraEm: "2999-01-01T00:00:00Z" } });
+  banco.produtos.push({ id: "p3", lojaId: "l3", nome: "Item 3", dept: "moda", preco: 50, fotos: ["/x.webp"], ativo: true, bloqueado: false, criadoEm: agora });
   banco.salvar();
   let chamouMp = false;
   const { app } = criarApp({
@@ -102,5 +122,11 @@ test("split: loja sem conta conectada não gera cobrança na conta da CIT", asyn
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ produtoId: "l-p2" }),
   });
   assert.equal(res.status, 409);
+  const res3 = await fetch(`http://127.0.0.1:${srv.address().port}/api/pagamento/split`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ produtoId: "l-p3", comprador: { nome: "Ana", whatsapp: "84988887777" } }),
+  });
+  assert.equal(res3.status, 409, "mensalidade: só WhatsApp");
+  const v = await (await fetch(`http://127.0.0.1:${srv.address().port}/api/vitrine`)).json();
+  assert.equal(v.produtos.find((p) => p.id === "l-p3").compraOnline, false);
   assert.equal(chamouMp, false);
 });

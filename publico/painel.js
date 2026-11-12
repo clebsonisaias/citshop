@@ -80,6 +80,15 @@
     $('mpStatus').textContent = s.loja.mpConectado ? 'Conta Mercado Pago conectada: as vendas pelo site caem nela.' : 'Nenhuma conta conectada ainda.';
     $('mpConectar').textContent = s.loja.mpConectado ? 'Conectar outra conta' : 'Conectar Mercado Pago';
     $('mpDesconectar').hidden = !s.loja.mpConectado;
+    const ST = { approved: 'Pago', pending: 'Aguardando pagamento', in_process: 'Em análise', rejected: 'Recusado', cancelled: 'Cancelado', refunded: 'Devolvido' };
+    $('vendas').innerHTML = (s.vendas ?? []).length ? s.vendas.map((v) => {
+      const c = v.comprador ?? {};
+      return `<div class="venda"><span class="st ${esc(v.status)}">${esc(ST[v.status] ?? v.status)}</span>
+        <b>${esc(String(v.quantidade))}x ${esc(v.produtoNome ?? '')} · ${brl.format(v.valorTotal)}</b>
+        <span>${esc(c.nome ?? '')}${c.whatsapp ? ` · <a href="https://wa.me/${esc(c.whatsapp)}" target="_blank" rel="noopener">WhatsApp do cliente</a>` : ''}</span>
+        <span>${c.receber === 'entrega' ? `Entregar em: ${esc(c.endereco ?? '')}` : 'Vai retirar na loja'}${c.observacao ? ` · ${esc(c.observacao)}` : ''}</span>
+        <small>${new Date(v.criadoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</small></div>`;
+    }).join('') : '<p class="note" style="font-size:13px;margin:0">Nenhuma venda pelo site ainda. Quando um cliente pagar, ela aparece aqui e você recebe um aviso no WhatsApp.</p>';
     $('vCor').value = s.loja.cor || '#036271';
     $('vSobre').value = s.loja.sobre ?? '';
     $('tirarLogo').hidden = !s.loja.logo;

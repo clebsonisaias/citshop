@@ -73,15 +73,15 @@ export function criarMercadoPago({ token, clientId = null, clientSecret = null, 
       return { id: d.id, status: d.status, externalReference: d.external_reference ?? null };
     },
     /** Checkout Pro em nome da loja (tokenVendedor): a CIT fica com marketplace_fee, o resto vai para a loja. */
-    async criarPreferenciaSplit({ tokenVendedor, titulo, valor, referencia, taxaMarketplace, retorno, webhookUrl }) {
+    async criarPreferenciaSplit({ tokenVendedor, titulo, valor, referencia, taxaMarketplace, retornos, webhookUrl }) {
       const d = await mp("/checkout/preferences", {
         method: "POST",
         body: JSON.stringify({
           items: [{ title: titulo, quantity: 1, currency_id: "BRL", unit_price: Number(valor) }],
           marketplace_fee: Number(taxaMarketplace),
           external_reference: referencia,
-          back_urls: retorno ? { success: retorno, failure: retorno, pending: retorno } : undefined,
-          auto_return: retorno ? "approved" : undefined,
+          back_urls: retornos, // { success, pending, failure }
+          auto_return: retornos ? "approved" : undefined,
           notification_url: webhookUrl,
         }),
       }, tokenVendedor);

@@ -241,6 +241,9 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     bairrosAtendidos: l.bairrosAtendidos ?? "", prazoEntrega: l.prazoEntrega ?? "",
     modeloCobranca: l.modeloCobranca ?? "mensalidade",
     comissaoPorVenda: l.comissaoPorVenda ?? 1.00,
+    // Compra pelo site (Pix/cartão com split) só para lojas que pagam por venda e conectaram o Mercado Pago.
+    // As de mensalidade vendem pelo WhatsApp.
+    compraOnline: l.modeloCobranca === "comissao_fixa" && Boolean(l.mpConta) && mp.oauthConfigurado,
   });
   const produtoAfiliado = (x) => ({
     id: x.id, nome: x.nome, dept: DEPTS.includes(x.categoria) ? x.categoria : "casa", loja: x.loja,
@@ -326,6 +329,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const { senhaHash, mpConta, mpOauth, ...dados } = loja;
     return {
       loja: { ...dados, mpConectado: Boolean(mpConta) },
+      vendas: (banco.d.pedidos ?? []).filter((p) => p.lojaId === loja.id && p.status !== "criado").slice(-30).reverse(),
       status: statusLoja(loja, t),
       diasTeste: Math.max(0, Math.ceil((Date.parse(loja.testeAte) - t) / DIA)),
       preco: PRECO_PLANO,
@@ -557,9 +561,18 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     if (!prod || prod.loja !== "local") return erro(res, 404, "Produto não encontrado.");
     const loja = banco.loja(prod.lojaId);
     if (!loja) return erro(res, 404, "Loja não encontrada.");
-    if (!mp.oauthConfigurado || !loja.mpConta) return erro(res, 409, "Esta loja ainda não recebe pagamentos pelo site. Peça pelo WhatsApp.");
+    if (!prod.compraOnline) return erro(res, 409, "Esta loja ainda não recebe pagamentos pelo site. Peça pelo WhatsApp.");
+    // Quem compra: a loja precisa saber com quem combinar a entrega.
+    const c = req.body?.comprador ?? {};
+    const comprador = {
+      nome: txt(c.nome, 80), whatsapp: whatsapp(c.whatsapp),
+      receber: c.receber === "entrega" ? "entrega" : "retirada", endereco: txt(c.endereco, 200), observacao: txt(c.observacao, 300),
+    };
+    if (comprador.nome.length < 2) return erro(res, 400, "Informe seu nome.");
+    if (!comprador.whatsapp) return erro(res, 400, "Informe seu WhatsApp com DDD.");
+    if (comprador.receber === "entrega" && comprador.endereco.length < 8) return erro(res, 400, "Informe o endereço de entrega.");
 
-    const qtd = Math.min(50, Math.max(1, Math.floor(Number(quantidade)) || 1));
+    const qtd = Math.min(10, Math.max(1, Math.floor(Number(quantidade)) || 1));
     const valorTotal = Math.round(Number(prod.preco) * qtd * 100) / 100;
     const taxaMarketplace = loja.modeloCobranca === "comissao_fixa" ? Number(loja.comissaoPorVenda ?? 1) : 0;
     if (!(taxaMarketplace < valorTotal)) return erro(res, 400, "Valor da compra menor que a taxa da plataforma.");
@@ -570,7 +583,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const titulo = `${prod.nome} · ${loja.nome}`;
     const webhookUrl = `${urlPublica}/webhook/mercadopago?loja=${encodeURIComponent(loja.id)}`;
     banco.d.pedidos ??= [];
-    const pedido = { id: referencia, lojaId: loja.id, produtoId: prod.id, quantidade: qtd, valorTotal, taxaMarketplace, metodo, status: "criado", criadoEm: iso() };
+    const pedido = { id: referencia, lojaId: loja.id, produtoId: prod.id, produtoNome: prod.nome, quantidade: qtd, valorTotal, taxaMarketplace, metodo, comprador, status: "criado", criadoEm: iso() };
     try {
       const tokenVendedor = await tokenDaLoja(loja);
       if (metodo === "pix") {
@@ -581,7 +594,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       }
       const pref = await mp.criarPreferenciaSplit({
         tokenVendedor, titulo, valor: valorTotal, referencia, taxaMarketplace, webhookUrl,
-        retorno: `${urlPublica}/${loja.slug}?compra=sucesso`,
+        retornos: Object.fromEntries([["success", "aprovada"], ["pending", "pendente"], ["failure", "falhou"]]
+          .map(([k, v]) => [k, `${urlPublica}/p/${encodeURIComponent(prod.id)}?compra=${v}`])),
       });
       banco.d.pedidos.push(pedido);
       banco.salvar();
@@ -591,6 +605,27 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       erro(res, 502, "Não foi possível gerar o pagamento agora. Tente de novo em instantes.");
     }
   }));
+
+  // Venda paga: a loja recebe no WhatsApp (robô WAHA) o que vender e com quem combinar. Também fica no painel.
+  function avisarLojaVenda(loja, p) {
+    const c = p.comprador ?? {};
+    const texto = [
+      "🛍️ *Nova venda paga pelo CIT Shopping!*",
+      "",
+      `📦 ${p.quantidade}x ${p.produtoNome ?? p.produtoId}`,
+      `💰 ${Number(p.valorTotal).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} (pagamento aprovado no Mercado Pago)`,
+      "",
+      `👤 ${c.nome ?? "-"}`,
+      c.whatsapp ? `📱 https://wa.me/${c.whatsapp}` : "",
+      c.receber === "entrega" ? `🚚 Entregar em: ${c.endereco}` : "🏪 Vai retirar na loja",
+      c.observacao ? `📝 ${c.observacao}` : "",
+      "",
+      "Fale com o cliente para combinar a entrega.",
+    ].filter((l, i, a) => l !== "" || a[i - 1] !== "").join("\n");
+    conectorWaha.enviarTexto({ chatId: loja.whatsapp, texto })
+      .then(() => log.info?.(`[venda] ${loja.slug}: aviso enviado no WhatsApp`))
+      .catch((e) => log.warn?.(`[venda] ${loja.slug}: aviso no WhatsApp falhou (${e.message}); a venda está no painel`));
+  }
 
   // Relê no MP o status de toda assinatura conhecida. Roda a cada 6h (servidor.js) e cobre o caso
   // de o token ser compartilhado com outro sistema cujo webhook não aponta para cá.
@@ -626,9 +661,11 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
         const pg = await mp.consultarPagamento(dataId, token);
         const pedido = banco.d.pedidos?.find((p) => p.id === pg.externalReference && p.lojaId === loja.id);
         if (pedido) {
+          const acabouDeAprovar = pg.status === "approved" && pedido.status !== "approved";
           Object.assign(pedido, { status: pg.status, mpPagamentoId: pg.id, atualizadoEm: iso() });
           banco.salvar();
           log.info?.(`[mp] venda ${pedido.id}: ${pg.status}`);
+          if (acabouDeAprovar) avisarLojaVenda(loja, pedido);
         }
       }
     }
@@ -1192,10 +1229,16 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       IMAGEM: imagemHtml, PRECO_ANTIGO: x.precoAntigo > x.preco ? `<del>${attr(x.precoAntigo.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }))}</del>` : "",
       PRECO: attr(x.preco.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })),
       DESCONTO: x.precoAntigo > x.preco ? `<span class="pct">${Math.round((1 - x.preco / x.precoAntigo) * 100)}% OFF</span>` : "",
+      BOTAO_COMPRA_ONLINE: x.compraOnline
+        ? `<button type="button" class="buybtn product-buy" data-comprar="${attr(x.id)}" data-entrega="${attr(x.entrega ?? "")}">Comprar com Pix ou cartão</button>`
+        : "",
+      CLASSE_COMPRA: x.compraOnline ? "zapbtn product-buy" : "buybtn product-buy",
       LINK_COMPRA: attr(destino), ALVO_COMPRA: local ? "_self" : "_blank",
       REL_COMPRA: local ? "" : "sponsored nofollow noopener",
-      TEXTO_COMPRA: local ? "Pedir pelo WhatsApp da loja ↗" : `Comprar na ${NOME_LOJA[x.loja] ?? "loja parceira"} ↗`,
-      AVISO_COMPRA: local
+      TEXTO_COMPRA: x.compraOnline ? "Tirar dúvidas no WhatsApp da loja ↗" : local ? "Pedir pelo WhatsApp da loja ↗" : `Comprar na ${NOME_LOJA[x.loja] ?? "loja parceira"} ↗`,
+      AVISO_COMPRA: x.compraOnline
+        ? `Pague aqui com Pix ou cartão pelo Mercado Pago. ${attr(x.lojaNome)} recebe o pedido e combina a entrega com você pelo WhatsApp.`
+        : local
         ? `Vendido por ${attr(x.lojaNome)}, em ${attr(x.cidade)}. Combine pagamento, disponibilidade e entrega diretamente com a loja.`
         : `Você finaliza a compra no site da loja. Preço e frete são confirmados lá${x.atualizadoEm ? `; preço consultado em ${attr(new Date(x.atualizadoEm).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }))}` : ""}.`,
       COMPARTILHAR: encodeURIComponent(`${x.nome} · ${canonical}`),
