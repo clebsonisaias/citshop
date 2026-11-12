@@ -76,7 +76,7 @@ async function linkDeAfiliado(url, credenciais) {
 
 async function buscarShopee({ termo, categoria }, credenciais) {
   // Campos de productOfferV2 conforme o perfil oficial BR (jeffmonteiroo/shopee-br-affiliate-mcp).
-  const query = `{ productOfferV2(keyword: ${JSON.stringify(termo)}, sortType: 2, page: 1, limit: ${POR_BUSCA}) {
+  const query = `{ productOfferV2(keyword: ${JSON.stringify(termo)}, page: 1, limit: ${POR_BUSCA}) {
     nodes { itemId productName priceMin priceDiscountRate ratingStar sales imageUrl productLink } } }`;
   let nos;
   try {

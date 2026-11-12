@@ -403,7 +403,7 @@ export class ConectorShopee extends ConectorMarketplace {
 
   async buscarPorTermo(termo, limite = 12) {
     try {
-      const query = `{ productOfferV2(keyword: ${JSON.stringify(termo)}, listType: 2, page: 1, limit: ${limite}) {
+      const query = `{ productOfferV2(keyword: ${JSON.stringify(termo)}, listType: 0, page: 1, limit: ${limite}) {
         nodes { itemId productName priceMin priceMax priceDiscountRate ratingStar sales imageUrl productLink offerLink commission sellerCommissionRate shopeeCommissionRate } } }`;
       const data = await this.chamarGraphQL(query);
       return data?.productOfferV2?.nodes ?? [];
