@@ -142,19 +142,23 @@ export async function atualizarAmazon({ env, dadosDir, manual }) {
 }
 
 /** Uma rodada completa. Se a Shopee falhar, lança e o afiliados.json anterior continua valendo. */
-export async function atualizarAfiliados({ env, dadosDir, manual }) {
+export async function atualizarAfiliados({ env, dadosDir, manual, buscar = buscarShopee, espera = 400 }) {
   const saida = join(dadosDir, "afiliados.json");
   const lista = JSON.parse(await readFile(manual, "utf8"))
     .map((p) => (p.loja === "amazon" && p.asin && env.AMAZON_TAG ? { ...p, link: carrinhoAmazon(p.asin, env.AMAZON_TAG) } : p));
   let antigos = [];
   try { antigos = JSON.parse(await readFile(saida, "utf8")).produtos; } catch { /* primeira rodada */ }
 
-  const shopee = [];
+  // Uma busca que falha (ex.: "error [10000]: System Error", instabilidade da API da Shopee) não derruba as outras:
+  // fica registrada e a rodada segue. Só é falha da tarefa quando TODAS as buscas falham (API fora ou credencial errada).
+  const shopee = [], falhas = [];
   if (env.SHOPEE_APP_ID && env.SHOPEE_SECRET) {
     for (const b of BUSCAS) {
-      await new Promise((r) => setTimeout(r, 400));
-      shopee.push(...await buscarShopee(b, { appId: env.SHOPEE_APP_ID, segredo: env.SHOPEE_SECRET }));
+      await new Promise((r) => setTimeout(r, espera));
+      try { shopee.push(...await buscar(b, { appId: env.SHOPEE_APP_ID, segredo: env.SHOPEE_SECRET })); } catch (e) { falhas.push(e.message); }
     }
+    if (falhas.length === BUSCAS.length) throw new Error(`todas as ${BUSCAS.length} buscas da Shopee falharam; mantendo a lista anterior. Ex.: ${falhas[0]}`);
+    if (falhas.length) console.warn(`[afiliados] ${falhas.length} de ${BUSCAS.length} buscas da Shopee falharam: ${falhas.slice(0, 3).join(" | ")}`);
   }
   // Ofertas mandadas pelo robô de coleta (POST /api/robo/afiliados). Valem mais que o manual.json.
   let coleta = [];
@@ -163,5 +167,5 @@ export async function atualizarAfiliados({ env, dadosDir, manual }) {
   const vistos = new Set();
   const produtos = marcarQuedas([...shopee, ...coleta, ...lista], antigos).filter((p) => !vistos.has(p.id) && vistos.add(p.id));
   await writeFile(saida, JSON.stringify({ atualizadoEm: new Date().toISOString(), produtos }));
-  return { total: produtos.length, shopee: shopee.length, manuais: lista.length, coleta: coleta.length };
+  return { total: produtos.length, shopee: shopee.length, manuais: lista.length, coleta: coleta.length, buscasComFalha: falhas.length };
 }

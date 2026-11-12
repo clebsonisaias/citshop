@@ -55,3 +55,24 @@ test('grava o link de afiliado gerado e deixa de fora quem não tem link', async
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("robô de afiliados: uma busca da Shopee com erro não derruba as outras; todas com erro mantém a lista anterior", async (t) => {
+  const { mkdtempSync, rmSync, writeFileSync, readFileSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { atualizarAfiliados } = await import("../servidor/afiliados.js");
+  const dir = mkdtempSync(join(tmpdir(), "cit-afil-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const manual = join(dir, "manual.json");
+  writeFileSync(manual, "[]");
+  const env = { SHOPEE_APP_ID: "app", SHOPEE_SECRET: "x" };
+  let n = 0;
+  const produto = () => ({ id: `shopee-${++n}`, nome: `P${n}`, loja: "shopee", preco: 10, link: "https://s.shopee.com.br/x" });
+  const instavel = async (b) => { if (n === 0 && !instavel.falhou) { instavel.falhou = true; throw new Error(`Shopee (${b.termo}): error [10000]: System Error`); } return [produto()]; };
+  const r = await atualizarAfiliados({ env, dadosDir: dir, manual, buscar: instavel, espera: 0 });
+  assert.equal(r.buscasComFalha, 1);
+  assert.ok(r.shopee > 0, "as outras buscas entraram");
+  const antes = readFileSync(join(dir, "afiliados.json"), "utf8");
+  await assert.rejects(atualizarAfiliados({ env, dadosDir: dir, manual, buscar: async () => { throw new Error("error [10000]: System Error"); }, espera: 0 }), /todas as \d+ buscas/);
+  assert.equal(readFileSync(join(dir, "afiliados.json"), "utf8"), antes, "lista anterior preservada");
+});
