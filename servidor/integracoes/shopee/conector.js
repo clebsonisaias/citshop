@@ -310,7 +310,11 @@ export class ProvedorLinkShopee extends ProvedorLinkAfiliado {
 }
 
 export function deShopee(item, categoria, linkAfiliado = null) {
-  const preco = Number(item.priceMax ?? item.priceMin ?? item.price);
+  // Sempre prioriza priceMin (menor preço de entrada com variações), alinhado ao padrão da vitrine e da Shopee
+  const precoCandidato = [item.priceMin, item.price, item.priceMax]
+    .map(Number)
+    .find((p) => Number.isFinite(p) && p > 0);
+  const preco = precoCandidato || 0;
   if (!(preco > 0) || !item.productName) return null;
 
   const comissaoEstimada = Number(item.commission) || null;
@@ -400,7 +404,7 @@ export class ConectorShopee extends ConectorMarketplace {
   async buscarPorTermo(termo, limite = 12) {
     try {
       const query = `{ productOfferV2(keyword: ${JSON.stringify(termo)}, listType: 2, page: 1, limit: ${limite}) {
-        nodes { itemId productName priceMax priceDiscountRate sales imageUrl productLink offerLink commission sellerCommissionRate } } }`;
+        nodes { itemId productName priceMin priceMax priceDiscountRate ratingStar sales imageUrl productLink offerLink commission sellerCommissionRate shopeeCommissionRate } } }`;
       const data = await this.chamarGraphQL(query);
       return data?.productOfferV2?.nodes ?? [];
     } catch (e) {
@@ -423,7 +427,7 @@ export class ConectorShopee extends ConectorMarketplace {
       try {
         if (p > 1) await new Promise((r) => setTimeout(r, 250));
         const query = `{ productOfferV2(page: ${p}, limit: 50) {
-          nodes { itemId productName priceMax priceDiscountRate sales imageUrl productLink offerLink commission sellerCommissionRate } } }`;
+          nodes { itemId productName priceMin priceMax priceDiscountRate ratingStar sales imageUrl productLink offerLink commission sellerCommissionRate shopeeCommissionRate } } }`;
         const data = await this.chamarGraphQL(query);
         const nodes = data?.productOfferV2?.nodes ?? [];
         for (const item of nodes) {

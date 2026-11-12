@@ -92,6 +92,24 @@ test("ConectorShopee: normaliza produto e não inventa preço antigo", () => {
   assert.equal(norm.link, "https://s.shopee.com.br/abc123xyz");
 });
 
+test("ConectorShopee: prioriza menor preço de variação (priceMin) sobre priceMax", () => {
+  const itemComVariacoes = {
+    itemId: 58271634470,
+    productName: "Mini Tábua de Passar Roupa Portátil",
+    priceMin: "15.50",
+    priceMax: "22.90",
+    priceDiscountRate: 50,
+    ratingStar: "5",
+    sales: 10,
+    imageUrl: "https://shopee.img/tabua.jpg",
+  };
+
+  const norm = deShopee(itemComVariacoes, "eletro", "https://s.shopee.com.br/tabua");
+  assert.equal(norm.preco, 15.5);
+  assert.equal(norm.precoAntigo, 31.0);
+  assert.equal(norm.descontoPct, 50);
+});
+
 test("ProvedorLinkShopee: valida links de afiliados existentes", () => {
   const provedor = new ProvedorLinkShopee();
   assert.equal(provedor.validarLinkAfiliado("https://s.shopee.com.br/7Uyt6R"), true);
