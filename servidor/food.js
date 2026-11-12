@@ -10,7 +10,7 @@ const hash = (t) => createHash("sha256").update(String(t)).digest("hex");
 const MIN = 60_000;
 
 export function instalarFood(app, ctx) {
-  const { banco, agora, iso, erro, a, exigirLoja, exigirAdmin, S, segredo, urlPublica, mp, tokenDaLoja, freteDe, freteAtivo, auditar, conectorWaha, log, lojaVisivel, notaDaLoja, whatsapp, txt, uploadsDir } = ctx;
+  const { banco, agora, iso, erro, a, exigirLoja, exigirAdmin, S, segredo, urlPublica, mp, tokenDaLoja, freteDe, freteAtivo, auditar, conectorWaha, log, lojaVisivel, notaDaLoja, whatsapp, txt, uploadsDir, geocodificar } = ctx;
   const ehFood = (l) => l?.segmento === "food";
   const cardapioDa = (lojaId) => (banco.d.cardapio ??= []).filter((i) => i.lojaId === lojaId);
   const pedidosFood = (lojaId) => (banco.d.pedidos ?? []).filter((p) => p.origem === "food" && p.lojaId === lojaId);
@@ -112,6 +112,22 @@ export function instalarFood(app, ctx) {
     const itens = cardapioDa(l.id).filter((i) => i.ativo).map(({ lojaId, criadoEm, atualizadoEm, ...i }) => ({ ...i, grupos: i.grupos.map((g) => ({ ...g, opcoes: g.opcoes.filter((o) => o.ativo !== false) })) }));
     res.set("Cache-Control", "no-cache").json({ restaurante: restaurantePublico(l), itens });
   });
+
+  // Taxa de entrega antes de pedir: pelo ponto (GPS) ou pelo endereço digitado (geocodificado no servidor, com cache).
+  const limiteFrete = new S.Limitador({ maximo: 40, janelaMs: 10 * MIN });
+  app.post("/api/food/frete", a(async (req, res) => {
+    if (!limiteFrete.registrar(`ff|${S.ipDe(req)}`).permitido) return erro(res, 429, "Muitas consultas seguidas. Espere um pouco.");
+    const loja = restaurantesVisiveis().find((x) => x.slug === String(req.body?.loja ?? ""));
+    if (!loja) return erro(res, 404, "Restaurante não encontrado.");
+    if (!freteAtivo(loja)) return res.json({ porKm: false, valor: reais(loja.food?.taxaEntrega ?? 0) });
+    let lat = Number(req.body?.lat), lng = Number(req.body?.lng), encontrado = null;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      const g = txt(req.body?.endereco, 200) ? await geocodificar(req.body.endereco) : null;
+      if (!g) return res.json({ porKm: true, naoEncontrado: true });
+      ({ lat, lng } = g); encontrado = g.nome;
+    }
+    res.json({ porKm: true, ...freteDe(loja, { lat, lng }, Number(req.body?.subtotal) || 0), lat, lng, encontrado });
+  }));
 
   const limitePedido = new S.Limitador({ maximo: 15, janelaMs: 10 * MIN });
   const PAGAMENTOS = { dinheiro: "Dinheiro na entrega", cartao_entrega: "Cartão na entrega", pix_entrega: "Pix na entrega", online: "Pago online (Mercado Pago)" };

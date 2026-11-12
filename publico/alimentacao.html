@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Alimentação · CITshop Food</title>
+<meta name="description" content="Restaurantes, lanchonetes, pizzarias e docerias da sua cidade. Peça para entregar ou retire no local.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400..800&display=swap">
+<link rel="stylesheet" href="/estilo.css">
+</head>
+<body class="pg-food">
+<header class="site"><div class="wrap bar" style="grid-template-columns:auto 1fr auto"><a class="logo" href="/"><img src="/marca-cit-shopping.png" alt="CIT Shopping" width="140" height="36"></a><span></span><a class="btn sec" href="/alimentacao">Alimentação</a></div></header>
+<main class="wrap food">
+  <section id="fLista">
+    <h1>Praça de alimentação</h1>
+    <p class="note">Restaurantes da região. Peça para entregar ou retire no local.</p>
+    <div class="food-busca">
+      <label class="sr-only" for="fBusca">Buscar</label>
+      <input id="fBusca" type="search" placeholder="Buscar restaurante ou tipo de comida" autocomplete="off">
+      <label class="food-check"><input type="checkbox" id="fAbertos"> Só abertos</label>
+    </div>
+    <div class="chips" id="fTipos"></div>
+    <div id="fRestaurantes" class="food-lista" aria-live="polite"><p class="note">Carregando…</p></div>
+  </section>
+
+  <section id="fRest" hidden>
+    <p><a href="/alimentacao" id="fVoltar">← Todos os restaurantes</a></p>
+    <div id="fCab"></div>
+    <nav class="chips" id="fCats" aria-label="Categorias do cardápio"></nav>
+    <div id="fCardapio"></div>
+  </section>
+
+  <section id="fAcomp" hidden aria-live="polite"></section>
+</main>
+
+<button type="button" id="fSacola" class="food-sacola" hidden></button>
+
+<dialog id="fItem" class="food-modal" aria-labelledby="fItemNome">
+  <form method="dialog" id="fItemForm">
+    <header><h2 id="fItemNome"></h2><button type="button" class="food-x" data-fechar aria-label="Fechar">×</button></header>
+    <div id="fItemCorpo"></div>
+    <label class="food-campo">Observação<input name="obs" maxlength="140" placeholder="Ex.: sem cebola"></label>
+    <footer><div class="food-qtd"><button type="button" data-qtd="-1" aria-label="Menos">−</button><output id="fQtd">1</output><button type="button" data-qtd="1" aria-label="Mais">+</button></div>
+      <button class="btn" type="submit" id="fAdd">Adicionar</button></footer>
+    <p class="food-erro" id="fItemErro" role="alert"></p>
+  </form>
+</dialog>
+
+<dialog id="fCarrinho" class="food-modal" aria-labelledby="fCarTitulo">
+  <form id="fPedido">
+    <header><h2 id="fCarTitulo">Seu pedido</h2><button type="button" class="food-x" data-fechar aria-label="Fechar">×</button></header>
+    <ul id="fCarItens" class="food-car"></ul>
+    <fieldset class="food-campo"><legend>Como vai receber</legend>
+      <label><input type="radio" name="receber" value="entrega" checked> Entrega</label>
+      <label><input type="radio" name="receber" value="retirada"> Retirar no local</label>
+    </fieldset>
+    <div id="fEntrega">
+      <label class="food-campo">Endereço (rua, número, bairro)<input name="endereco" maxlength="200" autocomplete="street-address"></label>
+      <p><button type="button" class="btn sec" id="fGps">Usar minha localização</button> <button type="button" class="btn sec" id="fCalc">Calcular entrega</button></p>
+      <p class="note" id="fFrete"></p>
+    </div>
+    <label class="food-campo">Seu nome<input name="nome" required maxlength="80" autocomplete="name"></label>
+    <label class="food-campo">WhatsApp<input name="whatsapp" required inputmode="tel" autocomplete="tel" placeholder="(84) 99999-9999"></label>
+    <label class="food-campo">Pagamento<select name="pagamento" id="fPag">
+      <option value="dinheiro">Dinheiro na entrega</option><option value="cartao_entrega">Cartão na entrega</option><option value="pix_entrega">Pix na entrega</option>
+    </select></label>
+    <label class="food-campo" id="fTrocoL">Troco para (opcional)<input name="troco" inputmode="decimal" placeholder="R$ 100"></label>
+    <label class="food-campo">Observação do pedido<input name="observacao" maxlength="300" placeholder="Alergias, ponto de referência…"></label>
+    <p class="food-total" id="fTotal"></p>
+    <button class="btn" type="submit" id="fEnviar">Fazer pedido</button>
+    <p class="food-erro" id="fErro" role="alert"></p>
+  </form>
+</dialog>
+<script src="/comum.js" defer></script>
+<script src="/alimentacao.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0f1416">
+<title>Cozinha · CITshop Food</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400..800&display=swap">
+<link rel="stylesheet" href="/estilo.css">
+</head>
+<body class="kds">
+<header class="kds-topo">
+  <div><b id="kRest">Cozinha</b> <span id="kEstado" class="kds-estado" role="status" aria-live="polite"></span></div>
+  <div class="kds-acoes">
+    <label class="kds-sel">Estação<select id="kEstacao"><option value="">Todas</option></select></label>
+    <button type="button" id="kSom" class="kds-bt" aria-pressed="false">Ativar som</button>
+    <button type="button" id="kTela" class="kds-bt">Tela cheia</button>
+  </div>
+</header>
+<nav class="kds-filtros" aria-label="Filtrar pedidos">
+  <button type="button" data-filtro="ativos" aria-pressed="true">Em andamento</button>
+  <button type="button" data-filtro="aguardando" aria-pressed="false">Novos</button>
+  <button type="button" data-filtro="preparo" aria-pressed="false">No preparo</button>
+  <button type="button" data-filtro="pronto" aria-pressed="false">Prontos</button>
+  <button type="button" data-filtro="encerrados" aria-pressed="false">Encerrados</button>
+</nav>
+<main id="kGrade" class="kds-grade" aria-live="polite"></main>
+<div id="kSemAcesso" class="kds-vazio" hidden>
+  <h1>Tela da cozinha</h1>
+  <p>Abra pelo link da cozinha, criado no painel do restaurante em <b>Cozinha e impressão</b>, ou entre no painel neste aparelho.</p>
+  <p><a class="btn" href="/restaurante">Entrar no painel</a></p>
+</div>
+<script src="/cozinha.js" defer></script>
+</body>
+</html>

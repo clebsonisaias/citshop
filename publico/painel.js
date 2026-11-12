@@ -318,6 +318,7 @@
   });
 
   function mostrar(s) {
+    if (s.loja.segmento === 'food') { location.replace(`/restaurante${location.search}`); return; } // restaurante tem painel próprio
     estado = s;
     $('vTroca').hidden = !s.loja.trocarSenha;
     if (s.loja.trocarSenha) { $('vAuth').hidden = true; $('vPainel').hidden = true; $('sair').hidden = false; return; }

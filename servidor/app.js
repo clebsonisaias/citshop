@@ -1081,7 +1081,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const valor = precoParaAssinar(banco, loja);
     const pa = await mp.criarPreapproval({
       referencia: loja.id, email: loja.email, motivo: `CIT Shopping · ${segmentoDe(loja) === "food" ? "Food PRO" : "Plano Loja"}${beneficioAtivo(loja) ? ` (${beneficioAtivo(loja).codigo})` : ""}`, valor,
-      inicio: new Date(inicio).toISOString(), retorno: `${urlPublica}/painel?assinatura=retorno`,
+      inicio: new Date(inicio).toISOString(), retorno: `${urlPublica}/${segmentoDe(loja) === "food" ? "restaurante" : "painel"}?assinatura=retorno`,
     });
     registrarEstadoAssinatura(loja, "pendente", { preapprovalId: pa.id, agora: agora() });
     loja.plano = { codigo: segmentoDe(loja) === "food" ? "food_pro" : "mensal", precoContratado: valor, precoOficial: precoMensalOficial(banco, segmentoDe(loja)), beneficio: beneficioAtivo(loja)?.codigo ?? null, contratadoEm: iso(), preapprovalId: pa.id };
@@ -1117,15 +1117,16 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const state = String(req.query.state ?? "");
     const loja = state && banco.lojas.find((l) => l.mpOauth?.state === state && agora() - Date.parse(l.mpOauth.em) < 15 * 60_000);
     if (!loja || !req.query.code) return res.redirect("/painel?mp=erro");
+    const painelUrl = segmentoDe(loja) === "food" ? "/restaurante" : "/painel"; // restaurante volta para o painel dele
     try {
       guardarContaMp(loja, await mp.trocarCodigo({ code: String(req.query.code), redirectUri: retornoMp }));
       delete loja.mpOauth;
       banco.salvar();
       log.info?.(`[mp] ${loja.slug}: conta Mercado Pago conectada`);
-      res.redirect("/painel?mp=conectado");
+      res.redirect(`${painelUrl}?mp=conectado`);
     } catch (e) {
       log.warn?.(`[mp] ${loja.slug}: troca do código OAuth falhou: ${e.message}`);
-      res.redirect("/painel?mp=erro");
+      res.redirect(`${painelUrl}?mp=erro`);
     }
   }));
   app.post("/api/painel/cupons", exigirLoja, (req, res) => {
@@ -1755,7 +1756,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   });
 
   // ---------- CITshop Food (servidor/food.js) ----------
-  const ctxFood = { banco, agora, iso, erro, a, exigirLoja, exigirAdmin, S, segredo, urlPublica, mp, tokenDaLoja, freteDe, freteAtivo, auditar, conectorWaha, log, lojaVisivel, notaDaLoja, whatsapp, txt, uploadsDir };
+  const ctxFood = { banco, agora, iso, erro, a, exigirLoja, exigirAdmin, S, segredo, urlPublica, mp, tokenDaLoja, freteDe, freteAtivo, auditar, conectorWaha, log, lojaVisivel, notaDaLoja, whatsapp, txt, uploadsDir, geocodificar };
   instalarFood(app, ctxFood);
   for (const rota of ["/alimentacao", "/alimentacao/:slug"]) app.get(rota, (req, res) => { semCache(res); res.sendFile(join(publico, "alimentacao.html")); });
   app.get("/restaurante", (req, res) => { semCache(res); res.sendFile(join(publico, "restaurante.html")); });

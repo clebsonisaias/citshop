@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Painel do restaurante · CITshop Food</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400..800&display=swap">
+<link rel="stylesheet" href="/estilo.css">
+</head>
+<body class="pg-rest">
+<header class="site"><div class="wrap bar" style="grid-template-columns:auto 1fr auto"><a class="logo" href="/alimentacao"><img src="/marca-cit-shopping.png" alt="CIT Shopping" width="140" height="36"></a><span></span><button class="btn sec" id="sair" type="button" hidden>Sair</button></div></header>
+<main class="wrap rest">
+  <section id="vAuth">
+    <h1>CITshop Food para restaurantes</h1>
+    <p class="note" id="precoFood">Plano FOOD PRO: mensalidade fixa, sem comissão sobre os pedidos. 30 dias grátis.</p>
+    <div class="rest-auth">
+      <form id="fEntrar" class="rest-card">
+        <h2>Entrar</h2>
+        <label class="food-campo">E-mail<input name="email" type="email" required autocomplete="email"></label>
+        <label class="food-campo">Senha<input name="senha" type="password" required autocomplete="current-password"></label>
+        <button class="btn" type="submit">Entrar</button>
+        <p class="food-erro" role="alert"></p>
+      </form>
+      <form id="fCadastro" class="rest-card">
+        <h2>Cadastrar restaurante</h2>
+        <label class="food-campo">Nome do restaurante<input name="nome" required maxlength="60"></label>
+        <label class="food-campo">Tipo de comida<input name="categoria" maxlength="60" placeholder="Pizzaria, hamburgueria, açaí…"></label>
+        <label class="food-campo">Responsável<input name="responsavel" required maxlength="80" autocomplete="name"></label>
+        <label class="food-campo">E-mail<input name="email" type="email" required autocomplete="email"></label>
+        <label class="food-campo">WhatsApp do restaurante<input name="whatsapp" required inputmode="tel" autocomplete="tel"></label>
+        <label class="food-campo">Cidade<input name="cidade" required maxlength="60"></label>
+        <label class="food-campo">Senha (8 ou mais caracteres)<input name="senha" type="password" minlength="8" required autocomplete="new-password"></label>
+        <label class="food-campo">CNPJ (opcional)<input name="cnpj" inputmode="numeric"></label>
+        <label class="food-campo">Cupom (opcional)<input name="cupom" placeholder="FOODFUNDADOR50" autocapitalize="characters"></label>
+        <label class="food-campo"><span><input type="checkbox" name="aceite" required> Li e aceito os <a href="/termos" target="_blank" rel="noopener">termos</a></span></label>
+        <button class="btn" type="submit">Criar conta</button>
+        <p class="food-erro" role="alert"></p>
+      </form>
+    </div>
+  </section>
+
+  <section id="vPainel" hidden>
+    <div class="rest-topo"><div><h1 id="rNome"></h1><p class="note" id="rSituacao"></p></div>
+      <div class="rest-pausa"><button class="btn sec" type="button" data-pausa="20">Pausar 20 min</button><button class="btn sec" type="button" data-pausa="0">Retomar</button><button class="btn sec" type="button" id="rFechar"></button></div></div>
+    <p class="msg" id="rAviso" hidden role="status"></p>
+    <nav class="abas-rest" aria-label="Seções do painel">
+      <button type="button" data-aba="pedidos" aria-pressed="true">Pedidos</button>
+      <button type="button" data-aba="cardapio" aria-pressed="false">Cardápio</button>
+      <button type="button" data-aba="funcionamento" aria-pressed="false">Funcionamento</button>
+      <button type="button" data-aba="cozinha" aria-pressed="false">Cozinha e impressão</button>
+      <button type="button" data-aba="conta" aria-pressed="false">Conta e plano</button>
+    </nav>
+
+    <div data-painel="pedidos">
+      <p><a class="btn" href="/cozinha" target="_blank" rel="noopener">Abrir tela da cozinha</a> <a class="btn sec" id="rLoja" target="_blank" rel="noopener">Ver página do restaurante</a></p>
+      <div id="rPedidos" class="lista-adm"></div>
+    </div>
+
+    <div data-painel="cardapio" hidden>
+      <form id="fItemRest" class="rest-card">
+        <h2 id="fItemTitulo">Novo item</h2>
+        <input type="hidden" name="id">
+        <label class="food-campo">Nome<input name="nome" required maxlength="80"></label>
+        <label class="food-campo">Categoria<input name="categoria" maxlength="40" placeholder="Pizzas, Lanches, Bebidas…" list="rCats"></label><datalist id="rCats"></datalist>
+        <label class="food-campo">Descrição<input name="descricao" maxlength="400"></label>
+        <label class="food-campo">Preço base (0 se o preço vem do tamanho)<input name="preco" inputmode="decimal" required></label>
+        <label class="food-campo">Opções (uma por linha)
+          <textarea name="grupos" rows="5" placeholder="Tamanho [1-1]: Média=40, Grande=55&#10;Sabores [1-2]: Calabresa, Frango=3&#10;Borda [0-1]: Catupiry=8, Cheddar=8&#10;Adicionais [0-3]: Queijo=4, Bacon=5"></textarea></label>
+        <p class="note">Formato: <b>Nome [mínimo-máximo]: Opção=preço, Opção</b>. Mínimo 1 = obrigatório. Opção sem preço não muda o valor.</p>
+        <label class="food-campo">Estação (opcional)<input name="estacao" maxlength="20" placeholder="forno, chapa, bebidas"></label>
+        <label class="food-campo"><span><input type="checkbox" name="ativo" checked> Disponível</span></label>
+        <p><button class="btn" type="submit">Salvar item</button> <button class="btn sec" type="reset" id="fItemNovo">Novo</button></p>
+        <p class="food-erro" role="alert"></p>
+      </form>
+      <div id="rItens" class="lista-adm"></div>
+    </div>
+
+    <div data-painel="funcionamento" hidden>
+      <form id="fConfig" class="rest-card">
+        <h2>Horários</h2>
+        <div id="rHorarios" class="rest-horas"></div>
+        <label class="food-campo">Feriados fechados (AAAA-MM-DD, separados por vírgula)<input name="feriados" placeholder="2026-12-25, 2027-01-01"></label>
+        <h2>Pedidos e entrega</h2>
+        <label class="food-campo">Tipo de comida<input name="tipo" maxlength="40"></label>
+        <label class="food-campo">Tempo de preparo (min)<input name="preparoMin" inputmode="numeric"></label>
+        <label class="food-campo">Pedido mínimo (R$)<input name="pedidoMinimo" inputmode="decimal"></label>
+        <label class="food-campo">Taxa de entrega fixa (R$) — usada quando não há faixas por km<input name="taxaEntrega" inputmode="decimal"></label>
+        <label class="food-campo">Limite de pedidos em andamento (vazio = sem limite)<input name="maxSimultaneos" inputmode="numeric"></label>
+        <label class="food-campo"><span><input type="checkbox" name="entrega"> Faz entrega</span></label>
+        <label class="food-campo"><span><input type="checkbox" name="retirada"> Aceita retirada no local</span></label>
+        <p class="note">Entrega por distância (faixas em km e mapa): configure em <a href="/painel#entrega">Entrega</a> com a mesma conta.</p>
+        <button class="btn" type="submit">Salvar</button>
+        <p class="food-erro" role="alert"></p>
+      </form>
+    </div>
+
+    <div data-painel="cozinha" hidden>
+      <div class="rest-card">
+        <h2>Impressão automática</h2>
+        <p id="rImpStatus" class="note"></p>
+        <ol class="note">
+          <li>Baixe e instale o <b>CITshop Print</b> no computador do caixa (Windows).</li>
+          <li>Toque em <b>Gerar código da impressora</b> e digite o código no aplicativo (vale 15 minutos).</li>
+          <li>No aplicativo, escolha a impressora térmica e faça a impressão de teste.</li>
+        </ol>
+        <p><a class="btn sec" href="/downloads/citshop-print" id="rBaixar">Baixar CITshop Print</a> <button class="btn" type="button" data-novo-acesso="impressora">Gerar código da impressora</button></p>
+        <p class="rest-codigo" id="rCodigo" hidden></p>
+        <h2>Tela da cozinha</h2>
+        <p class="note">Crie um link para o tablet ou celular da cozinha. Quem tem o link vê os pedidos deste restaurante e muda a situação do preparo. Revogue quando quiser.</p>
+        <p><button class="btn" type="button" data-novo-acesso="cozinha">Novo link da cozinha</button> <button class="btn sec" type="button" data-novo-acesso="atendente">Novo link do atendimento</button></p>
+        <p class="rest-codigo" id="rLink" hidden></p>
+        <h2>Acessos ativos</h2>
+        <div id="rAcessos" class="lista-adm"></div>
+        <h2>Últimas impressões</h2>
+        <div id="rImpressoes" class="lista-adm"></div>
+      </div>
+    </div>
+
+    <div data-painel="conta" hidden>
+      <div class="rest-card" id="rConta"></div>
+    </div>
+  </section>
+</main>
+<script src="/comum.js" defer></script>
+<script src="/restaurante.js" defer></script>
+</body>
+</html>
