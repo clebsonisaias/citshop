@@ -1904,10 +1904,17 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
 
   // Webhook da Meta / Instagram: quem comenta QUERO recebe no direct o link do produto do post.
   // Sem INSTAGRAM_WEBHOOK_VERIFY_TOKEN não há handshake; sem INSTAGRAM_APP_SECRET nenhum evento é aceito.
+  // O token de verificação só confirma o cadastro do webhook na Meta (os eventos são conferidos pela assinatura).
+  // Sem a variável, vale o mesmo que o admin mostra para colar na Meta.
+  const VERIFY_TOKEN_PADRAO = "citshop-ig-secret";
+  // Últimos avisos do webhook (memória): o admin mostra o que chegou, o que foi ignorado e por quê.
+  const eventosInstagram = [];
+  const registrarEventoIg = (e) => { eventosInstagram.unshift({ em: iso(), ...e }); eventosInstagram.length = Math.min(eventosInstagram.length, 30); };
   app.get("/api/webhook/instagram", (req, res) => {
-    const token = env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN;
+    const token = env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN || VERIFY_TOKEN_PADRAO;
     if (token && req.query["hub.mode"] === "subscribe" && req.query["hub.verify_token"] === token) {
-      return res.status(200).send(req.query["hub.challenge"]);
+      registrarEventoIg({ tipo: "cadastro", resultado: "webhook confirmado pela Meta" });
+      return res.status(200).send(String(req.query["hub.challenge"] ?? "").replace(/[^0-9A-Za-z_-]/g, ""));
     }
     return res.status(403).send("Forbidden");
   });
@@ -1926,6 +1933,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   app.post("/api/webhook/instagram", a(async (req, res) => {
     if (!assinaturaMetaValida(req)) {
       log.warn?.("[webhook-instagram] evento recusado: assinatura ausente ou inválida (confira INSTAGRAM_APP_SECRET)");
+      registrarEventoIg({ tipo: "aviso", resultado: env.INSTAGRAM_APP_SECRET ? "recusado: assinatura não confere (o App Secret do Coolify é de outro app?)" : "recusado: falta INSTAGRAM_APP_SECRET no Coolify" });
       return res.sendStatus(401);
     }
     res.status(200).send("EVENT_RECEIVED");
@@ -1933,8 +1941,10 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     for (const entry of req.body?.entry ?? []) {
       for (const change of entry.changes ?? []) {
         const val = change.value;
-        if (change.field !== "comments" || !val?.id || !val.text || !pedeLink(String(val.text))) continue;
-        if (val.from?.id && val.from.id === conectorInstagram.accountId) continue; // comentário da própria conta
+        const base = { tipo: change.field, texto: String(val?.text ?? "").slice(0, 60), de: val?.from?.username ?? null };
+        if (change.field !== "comments" || !val?.id || !val.text) { registrarEventoIg({ ...base, resultado: "ignorado: não é comentário" }); continue; }
+        if (!pedeLink(String(val.text))) { registrarEventoIg({ ...base, resultado: "ignorado: comentário sem QUERO/LINK" }); continue; }
+        if (val.from?.id && val.from.id === conectorInstagram.accountId) { registrarEventoIg({ ...base, resultado: "ignorado: comentário da própria conta @citshopping (teste com outro perfil)" }); continue; }
         const vinculo = banco.d.instagramPosts?.[val.media?.id];
         const x = vinculo && produtoPorId(vinculo.produtoId);
         const texto = x
@@ -1943,8 +1953,10 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
         try {
           await conectorInstagram.responderComentarioDirect({ commentId: val.id, texto });
           log.info?.(`[webhook-instagram] direct enviado (comentário ${val.id}, ${x ? `produto ${x.id}` : "sem produto ligado ao post"})`);
+          registrarEventoIg({ ...base, resultado: `direct enviado${x ? `: ${x.nome}` : " (post sem produto ligado: link da bio)"}` });
         } catch (e) {
           log.warn?.(`[webhook-instagram] falha ao enviar direct do comentário ${val.id}: ${e.message}`);
+          registrarEventoIg({ ...base, resultado: `falha ao enviar o direct: ${e.message.slice(0, 160)}` });
         }
       }
     }
@@ -1983,6 +1995,12 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       diario: { ativo: true, story: false, horarios: HORARIOS_PADRAO, ...(cfg.instagram?.diario ?? {}) },
       historicoDiario: (banco.d.instagramDiario?.historico ?? []).slice(-15).reverse(),
       maisBuscados: buscas.top(7, 10).map(({ termo, n }) => ({ termo, n })),
+      // Diagnóstico do QUERO no direct: o que falta e o que chegou da Meta.
+      quero: {
+        assinaturaConfigurada: Boolean(env.INSTAGRAM_APP_SECRET), tokenDePagina: Boolean(conectorInstagram.pageAccessToken),
+        verifyToken: env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN ? "definido no Coolify (INSTAGRAM_WEBHOOK_VERIFY_TOKEN)" : VERIFY_TOKEN_PADRAO,
+        eventos: eventosInstagram.slice(0, 15),
+      },
     });
   }));
 

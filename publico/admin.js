@@ -550,6 +550,12 @@
       $('instaTokenInfo').innerHTML = st.conexaoErro
         ? `<b class="erro">Instagram desconectado:</b> ${esc(st.conexaoErro)}. Gere um token novo na Meta e cole em "Meta Access Token" abaixo.`
         : `Token ${tk.expiraEm ? `vence em <b>${new Date(tk.expiraEm).toLocaleDateString('pt-BR')}</b>` : '<b>sem data de vencimento</b>'}${tk.tipo ? ` (${tk.tipo === 'PAGE' ? 'de Página' : tk.tipo === 'USER' ? 'de usuário' : esc(tk.tipo)})` : ''}.`;
+      // Diagnóstico do QUERO: o que falta e o que a Meta mandou
+      const q = st.quero ?? {};
+      $('instaVerifyToken').textContent = q.verifyToken ?? 'citshop-ig-secret';
+      const falta = [!q.assinaturaConfigurada && 'falta INSTAGRAM_APP_SECRET no Coolify (sem ele o site recusa os avisos da Meta)', !q.tokenDePagina && 'falta token de Página (salve o token pelo campo acima: a resposta no direct precisa dele)'].filter(Boolean);
+      $('instaQuero').innerHTML = `${falta.length ? `<p class="erro"><b>Para o QUERO funcionar:</b> ${falta.map(esc).join('; ')}.</p>` : '<p><b>QUERO:</b> configuração do site completa.</p>'}
+        <p><b>Últimos avisos da Meta:</b></p>${(q.eventos ?? []).length ? `<ul>${q.eventos.map((e) => `<li>${new Date(e.em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })} · ${e.de ? `@${esc(e.de)} · ` : ''}${e.texto ? `"${esc(e.texto)}" · ` : ''}${esc(e.resultado)}</li>`).join('')}</ul>` : '<p class="note">Nenhum aviso desde o último reinício. Se você comentou QUERO e nada aparece aqui, a Meta não está mandando os comentários: confira o webhook no app da Meta.</p>'}`;
       $('instaBuscas').textContent = st.maisBuscados?.length ? `Mais buscados da semana: ${st.maisBuscados.map((b) => `${b.termo} (${b.n})`).join(', ')}` : 'Ainda sem buscas registradas no site.';
       $('instaHistorico').innerHTML = (st.historicoDiario ?? []).map((h) => `<div class="item-adm"><p>${new Date(h.em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })} · ${h.ok ? 'Publicado' : '<b>Falhou</b>'} · ${esc(h.nome ?? '-')}</p><p class="note">${esc(h.motivo ?? '')}${h.erro ? ` · ${esc(h.erro)}` : ''}</p></div>`).join('') || '<p class="note">Nenhuma postagem diária ainda.</p>';
       if ($('instaUltimoStory')) $('instaUltimoStory').textContent = st.ultimoStory ? `Último Story: ${st.ultimoStory.produto} (${st.ultimoStory.loja}), em ${new Date(`${st.ultimoStory.dia}T12:00:00`).toLocaleDateString('pt-BR')}` : 'Nenhum Story de loja publicado ainda.';

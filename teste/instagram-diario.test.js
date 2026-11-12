@@ -138,3 +138,22 @@ test("postagem diária ponta a ponta (Meta simulada): conecta, posta 1 vez no ho
   assert.equal((await postarInstagramDoDia()).postado, true, "segundo horário do dia");
   assert.equal(publicados.length, 2);
 });
+
+test("QUERO: webhook confirma com o token mostrado no admin; aviso sem assinatura é recusado e aparece no diagnóstico", async (t) => {
+  const { mkdtempSync: mk, rmSync: rm } = await import("node:fs");
+  const dir = mk(join(tmpdir(), "cit-quero-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const senha = randomBytes(8).toString("hex");
+  const { app } = criarApp({ env: { SESSAO_SEGREDO: "s".repeat(40), DADOS_DIR: dir, ADMIN_SENHA_HASH: gerarHashSenha(senha) }, log: { info() {}, warn() {}, error() {} } });
+  const srv = await new Promise((ok) => { const s = app.listen(0, () => ok(s)); });
+  t.after(() => srv.close());
+  const base = `http://127.0.0.1:${srv.address().port}`;
+  const h = await fetch(`${base}/api/webhook/instagram?hub.mode=subscribe&hub.verify_token=citshop-ig-secret&hub.challenge=4321`);
+  assert.deepEqual([h.status, await h.text()], [200, "4321"]);
+  assert.equal((await fetch(`${base}/api/webhook/instagram?hub.mode=subscribe&hub.verify_token=errado&hub.challenge=1`)).status, 403);
+  assert.equal((await fetch(`${base}/api/webhook/instagram`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })).status, 401);
+  const admin = (await fetch(`${base}/api/admin/entrar`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ senha }) })).headers.get("set-cookie").split(";")[0];
+  const st = await (await fetch(`${base}/api/admin/instagram/status`, { headers: { cookie: admin } })).json();
+  assert.equal(st.quero.assinaturaConfigurada, false);
+  assert.deepEqual(st.quero.eventos.map((e) => e.resultado), ["recusado: falta INSTAGRAM_APP_SECRET no Coolify", "webhook confirmado pela Meta"]);
+});
