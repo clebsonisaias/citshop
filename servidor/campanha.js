@@ -1,12 +1,11 @@
 /**
- * Campanha de data especial (11.11, 12.12...): o nome aparece no selo "Super Oferta", na faixa da home e nas
- * mensagens do radar (WhatsApp/Telegram) até o fim do dia da campanha. Depois some sozinho.
- * Para a próxima data, acrescente uma linha aqui.
+ * Campanha de data dupla (1.1, 2.2, ..., 12.12): o nome aparece na faixa "Especial" da home, no selo
+ * "Super Oferta" e nas mensagens do radar (WhatsApp/Telegram). É sempre a próxima data dupla, contando o
+ * próprio dia até 23:59 de Brasília: em 12/11 já mostra 12.12; em 13/12 passa para 1.1.
  */
-const CAMPANHAS = [
-  { nome: "12.12", ate: "2026-12-13T03:00:00Z" }, // até 12/12 23:59 (Brasília)
-];
-
 export function campanhaAtual(agora = Date.now()) {
-  return CAMPANHAS.find((c) => agora < Date.parse(c.ate))?.nome ?? null;
+  const brasilia = new Date(agora - 3 * 60 * 60 * 1000); // UTC-3, sem horário de verão
+  const mes = brasilia.getUTCMonth() + 1, dia = brasilia.getUTCDate();
+  const alvo = dia <= mes ? mes : (mes % 12) + 1;
+  return `${alvo}.${alvo}`;
 }
