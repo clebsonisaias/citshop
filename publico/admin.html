@@ -34,6 +34,20 @@
         <tbody id="linhas"></tbody>
       </table>
     </div>
+    <h1 style="margin-top:32px">Convites de parceria (R$ 1 por venda)</h1>
+    <div class="box form">
+      <p class="note">Quem se cadastra em /painel paga assinatura. O link de convite é só para conhecidos: serve para uma loja e, depois de usado, não funciona mais. Vale 30 dias.</p>
+      <form class="form" id="fConviteAdm">
+        <label>Modelo da loja<select name="predefinicao"><option value="">Em branco: a loja personaliza</option><option value="amorimimo">Amorimimo (logo e cores prontos)</option></select></label>
+        <div class="dois">
+          <label>E-mail da loja <small>opcional: só esse e-mail usa o link</small><input name="email" type="email" maxlength="120"></label>
+          <label>WhatsApp <small>opcional: já vem preenchido</small><input name="whatsapp" inputmode="tel"></label>
+        </div>
+        <div class="msg" id="mConviteAdm" hidden role="status"></div>
+        <button class="btn">Gerar link de convite</button>
+      </form>
+      <div id="listaConvitesAdm"></div>
+    </div>
     <h1 style="margin-top:32px">Cupons das lojas parceiras</h1>
     <div class="box form">
       <p class="note">Cupons aparecem em /cupons e os produtos da loja ganham o selo "Tem cupom" enquanto estiverem válidos. Cupons das lojas locais são cadastrados por elas no painel.</p>

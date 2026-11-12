@@ -132,6 +132,8 @@ export function origemConfiavel(req) {
     .some((c) => { try { return new URL(`http://${c}`).hostname === vinda; } catch { return false; } });
 }
 
+// IP do cliente pelo req.ip do Express (trust proxy = 1: vale o que o nosso proxy anexou). O primeiro valor de
+// X-Forwarded-For vem do próprio cliente e dava para trocar a cada tentativa e burlar os limites.
 export function ipDe(req) {
-  return String(req.headers["x-forwarded-for"] ?? "").split(",")[0].trim() || req.ip || "desconhecido";
+  return req.ip || "desconhecido";
 }

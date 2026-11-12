@@ -79,6 +79,11 @@ test("estoque: esgotado some da vitrine, /p/ avisa, quantidade é descontada uma
   // 6. "Avise-me quando voltar": só vale para esgotado; ao voltar o estoque, o cliente é avisado e o alerta acaba
   assert.equal((await json("POST", "/api/alertas", { produtoId: "l-s1", tipo: "estoque", whatsapp: "84988887777" })).status, 409, "disponível: não precisa de aviso");
   assert.equal((await json("POST", "/api/alertas", { produtoId: "l-q3", tipo: "estoque", whatsapp: "84988887777" })).status, 200);
+  // Produto pausado (ou loja fora da vitrine) não apaga o alerta de quem espera a volta do estoque
+  b.produto("q3").ativo = false;
+  await verificarAlertas();
+  assert.equal(b.d.alertas.length, 1, "pausado: o alerta espera");
+  b.produto("q3").ativo = true;
   enviados.length = 0;
   await verificarAlertas();
   assert.equal(enviados.length, 0, "ainda esgotado");
@@ -97,4 +102,18 @@ test("estoque: esgotado some da vitrine, /p/ avisa, quantidade é descontada uma
   assert.ok((await ids()).includes("l-s1"));
   assert.equal((await json("PUT", "/api/painel/estoque", { modo: "qualquer" }, cookieS)).status, 400);
   assert.equal((await (await json("PUT", "/api/painel/estoque", { modo: "quantidade" }, cookieS)).json()).loja.modoEstoque, "quantidade");
+
+  // Trocar de modo converte o que o outro modo não enxerga: "esgotado" vira zero e zero vira "esgotado"
+  assert.equal(b.produto("s2").estoque, 0);
+  assert.ok(!(await ids()).includes("l-s2"), "esgotado continua fora ao ir para quantidade");
+  await json("PUT", "/api/painel/estoque", { modo: "simples" }, cookie);
+  assert.equal(b.produto("q0").esgotado, true);
+  assert.ok(!(await ids()).includes("l-q0"), "zerado continua fora ao ir para o modo simples");
+  assert.ok((await ids()).includes("l-q3") && (await ids()).includes("l-qn"), "com saldo ou sem contagem continuam à venda");
+
+  // Editar o produto no formulário não mexe no estoque (o formulário pode estar desatualizado)
+  const edicao = await json("PUT", "/api/painel/produtos/qn", { nome: "Item qn novo", dept: "moda", preco: "10", manter: JSON.stringify(["/x.webp"]), estoque: "50", esgotado: "true" }, cookie);
+  assert.equal(edicao.status, 200);
+  assert.equal(b.produto("qn").nome, "Item qn novo");
+  assert.ok(b.produto("qn").estoque == null && !b.produto("qn").esgotado, "estoque e esgotado ficam como estavam");
 });

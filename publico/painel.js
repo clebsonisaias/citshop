@@ -31,12 +31,25 @@
   $('abaCad').onclick = () => aba(true);
   $('abaEnt').onclick = () => aba(false);
 
+  // Convite de parceria (/painel?convite=...): confere o link e já preenche o que ele traz.
+  const convite = new URLSearchParams(location.search).get('convite');
+  let conviteValido = false;
+  if (convite) {
+    api(`/api/painel/convite/${encodeURIComponent(convite)}`).then((c) => {
+      conviteValido = true;
+      mostrarMsg($('avisoConvite'), 'Você foi convidada(o) para ser loja parceira: sem mensalidade, só R$ 1,00 por venda feita pelo site, com pagamento direto no Mercado Pago. Este link serve para uma loja só.', 'ok');
+      const f = $('fCad');
+      if (c.nome) f.nome.value = c.nome;
+      if (c.email) { f.email.value = c.email; f.email.readOnly = true; }
+      if (c.whatsapp) f.whatsapp.value = c.whatsapp;
+    }).catch((err) => mostrarMsg($('avisoConvite'), `${err.message} Você ainda pode criar a sua loja na assinatura.`));
+  }
   $('fCad').addEventListener('submit', (e) => {
     e.preventDefault();
     enviando(e.submitter, async () => {
       try {
         const d = dados(e.target);
-        mostrar(await api('/api/painel/cadastro', { metodo: 'POST', json: { ...d, aceite: e.target.aceite.checked } }));
+        mostrar(await api('/api/painel/cadastro', { metodo: 'POST', json: { ...d, aceite: e.target.aceite.checked, ...(conviteValido && { convite }) } }));
       } catch (err) { mostrarMsg($('eCad'), err.message); }
     });
   });
@@ -236,6 +249,7 @@
     const rank = (lista, texto) => lista.length ? lista.map((i) => `<li><span>${esc(i.nome)}</span><b>${texto(i)}</b></li>`).join('') : '<li class="vazio">Ainda sem dados.</li>';
     $('rankPedidos').innerHTML = rank(r.maisPedidos, (i) => `${i.quantidade}x`);
     $('rankVistos').innerHTML = rank(r.maisVistos, (i) => i.cliques);
+    $('rankVistos').parentElement.hidden = estado.loja.modeloCobranca === 'comissao_fixa';
     const passos = [];
     if (!estado.produtos.length) passos.push(['Cadastre seu primeiro produto: tire as fotos pelo celular.', '#produtos', 'Cadastrar']);
     if (!estado.loja.logo) passos.push(['Coloque o logo da loja para ela aparecer com a sua marca.', '#loja', 'Adicionar logo']);
@@ -283,7 +297,9 @@
     $('sair').hidden = false;
     $('pNome').textContent = s.loja.nome;
     $('pLink').innerHTML = `Sua página: <a href="/${esc(s.loja.slug)}" target="_blank">${esc(location.host)}/${esc(s.loja.slug)}</a>`;
-    $('pContatoResumo').textContent = `${s.cliquesContatoLoja ?? 0} cliques para o WhatsApp da loja`;
+    // Loja de comissão vende só pelo site (sem botão de WhatsApp): contar cliques de WhatsApp não faz sentido para ela.
+    const soSite = s.loja.modeloCobranca === 'comissao_fixa';
+    $('pContatoResumo').textContent = soSite ? '' : `${s.cliquesContatoLoja ?? 0} cliques para o WhatsApp da loja`;
     $('pStatus').className = `pill ${s.status}`;
     $('pStatus').textContent = ROTULO[s.status] || esc(s.status);
     $('pStatusTxt').textContent = (TEXTO[s.status] || TEXTO.teste)(s);
@@ -353,11 +369,16 @@
       ? `<div class="est-linha">${pill}<label>Estoque <input class="est-input" type="number" min="0" max="99999" inputmode="numeric" placeholder="sem contagem" value="${p.estoque ?? ''}" data-est="${esc(p.id)}"></label></div>`
       : `<div class="est-linha">${pill}<button class="btn sec" data-esg="${esc(p.id)}">${p.esgotado ? 'Voltou ao estoque' : 'Marcar esgotado'}</button></div>`;
   }
+  // O estoque de um produto que já existe muda na linha da lista (o formulário pode ficar desatualizado); no formulário só entra o de produto novo.
+  function camposEstoqueDoForm() {
+    const q = porQuantidade();
+    document.querySelector('.est-simples').hidden = Boolean(editando) || q;
+    document.querySelector('.est-qtd').hidden = Boolean(editando) || !q;
+  }
   function aplicarModoEstoque() {
     const q = porQuantidade();
     $('modoEstoque').value = q ? 'quantidade' : 'simples';
-    document.querySelector('.est-simples').hidden = q;
-    document.querySelector('.est-qtd').hidden = !q;
+    camposEstoqueDoForm();
     $('modoEstoqueAjuda').textContent = q
       ? 'Digite quantas unidades você tem. A cada venda o site desconta e, quando chegar a zero, o produto some da vitrine e avisamos você no WhatsApp.'
       : 'Quando um produto acabar, toque em "Marcar esgotado". Ele some da vitrine até você tocar em "Voltou ao estoque".';
@@ -397,6 +418,7 @@
     const f = $('fProd');
     f.reset();
     $('fProdTit').textContent = p ? 'Editar produto' : 'Novo produto';
+    camposEstoqueDoForm();
     if (p) for (const k of ['nome', 'dept', 'descricao', 'disponibilidade']) f[k].value = p[k] ?? 'consulte';
     f.esgotado.value = p?.esgotado ? 'true' : 'false';
     f.estoque.value = p?.estoque ?? '';

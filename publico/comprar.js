@@ -127,16 +127,25 @@
     return d;
   }
   const km = (n) => String(n).replace('.', ',');
+  let freteSeq = 0; // resposta de uma abertura anterior do formulário não pode valer na atual
   async function prepararFrete() {
+    const meu = ++freteSeq;
     ponto = null; frete = null; boxFrete.hidden = true; resultado.textContent = '';
     if (form.receber.value !== 'entrega') return;
     try {
       const d = await consultarFrete({});
+      if (meu !== freteSeq) return;
       if (!d.configurado) return; // loja sem entrega por distância: a entrega é combinada com a loja
       frete = d;
       dlg.querySelector('.frete-tabela').textContent = `Entrega por distância: ${d.faixas.map((f) => `até ${km(f.ateKm)} km ${brl.format(f.valor)}`).join(' · ')}${d.gratisAcima ? ` · grátis acima de ${brl.format(d.gratisAcima)}` : ''}`;
       boxFrete.hidden = false;
-    } catch { /* sem a tabela agora: o pedido segue e o servidor confere */ }
+    } catch {
+      if (meu !== freteSeq) return;
+      // Sem a tabela agora: o cálculo continua obrigatório e os botões consultam de novo, em vez de deixar o cliente sem saída.
+      frete = { configurado: true, faixas: [] };
+      dlg.querySelector('.frete-tabela').textContent = 'Não foi possível carregar a tabela de entrega agora. Tente calcular abaixo.';
+      boxFrete.hidden = false;
+    }
   }
   function mostrarFrete(d, origem) {
     ponto = null;
@@ -148,8 +157,14 @@
     }
   }
   const calcular = async (extra, origem) => {
+    const meu = freteSeq;
     resultado.textContent = 'Calculando...';
-    try { mostrarFrete(await consultarFrete(extra), origem); } catch (err) { resultado.textContent = err.message; }
+    try {
+      const d = await consultarFrete(extra);
+      if (meu !== freteSeq) return;
+      if (!d.configurado) { frete = null; ponto = null; boxFrete.hidden = true; resultado.textContent = ''; return; } // a loja não cobra por distância
+      mostrarFrete(d, origem);
+    } catch (err) { if (meu === freteSeq) resultado.textContent = err.message; }
   };
   boxFrete.addEventListener('click', (e) => {
     if (e.target.closest('[data-frete-gps]')) {

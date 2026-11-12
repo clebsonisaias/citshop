@@ -76,12 +76,21 @@ test("pedidos: WhatsApp registra com código, loja vê só os dela, muda situaç
   assert.equal(mudou.pedidos.find((p) => p.id === pedido).etapa, "vendido");
   assert.deepEqual([mudou.resumo.novos, mudou.resumo.hoje.qtd, mudou.resumo.hoje.valor], [1, 1, 19], "vendido entra no faturamento e sai dos novos");
 
+  // Planilha: texto do cliente que começa com = + - @ não pode virar fórmula no Excel
+  await post("/api/pedidos/whatsapp", { produtoId: "l-pa", comprador: { nome: "=2+2", whatsapp: "84988887777", observacao: "@cmd|calc" } });
+
   // Planilha da loja A
   const csv = await fetch(`${base}/api/painel/pedidos.csv`, { headers: { cookie: cookieA } });
   assert.match(csv.headers.get("content-type"), /text\/csv/);
   const conteudo = await csv.text();
   assert.ok(conteudo.includes("Ana Cliente") && conteudo.includes("Pedido no WhatsApp") && conteudo.includes("Vendido"));
   assert.ok(!conteudo.includes("Desistiu"));
+  assert.ok(conteudo.includes(`"'=2+2"`) && conteudo.includes(`"'@cmd|calc"`) && !conteudo.includes(`"=2+2"`), "fórmulas viram texto");
   assert.equal(conteudo.split(rc.pedido).length - 1, 2, "uma linha por produto do carrinho");
   assert.equal((await fetch(`${base}/api/painel/pedidos.csv`)).status, 401);
+
+  // Resumo: a venda conta no dia em que o pedido virou "vendido", não no dia em que chegou
+  b.d.pedidos.find((p) => p.id === rc.pedido).criadoEm = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
+  const depois = await (await fetch(`${base}/api/painel/pedidos/${rc.pedido}`, { method: "PATCH", headers: { "Content-Type": "application/json", cookie: cookieA }, body: JSON.stringify({ etapa: "vendido" }) })).json();
+  assert.deepEqual([depois.resumo.hoje.qtd, depois.resumo.hoje.valor], [2, 59.5], "pedido antigo marcado vendido hoje entra em hoje");
 });

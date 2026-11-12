@@ -61,10 +61,13 @@ export function ordenarVitrine(lista) {
   return [...lista.filter((p) => p.loja === "local"), ...lista.filter((p) => p.loja !== "local")];
 }
 
+// Nomes de páginas e rotas fixas do site: uma loja com esse nome ganha um sufixo (carrinho-2) em vez de roubar a rota.
+export const SLUGS_RESERVADOS = new Set(["api", "bio", "admin", "painel", "contato", "p", "og", "uploads", "webhook", "black-friday", "termos", "privacidade", "carrinho", "cupons", "alertas", "vendor", "mercadopago"]);
+
 export function slugUnico(nome, lojas) {
   const base = String(nome).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
     .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "loja";
   let slug = base;
-  for (let i = 2; lojas.some((l) => l.slug === slug); i++) slug = `${base}-${i}`;
+  for (let i = 2; lojas.some((l) => l.slug === slug) || SLUGS_RESERVADOS.has(slug); i++) slug = `${base}-${i}`;
   return slug;
 }

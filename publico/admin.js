@@ -32,7 +32,33 @@
         <button class="btn sec" data-acesso="${l.id}">Definir acesso</button>
         <button class="btn perigo" data-excluir="${l.id}">Excluir loja</button></td></tr>`).join('');
   }
-  async function carregar() { lojas = await api('/api/admin/lojas'); render(); carregarCupons(); }
+  async function carregar() { lojas = await api('/api/admin/lojas'); render(); carregarCupons(); carregarConvites(); }
+  // Convites de parceria: o link só aparece enquanto o convite está aberto.
+  const STATUS_CONVITE = { aberto: 'Aberto', usado: 'Usado', expirado: 'Expirado', cancelado: 'Cancelado' };
+  async function carregarConvites() {
+    const convites = await api('/api/admin/convites').catch(() => []);
+    $('listaConvitesAdm').innerHTML = convites.length ? convites.map((c) => `<p class="note"><b>${esc(STATUS_CONVITE[c.status] ?? c.status)}</b> · ${esc(c.predefinicao ?? 'Em branco')}${c.email ? ` · ${esc(c.email)}` : ''} · criado em ${data(c.criadoEm)}${c.status === 'aberto' ? ` · vale até ${data(c.expiraEm)}` : ''}${c.lojaNome ? ` · usado por <b>${esc(c.lojaNome)}</b>` : ''}
+      ${c.link ? `<br><input readonly value="${esc(c.link)}" aria-label="Link do convite" style="width:100%;max-width:520px"> <button class="btn sec" type="button" data-copiar-conv="${esc(c.link)}">Copiar link</button> <button class="btn perigo" type="button" data-cancelar-conv="${esc(c.id)}">Cancelar</button>` : ''}</p>`).join('') : '<p class="note">Nenhum convite gerado.</p>';
+  }
+  $('fConviteAdm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = $('mConviteAdm');
+    try {
+      await api('/api/admin/convites', 'POST', Object.fromEntries(new FormData(e.target)));
+      e.target.reset(); msg.className = 'msg ok'; msg.textContent = 'Convite gerado. Copie o link abaixo e envie para a loja.'; msg.hidden = false; carregarConvites();
+    } catch (err) { msg.className = 'msg'; msg.textContent = err.message; msg.hidden = false; }
+  });
+  $('listaConvitesAdm').addEventListener('click', async (e) => {
+    const copiar = e.target.closest('[data-copiar-conv]'), cancelar = e.target.closest('[data-cancelar-conv]');
+    if (copiar) {
+      try { await navigator.clipboard.writeText(copiar.dataset.copiarConv); copiar.textContent = 'Copiado!'; }
+      catch { copiar.previousElementSibling.select(); copiar.textContent = 'Selecionado: copie com Ctrl+C'; }
+      return;
+    }
+    if (!cancelar || !confirm('Cancelar este convite? O link deixa de funcionar.')) return;
+    await api(`/api/admin/convites/${encodeURIComponent(cancelar.dataset.cancelarConv)}`, 'DELETE').catch((err) => alert(err.message));
+    carregarConvites();
+  });
   async function carregarCupons() {
     const cupons = await api('/api/admin/cupons').catch(() => []);
     $('listaCuponsAdm').innerHTML = cupons.length ? cupons.map((c) => `<p class="note"><b>${esc(c.codigo)}</b> · ${esc(c.lojaNome)} · ${esc(c.descricao)} · até ${new Date(`${c.validoAte}T12:00:00`).toLocaleDateString('pt-BR')} <button class="btn sec" type="button" data-apagar-cupom="${esc(c.id)}">Apagar</button></p>`).join('') : '<p class="note">Nenhum cupom cadastrado.</p>';

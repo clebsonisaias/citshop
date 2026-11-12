@@ -8,9 +8,9 @@ import { existsSync, readFileSync, renameSync, statSync, writeFileSync } from "n
 import { basename, dirname, join } from "node:path";
 import sharp from "sharp";
 import { fileURLToPath } from "node:url";
-import { createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import * as S from "./seguranca.js";
-import { Banco, DEPTS, DIAS_TESTE, lojaVisivel, ordenarVitrine, slugUnico, statusLoja, temEstoque } from "./dados.js";
+import { Banco, DEPTS, DIAS_TESTE, SLUGS_RESERVADOS, lojaVisivel, ordenarVitrine, slugUnico, statusLoja, temEstoque } from "./dados.js";
 import { MAX_FOTOS, apagarFoto, receberFotos, receberLogo, salvarFoto } from "./uploads.js";
 import { cifrar, criarMercadoPago, decifrar, statusDoMp, webhookValido } from "./mercadopago.js";
 import { MARKETPLACE, criarClienteAmazon } from "./amazon.js";
@@ -45,6 +45,13 @@ function valor(v) {
   const n = Number(s.includes(",") ? s.replace(/\./g, "").replace(",", ".") : s);
   return Number.isFinite(n) && n > 0 && n < 1_000_000 ? Math.round(n * 100) / 100 : null;
 }
+// Loja parceira (R$ 1 por venda) só entra por convite de uso único gerado no /admin. A predefinição já deixa o
+// logo (arquivo em publico/) e a cor da marca aplicados quando a loja se cadastra.
+const PREDEFINICOES = {
+  amorimimo: { nome: "Amorimimo", cor: "#F4C7C3", logo: "/amorimimo-logo.webp", sobre: "Feito por Laninha." },
+};
+const DIAS_CONVITE = 30;
+
 // Estoque: vazio = sem contagem; senão um inteiro de 0 a 99999.
 function estoqueDe(v) {
   if (v === undefined || v === null || String(v).trim() === "") return null;
@@ -209,15 +216,18 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const d = S.lerSessao(S.lerCookies(req.headers.cookie)[`citshop_${tipo}`], { segredo, agora: agora() });
     return d?.t === tipo ? d : null;
   };
-  const abrirSessao = (req, res, tipo, id) => res.setHeader("Set-Cookie", S.cookie({
+  // A sessão da loja carrega uma "versão da senha": trocar ou redefinir a senha derruba os cookies antigos.
+  const versaoSenha = (loja) => createHash("sha256").update(String(loja.senhaHash)).digest("hex").slice(0, 12);
+  const abrirSessao = (req, res, tipo, id, extra = {}) => res.setHeader("Set-Cookie", S.cookie({
     nome: `citshop_${tipo}`, caminho: CAMINHO[tipo], https: S.ehHttps(req),
-    valor: S.criarSessao({ segredo, dados: { t: tipo, id }, agora: agora() }),
+    valor: S.criarSessao({ segredo, dados: { t: tipo, id, ...extra }, agora: agora() }),
   }));
   const fecharSessao = (req, res, tipo) => res.setHeader("Set-Cookie", S.cookie({ nome: `citshop_${tipo}`, valor: "", caminho: CAMINHO[tipo], https: S.ehHttps(req) }));
 
   function exigirLoja(req, res, next) {
-    const loja = banco.loja(sessao(req, "loja")?.id);
-    if (!loja) return erro(res, 401, "Entre na sua conta.");
+    const s = sessao(req, "loja");
+    const loja = banco.loja(s?.id);
+    if (!loja || s.sv !== versaoSenha(loja)) return erro(res, 401, "Entre na sua conta.");
     req.loja = loja;
     // Senha provisória: até trocar, a loja só vê o painel e troca a senha; o resto fica bloqueado.
     if (loja.trocarSenha && req.path !== "/api/painel/eu" && req.path !== "/api/painel/senha") return erro(res, 403, "Escolha uma nova senha para continuar.");
@@ -570,7 +580,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       const x = produtoPorId(a.produtoId);
       // Queda que vale aviso: pelo menos 1% e R$ 0,50 abaixo do preço do dia do alerta.
       const quer = a.tipo === "estoque" ? x && !x.esgotado : x && !x.esgotado && x.preco <= a.precoBase * 0.99 && a.precoBase - x.preco >= 0.5;
-      if (!quer) { if (x) ficam.push(a); continue; }
+      // "Avise-me quando voltar" espera mesmo com o produto pausado ou a loja fora da vitrine; só os 90 dias encerram.
+      if (!quer) { if (x || a.tipo === "estoque") ficam.push(a); continue; }
       const texto = a.tipo === "estoque" ? [
         "📦 *Voltou ao estoque!*",
         "",
@@ -685,14 +696,16 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     .sort((x, y) => y.criadoEm.localeCompare(x.criadoEm));
   // Resumo da aba Início: pedidos novos, vendas por período e o que mais interessa aos clientes.
   // Venda = pago no site (approved) ou pedido do WhatsApp marcado como "vendido"; cancelado não conta.
-  function resumoDe(loja) {
+  function resumoDe(loja, todosPedidos) {
     const t = agora();
     const dia = (ms) => new Date(ms - 3 * 60 * 60 * 1000).toISOString().slice(0, 10); // dia em Brasília
     const hoje = dia(t);
-    const pedidos = pedidosDa(loja).filter((p) => p.etapa !== "cancelado");
+    const pedidos = todosPedidos.filter((p) => p.etapa !== "cancelado");
     const vendas = pedidos.filter((p) => (p.origem === "whatsapp" ? p.etapa === "vendido" : p.status === "approved"));
+    // Conta no dia em que virou venda (marcado "vendido" ou pagamento aprovado), não no dia em que o pedido chegou.
+    const quando = (p) => Date.parse(p.vendidoEm ?? p.atualizadoEm ?? p.criadoEm);
     const periodo = (dias) => {
-      const doPeriodo = vendas.filter((p) => dias === 1 ? dia(Date.parse(p.criadoEm)) === hoje : Date.parse(p.criadoEm) >= t - dias * DIA);
+      const doPeriodo = vendas.filter((p) => dias === 1 ? dia(quando(p)) === hoje : quando(p) >= t - dias * DIA);
       return { qtd: doPeriodo.length, valor: Math.round(doPeriodo.reduce((s, p) => s + p.valorTotal, 0) * 100) / 100 };
     };
     const porProduto = new Map();
@@ -709,10 +722,11 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   function painelDe(loja) {
     const t = agora();
     const { senhaHash, mpConta, mpOauth, ...dados } = loja;
+    const pedidos = pedidosDa(loja); // uma vez só: filtra e ordena todos os pedidos
     return {
       loja: { ...dados, mpConectado: Boolean(mpConta) },
-      pedidos: pedidosDa(loja).slice(0, 200),
-      resumo: resumoDe(loja),
+      pedidos: pedidos.slice(0, 200),
+      resumo: resumoDe(loja, pedidos),
       cupons: (banco.d.cupons ?? []).filter((c) => c.lojaId === loja.id).map(cupomPublico),
       status: statusLoja(loja, t),
       diasTeste: Math.max(0, Math.ceil((Date.parse(loja.testeAte) - t) / DIA)),
@@ -725,6 +739,19 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       })),
     };
   }
+
+  // ---------- convites de parceria (R$ 1 por venda): o admin gera o link, que serve para uma loja só ----------
+  const MSG_CONVITE = "Este convite não é mais válido: ele já foi usado, expirou ou foi cancelado.";
+  const statusConvite = (c) => (c.usadoEm ? "usado" : c.revogadoEm ? "cancelado" : Date.parse(c.expiraEm) <= agora() ? "expirado" : "aberto");
+  const conviteAberto = (token) => (banco.d.convites ?? []).find((c) => c.token === token && statusConvite(c) === "aberto");
+  const limiteConvite = new S.Limitador({ maximo: 30, janelaMs: 10 * 60_000 });
+  // A página de cadastro confere o link antes de mostrar o formulário (e já preenche o que o convite traz).
+  app.get("/api/painel/convite/:token", (req, res) => {
+    if (!limiteConvite.registrar(`conv|${S.ipDe(req)}`).permitido) return erro(res, 429, "Muitas tentativas. Espere alguns minutos.");
+    const c = conviteAberto(String(req.params.token));
+    if (!c) return erro(res, 404, MSG_CONVITE);
+    res.set("Cache-Control", "no-store").json({ nome: PREDEFINICOES[c.predefinicao]?.nome ?? "", email: c.email ?? "", whatsapp: c.whatsapp ?? "" });
+  });
 
   app.post("/api/painel/cadastro", a(async (req, res) => {
     if (!limiteCadastro.registrar(S.ipDe(req)).permitido) return erro(res, 429, "Muitos cadastros a partir desta conexão. Tente mais tarde.");
@@ -740,6 +767,10 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     if (!loja.whatsapp) return erro(res, 400, "Informe o WhatsApp com DDD.");
     if (!loja.cidade) return erro(res, 400, "Informe a cidade.");
     if (b.aceite !== true) return erro(res, 400, "Aceite os termos para continuar.");
+    // Convite de parceria: vale uma vez, para uma loja (e para o e-mail combinado, quando o convite trava um).
+    const convite = b.convite ? conviteAberto(String(b.convite)) : null;
+    if (b.convite && !convite) return erro(res, 400, MSG_CONVITE);
+    if (convite?.email && convite.email !== loja.email) return erro(res, 400, "Este convite é para outro e-mail.");
     if (banco.lojaPorEmail(loja.email)) return erro(res, 409, "Já existe uma loja com este e-mail. Entre com sua senha.");
     const t = agora();
     Object.assign(loja, {
@@ -747,10 +778,15 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       criadaEm: new Date(t).toISOString(), testeAte: new Date(t + DIAS_TESTE * DIA).toISOString(),
       aceiteEm: new Date(t).toISOString(), assinatura: { status: "nenhuma" }, suspensa: false,
     });
+    if (convite) {
+      const pre = PREDEFINICOES[convite.predefinicao] ?? {};
+      Object.assign(loja, { modeloCobranca: "comissao_fixa", comissaoPorVenda: 1.00, ...(pre.cor && { cor: pre.cor }), ...(pre.logo && { logo: pre.logo }), ...(pre.sobre && { sobre: pre.sobre }) });
+      Object.assign(convite, { usadoEm: iso(), lojaId: loja.id }); // sem await até aqui: duas contas não usam o mesmo convite
+    }
     banco.lojas.push(loja);
     banco.salvar();
-    log.info?.(`[loja] cadastrada ${loja.slug}`);
-    abrirSessao(req, res, "loja", loja.id);
+    log.info?.(`[loja] cadastrada ${loja.slug}${convite ? " (parceira, por convite)" : ""}`);
+    abrirSessao(req, res, "loja", loja.id, { sv: versaoSenha(loja) });
     res.status(201).json(painelDe(loja));
   }));
 
@@ -762,7 +798,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const ok = S.conferirSenha(req.body?.senha, loja?.senhaHash ?? S.HASH_FALSO) && loja;
     if (!ok) return erro(res, 401, "E-mail ou senha incorretos.");
     limiteLogin.liberar(chave);
-    abrirSessao(req, res, "loja", loja.id);
+    abrirSessao(req, res, "loja", loja.id, { sv: versaoSenha(loja) });
     res.json(painelDe(loja));
   });
 
@@ -827,6 +863,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     req.loja.senhaHash = S.gerarHashSenha(req.body.nova);
     delete req.loja.trocarSenha;
     banco.salvar();
+    abrirSessao(req, res, "loja", req.loja.id, { sv: versaoSenha(req.loja) }); // este aparelho continua logado; os outros cookies caem
     res.json({ ok: true });
   });
 
@@ -861,7 +898,9 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const novas = [];
     for (const f of req.files ?? []) novas.push(await salvarFoto(f.buffer, uploadsDir));
     for (const u of req.produto.fotos.filter((u) => !manter.includes(u))) await apagarFoto(u, uploadsDir);
-    Object.assign(req.produto, p, { fotos: [...manter, ...novas], atualizadoEm: iso() });
+    // O estoque não muda por aqui: o formulário pode estar desatualizado (uma venda desconta enquanto ele fica aberto). Use o PATCH.
+    const { esgotado, estoque, ...dadosProduto } = p;
+    Object.assign(req.produto, dadosProduto, { fotos: [...manter, ...novas], atualizadoEm: iso() });
     banco.salvar();
     res.json(req.produto);
   }));
@@ -908,6 +947,13 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   // Como a loja controla o estoque: "simples" (marca quando acaba) ou "quantidade" (o site desconta a cada venda).
   app.put("/api/painel/estoque", exigirLoja, (req, res) => {
     if (!["simples", "quantidade"].includes(req.body?.modo)) return erro(res, 400, "Modo de estoque inválido.");
+    // Ao trocar o modo, converte o que o outro modo não enxerga: zero vira "esgotado" e "esgotado" vira zero.
+    if (req.body.modo !== (req.loja.modoEstoque ?? "simples")) {
+      for (const p of banco.produtos.filter((x) => x.lojaId === req.loja.id)) {
+        if (req.body.modo === "quantidade") { if (p.esgotado) p.estoque = 0; }
+        else p.esgotado = p.estoque != null && p.estoque <= 0;
+      }
+    }
     req.loja.modoEstoque = req.body.modo;
     banco.salvar();
     res.json(painelDe(req.loja));
@@ -991,7 +1037,9 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const p = (banco.d.pedidos ?? []).find((x) => x.id === req.params.id && x.lojaId === req.loja.id);
     if (!p) return erro(res, 404, "Pedido não encontrado.");
     if (!ETAPAS.includes(req.body?.etapa)) return erro(res, 400, "Situação inválida.");
+    const anterior = p.etapa;
     Object.assign(p, { etapa: req.body.etapa, atualizadoEm: iso() });
+    if (p.etapa === "vendido" && anterior !== "vendido") p.vendidoEm = iso();
     if (p.etapa === "vendido") moverEstoque(req.loja, p, 1);
     if (p.etapa === "cancelado") moverEstoque(req.loja, p, -1);
     banco.salvar();
@@ -999,7 +1047,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   });
   // Planilha (CSV com ; e BOM, abre direto no Excel em português).
   app.get("/api/painel/pedidos.csv", exigirLoja, (req, res) => {
-    const cel = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    // Texto do cliente que começa com = + - @ viraria fórmula no Excel: o apóstrofo força texto.
+    const cel = (v) => { const t = String(v ?? ""); return `"${(/^[=+\-@\t\r]/.test(t) ? `'${t}` : t).replace(/"/g, '""')}"`; };
     const ETAPA = { novo: "Novo", atendimento: "Em atendimento", vendido: "Vendido", cancelado: "Cancelado" };
     // Uma linha por produto; o código do pedido agrupa as linhas de um mesmo carrinho.
     const linhas = [["Data", "Pedido", "Origem", "Pagamento", "Situação", "Produto", "Opções", "Qtd", "Valor", "Total do pedido", "Frete", "Cliente", "WhatsApp", "Receber", "Endereço", "Mapa", "Observação"]];
@@ -1139,7 +1188,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
         if (pedido) {
           const acabouDeAprovar = pg.status === "approved" && pedido.status !== "approved";
           Object.assign(pedido, { status: pg.status, mpPagamentoId: pg.id, atualizadoEm: iso() });
-          if (acabouDeAprovar) moverEstoque(loja, pedido, 1);
+          if (acabouDeAprovar) { pedido.vendidoEm = iso(); moverEstoque(loja, pedido, 1); }
           if (["refunded", "cancelled", "charged_back"].includes(pg.status)) moverEstoque(loja, pedido, -1);
           banco.salvar();
           log.info?.(`[mp] venda ${pedido.id}: ${pg.status}`);
@@ -1224,6 +1273,35 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     req.loja.atualizadaEm = iso();
     banco.salvar();
     res.json({ ok: true, loja: req.loja });
+  });
+  const conviteAdmin = (c) => ({
+    id: c.id, status: statusConvite(c), predefinicao: PREDEFINICOES[c.predefinicao]?.nome ?? null, email: c.email, whatsapp: c.whatsapp,
+    criadoEm: c.criadoEm, expiraEm: c.expiraEm, usadoEm: c.usadoEm ?? null, lojaNome: c.lojaId ? banco.loja(c.lojaId)?.nome ?? "(loja excluída)" : null,
+    link: statusConvite(c) === "aberto" ? `${urlPublica}/painel?convite=${c.token}` : null,
+  });
+  app.get("/api/admin/convites", exigirAdmin, (req, res) => res.json([...(banco.d.convites ?? [])].reverse().map(conviteAdmin)));
+  app.post("/api/admin/convites", exigirAdmin, (req, res) => {
+    const b = req.body ?? {};
+    const predefinicao = b.predefinicao && PREDEFINICOES[b.predefinicao] ? b.predefinicao : null;
+    if (b.predefinicao && !predefinicao) return erro(res, 400, "Modelo de loja desconhecido.");
+    const email = txt(b.email, 120).toLowerCase();
+    if (email && !emailOk(email)) return erro(res, 400, "E-mail inválido.");
+    const t = agora();
+    const convite = {
+      id: randomUUID(), token: randomBytes(24).toString("base64url"), predefinicao, email: email || null, whatsapp: whatsapp(b.whatsapp),
+      criadoEm: new Date(t).toISOString(), expiraEm: new Date(t + DIAS_CONVITE * DIA).toISOString(), usadoEm: null, lojaId: null,
+    };
+    (banco.d.convites ??= []).push(convite);
+    banco.salvar();
+    res.status(201).json(conviteAdmin(convite));
+  });
+  app.delete("/api/admin/convites/:id", exigirAdmin, (req, res) => {
+    const c = (banco.d.convites ?? []).find((x) => x.id === req.params.id);
+    if (!c) return erro(res, 404, "Convite não encontrado.");
+    if (c.usadoEm) return erro(res, 409, "Este convite já foi usado.");
+    c.revogadoEm = c.revogadoEm ?? iso();
+    banco.salvar();
+    res.json(conviteAdmin(c));
   });
   // Exclusão a pedido da loja (prometida nos termos): some a loja, os produtos e as fotos.
   app.delete("/api/admin/lojas/:id", exigirAdmin, lojaAdmin, a(async (req, res) => {
@@ -1600,7 +1678,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   // Rota direta da loja (ex: /mimosdadelly)
   app.get("/:slug", (req, res, next) => {
     const slug = String(req.params.slug || "").toLowerCase();
-    const rotasReservadas = new Set(["api", "bio", "admin", "painel", "contato", "p", "og", "uploads", "webhook", "black-friday", "termos", "privacidade", "sitemap.xml", "robots.txt"]);
+    const rotasReservadas = new Set([...SLUGS_RESERVADOS, "sitemap.xml", "robots.txt"]);
     if (rotasReservadas.has(slug)) return next();
     const loja = banco.lojas.find((l) => l.slug === slug);
     if (loja && lojaVisivel(loja, agora())) {

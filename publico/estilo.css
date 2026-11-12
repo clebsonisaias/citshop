@@ -763,11 +763,11 @@ body:has(.canal-flutuante) .carrinho-flutuante { bottom: calc(max(16px, env(safe
 body.na-loja .carrinho-flutuante { bottom: max(16px, env(safe-area-inset-bottom)); }
 
 /* ---------- painel do lojista: abas e início ---------- */
-.abas { display: flex; gap: 0; margin-top: 16px; overflow-x: auto; border-bottom: 1px solid var(--line); scrollbar-width: none; }
-.abas::-webkit-scrollbar { display: none; }
-.abas a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 6px; font-size: 14px; font-weight: 700; color: var(--muted); text-decoration: none; border-bottom: 3px solid transparent; white-space: nowrap; }
-.abas a[aria-current] { color: var(--deep); border-bottom-color: var(--brand); }
-.abas .n { min-width: 20px; padding: 1px 6px; border-radius: 99px; background: var(--hot); color: #fff; font-size: 12px; text-align: center; }
+#abas { display: flex; gap: 0; margin-top: 16px; overflow-x: auto; border-bottom: 1px solid var(--line); scrollbar-width: none; }
+#abas::-webkit-scrollbar { display: none; }
+#abas a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 6px; font-size: 14px; font-weight: 700; color: var(--muted); text-decoration: none; border-bottom: 3px solid transparent; white-space: nowrap; }
+#abas a[aria-current] { color: var(--deep); border-bottom-color: var(--brand); }
+#abas .n { min-width: 20px; padding: 1px 6px; border-radius: 99px; background: var(--hot); color: #fff; font-size: 12px; text-align: center; }
 .cartoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 16px; }
 .cartao { display: grid; gap: 2px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); text-decoration: none; }
 .cartao span, .cartao small { font-size: 12px; color: var(--muted); }

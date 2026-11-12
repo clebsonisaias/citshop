@@ -51,14 +51,29 @@ test("acesso provisório: o admin define e-mail e senha, a loja é obrigada a tr
   // Troca: a nova precisa ser diferente; depois o painel libera e a provisória deixa de valer
   assert.equal((await json("POST", "/api/painel/senha", { atual: provisoria, nova: provisoria }, loj)).status, 400);
   assert.equal((await json("POST", "/api/painel/senha", { atual: provisoria, nova: "curta" }, loj)).status, 400);
-  assert.equal((await json("POST", "/api/painel/senha", { atual: provisoria, nova }, loj)).status, 200);
+  const trocou = await json("POST", "/api/painel/senha", { atual: provisoria, nova }, loj);
+  assert.equal(trocou.status, 200);
   assert.equal(b.loja("nova").trocarSenha, undefined);
-  assert.equal((await json("PUT", "/api/painel/loja", { nome: "Nome", whatsapp: "84999990001", cidade: "Natal" }, loj)).status, 200);
+  // Trocar a senha derruba os outros cookies da loja, mas o aparelho que trocou recebe um novo e segue logado
+  assert.equal((await fetch(`${base}/api/painel/eu`, { headers: { cookie: loj } })).status, 401, "cookie antigo não vale mais");
+  const logado = cookieDe(trocou);
+  assert.equal((await json("PUT", "/api/painel/loja", { nome: "Nome", whatsapp: "84999990001", cidade: "Natal" }, logado)).status, 200);
   assert.equal((await json("POST", "/api/painel/entrar", { email: "dona@loja.com", senha: provisoria })).status, 401);
   assert.equal((await (await json("POST", "/api/painel/entrar", { email: "dona@loja.com", senha: nova })).json()).loja.trocarSenha, undefined);
 
-  // A senha provisória aleatória do admin também obriga a trocar
+  // A senha provisória aleatória do admin também obriga a trocar e derruba a sessão aberta da loja
+  const abertaAntes = cookieDe(await json("POST", "/api/painel/entrar", { email: "outra@loja.com", senha: "x".repeat(12) }));
+  assert.equal((await fetch(`${base}/api/painel/eu`, { headers: { cookie: abertaAntes } })).status, 200);
   const gerada = await (await json("POST", "/api/admin/lojas/outra/senha", null, admin)).json();
+  assert.equal((await fetch(`${base}/api/painel/eu`, { headers: { cookie: abertaAntes } })).status, 401, "senha redefinida pelo admin derruba a sessão");
   const entrada = await (await json("POST", "/api/painel/entrar", { email: "outra@loja.com", senha: gerada.senha })).json();
   assert.equal(entrada.loja.trocarSenha, true);
+
+  // Limite de tentativas de login: trocar o X-Forwarded-For a cada tentativa não zera o contador (vale o IP do proxy)
+  const tentativas = [];
+  for (let i = 0; i < 12; i++) {
+    const r = await fetch(`${base}/api/painel/entrar`, { method: "POST", headers: { "Content-Type": "application/json", "X-Forwarded-For": `1.1.1.${i}, 9.9.9.9` }, body: JSON.stringify({ email: "dona@loja.com", senha: "errada-errada" }) });
+    tentativas.push(r.status);
+  }
+  assert.ok(tentativas.includes(429), `limite barrou as tentativas: ${tentativas}`);
 });
