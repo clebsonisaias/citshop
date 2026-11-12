@@ -39,10 +39,12 @@ Regra: nada vai para `main` (que publica sozinho no Coolify) sem autorização e
 - [ ] Usuários e permissões: **decisão pendente** — hoje há uma senha de admin; múltiplos usuários exigem cadastro de operadores e papéis (proposta em ARQUITETURA.md)
 
 ## Fase 5 · Painel do lojista
-- [ ] Aba financeira (vendas, recebimentos, reembolsos, comissões só para parceiros)
-- [ ] Status separados: pagamento, atendimento e entrega, com histórico
-- [ ] Produtos: SKU, marca, variações reais (substituem as opções genéricas)
-- [ ] Perfil: banner, telefone, redes sociais
+- [x] Financeiro do mês no Início (vendas, recebido pelo site, aguardando, reembolsado; comissão CIT só para parceiros, lida do livro)
+- [x] Status separados: pagamento (Mercado Pago), atendimento e entrega/retirada, com histórico e coluna na planilha
+- [x] Produtos: SKU (só da loja), marca, variações reais definidas pela loja (fim das opções genéricas P/M/G, Oversized, cores)
+- [x] Perfil: telefone (oculto para parceiros) e Instagram na página da loja
+- [x] Testes (`teste/lojista.test.js`) e prévia 375/1280 px sem rolagem horizontal
+- [ ] Banner da loja (upload) — adiado: exige novo fluxo de imagem
 
 ## Fase 6 · Vitrine e comprador
 - [ ] Filtros por marca, loja, disponibilidade e tipo de vendedor; paginação

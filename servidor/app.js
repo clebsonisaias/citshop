@@ -62,8 +62,23 @@ function estoqueDe(v) {
   const n = Math.floor(Number(v));
   return Number.isFinite(n) && n >= 0 ? Math.min(n, 99999) : null;
 }
+// Variações que a loja cadastra, uma por linha: "Cor: Rosa, Lilás" / "Tamanho: RN, P". Até 3 grupos de 20 opções.
+// Também aceita a lista já pronta [{ nome, opcoes }].
+export function lerVariacoes(v) {
+  const grupos = Array.isArray(v) ? v : String(v ?? "").split(/\r?\n/).map((linha) => {
+    const i = linha.indexOf(":");
+    return i > 0 ? { nome: linha.slice(0, i), opcoes: linha.slice(i + 1).split(",") } : null;
+  });
+  return grupos.filter(Boolean).map((g) => ({
+    nome: txt(g.nome, 20),
+    opcoes: [...new Set((Array.isArray(g.opcoes) ? g.opcoes : []).map((o) => txt(o, 30)).filter(Boolean))].slice(0, 20),
+  })).filter((g) => g.nome && g.opcoes.length).slice(0, 3);
+}
 function lerProduto(b) {
   const p = {
+    sku: txt(b.sku, 40),
+    marca: txt(b.marca, 60),
+    variacoes: lerVariacoes(b.variacoes),
     esgotado: String(b.esgotado) === "true",
     estoque: estoqueDe(b.estoque),
     nome: txt(b.nome, 90),
@@ -279,6 +294,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   const lojaPublica = (l) => ({
     slug: l.slug, nome: l.nome, cidade: l.cidade, categoria: l.categoria, whatsapp: soPeloSite(l) ? null : l.whatsapp, desde: l.criadaEm,
     soPeloSite: soPeloSite(l),
+    instagram: l.instagram ?? "",
+    telefone: soPeloSite(l) ? "" : l.telefone ?? "", // parceiro vende só pelo site: sem telefone público
     logo: l.logo ?? null, cor: l.cor ?? null, sobre: l.sobre ?? "", entrega: l.entrega ?? null,
     horario: l.horario ?? "", bairrosAtendidos: l.bairrosAtendidos ?? "", prazoEntrega: l.prazoEntrega ?? "",
     modeloCobranca: l.modeloCobranca ?? "mensalidade",
@@ -289,6 +306,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     id: `l-${p.id}`, nome: p.nome, descricao: p.descricao, dept: p.dept, loja: "local",
     lojaId: l.id,
     lojaSlug: l.slug, lojaNome: l.nome, lojaLogo: l.logo ?? null, cidade: l.cidade, whatsapp: soPeloSite(l) ? null : l.whatsapp,
+    marca: p.marca ?? "", variacoes: p.variacoes ?? [], // variações cadastradas pela loja (sem opções inventadas)
     soPeloSite: soPeloSite(l),
     preco: p.preco, precoAntigo: p.precoAntigo, fotos: p.fotos, nota: 0, vendidos: 0, entrega: l.entrega ?? null,
     disponibilidade: p.disponibilidade ?? "consulte", horario: l.horario ?? "",
@@ -346,6 +364,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   // Os dados do cliente servem só para a loja combinar o pedido e ficam 12 meses (LGPD: o necessário).
   const DIAS_GUARDA_PEDIDOS = 365;
   const ETAPAS = ["novo", "atendimento", "vendido", "cancelado"];
+  // Situação da entrega, separada do pagamento (status) e do atendimento (etapa).
+  const ENVIOS = ["aguardando", "preparando", "pronto", "saiu", "entregue", "retirado"];
   const limitePedido = new S.Limitador({ maximo: 20, janelaMs: 10 * 60_000 });
   function limparPedidosVencidos() {
     const limite = agora() - DIAS_GUARDA_PEDIDOS * DIA;
@@ -736,6 +756,24 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
         ? { codigo: c.codigo, percentual: c.percentual, preco: precoComDesconto(precoMensalOficial(banco), c.percentual), fim: c.fim } : null,
     };
   }
+  // Financeiro do mês para a loja: o que vendeu, o que entrou pelo site (Mercado Pago, direto na conta dela),
+  // o que está aguardando pagamento, reembolsos e, só para parceiros, as comissões da CIT pelo livro.
+  function financeiroLoja(loja, pedidos) {
+    const t = agora(), br = new Date(t - 3 * 60 * 60 * 1000);
+    const inicioMes = Date.UTC(br.getUTCFullYear(), br.getUTCMonth(), 1) + 3 * 60 * 60 * 1000;
+    const quando = (p) => Date.parse(p.vendidoEm ?? p.atualizadoEm ?? p.criadoEm);
+    const soma = (lista) => reais2(lista.reduce((s, p) => s + (p.valorTotal || 0), 0));
+    const site = pedidos.filter((p) => p.origem !== "whatsapp");
+    const vendas = pedidos.filter((p) => p.etapa !== "cancelado" && (p.origem === "whatsapp" ? p.etapa === "vendido" : p.status === "approved") && quando(p) >= inicioMes);
+    const livro = resumoLivro(banco.d.lancamentos ?? [], { lojaId: loja.id, desde: inicioMes });
+    return {
+      vendasMes: { qtd: vendas.length, valor: soma(vendas) },
+      recebidoSiteMes: soma(site.filter((p) => p.status === "approved" && quando(p) >= inicioMes)),
+      aguardandoPagamento: soma(site.filter((p) => ["pending", "in_process"].includes(p.status))),
+      reembolsadoMes: soma(site.filter((p) => ["refunded", "charged_back"].includes(p.status) && Date.parse(p.atualizadoEm ?? p.criadoEm) >= inicioMes)),
+      comissaoMes: loja.modeloCobranca === "comissao_fixa" ? reais2(livro.comissao + livro.reembolso + livro.chargeback) : null,
+    };
+  }
   function painelDe(loja) {
     const t = agora();
     const { senhaHash, mpConta, mpOauth, ...dados } = loja;
@@ -744,6 +782,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       loja: { ...dados, mpConectado: Boolean(mpConta) },
       pedidos: pedidos.slice(0, 200),
       resumo: resumoDe(loja, pedidos),
+      financeiro: financeiroLoja(loja, pedidos),
       cupons: (banco.d.cupons ?? []).filter((c) => c.lojaId === loja.id).map(cupomPublico),
       status: statusLoja(loja, t),
       diasTeste: Math.max(0, Math.ceil((Date.parse(loja.testeAte) - t) / DIA)),
@@ -859,6 +898,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       horario: b.horario === undefined ? req.loja.horario ?? "" : txt(b.horario, 120),
       bairrosAtendidos: b.bairrosAtendidos === undefined ? req.loja.bairrosAtendidos ?? "" : txt(b.bairrosAtendidos, 300),
       prazoEntrega: b.prazoEntrega === undefined ? req.loja.prazoEntrega ?? "" : txt(b.prazoEntrega, 120),
+      telefone: b.telefone === undefined ? req.loja.telefone ?? "" : txt(b.telefone, 20).replace(/[^\d ()+-]/g, ""),
+      instagram: b.instagram === undefined ? req.loja.instagram ?? "" : txt(b.instagram, 40).replace(/^@|^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/[^\w.]/g, ""),
       mpEmail: b.mpEmail === undefined ? req.loja.mpEmail ?? null : (txt(b.mpEmail, 120).toLowerCase() || null),
       mpChavePix: b.mpChavePix === undefined ? req.loja.mpChavePix ?? null : (txt(b.mpChavePix, 120) || null),
       // Sem o campo (ex.: formulário de aparência), mantém o que já estava.
@@ -1086,9 +1127,20 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   app.patch("/api/painel/pedidos/:id", exigirLoja, (req, res) => {
     const p = (banco.d.pedidos ?? []).find((x) => x.id === req.params.id && x.lojaId === req.loja.id);
     if (!p) return erro(res, 404, "Pedido não encontrado.");
-    if (!ETAPAS.includes(req.body?.etapa)) return erro(res, 400, "Situação inválida.");
+    const { etapa, envio } = req.body ?? {};
+    if (etapa === undefined && envio === undefined) return erro(res, 400, "Informe a situação do atendimento ou da entrega.");
+    if (etapa !== undefined && !ETAPAS.includes(etapa)) return erro(res, 400, "Situação inválida.");
+    if (envio !== undefined && !ENVIOS.includes(envio)) return erro(res, 400, "Situação da entrega inválida.");
+    // Histórico: cada mudança de atendimento ou de entrega fica registrada no pedido.
+    const mudar = (campo, para) => {
+      if (para === undefined || (p[campo] ?? (campo === "envio" ? "aguardando" : "novo")) === para) return;
+      (p.historico ??= []).push({ em: iso(), campo, de: p[campo] ?? null, para });
+      p[campo] = para;
+    };
     const anterior = p.etapa;
-    Object.assign(p, { etapa: req.body.etapa, atualizadoEm: iso() });
+    mudar("etapa", etapa);
+    mudar("envio", envio);
+    p.atualizadoEm = iso();
     if (p.etapa === "vendido" && anterior !== "vendido") p.vendidoEm = iso();
     if (p.etapa === "vendido") moverEstoque(req.loja, p, 1);
     if (p.etapa === "cancelado") moverEstoque(req.loja, p, -1);
@@ -1101,13 +1153,13 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const cel = (v) => { const t = String(v ?? ""); return `"${(/^[=+\-@\t\r]/.test(t) ? `'${t}` : t).replace(/"/g, '""')}"`; };
     const ETAPA = { novo: "Novo", atendimento: "Em atendimento", vendido: "Vendido", cancelado: "Cancelado" };
     // Uma linha por produto; o código do pedido agrupa as linhas de um mesmo carrinho.
-    const linhas = [["Data", "Pedido", "Origem", "Pagamento", "Situação", "Produto", "Opções", "Qtd", "Valor", "Total do pedido", "Frete", "Cliente", "WhatsApp", "Receber", "Endereço", "Mapa", "Observação"]];
+    const linhas = [["Data", "Pedido", "Origem", "Pagamento", "Situação", "Produto", "Opções", "Qtd", "Valor", "Total do pedido", "Frete", "Entrega (situação)", "Cliente", "WhatsApp", "Receber", "Endereço", "Mapa", "Observação"]];
     const virgula = (n) => String(Math.round(n * 100) / 100).replace(".", ",");
     for (const p of pedidosDa(req.loja)) {
       const c = p.comprador ?? {};
       for (const i of itensDo(p)) {
         linhas.push([new Date(p.criadoEm).toLocaleString("pt-BR", { timeZone: "America/Fortaleza" }), p.id, p.origem === "whatsapp" ? "Pedido no WhatsApp" : "Pago no site",
-          p.origem === "whatsapp" ? "" : p.status, ETAPA[p.etapa ?? "novo"], i.nome, i.observacao, i.quantidade, virgula(i.preco * i.quantidade), virgula(p.valorTotal), p.entrega ? virgula(p.entrega.valor) : "",
+          p.origem === "whatsapp" ? "" : p.status, ETAPA[p.etapa ?? "novo"], i.nome, i.observacao, i.quantidade, virgula(i.preco * i.quantidade), virgula(p.valorTotal), p.entrega ? virgula(p.entrega.valor) : "", p.envio ?? "aguardando",
           c.nome, c.whatsapp, c.receber === "entrega" ? "Entrega" : "Retirada", c.endereco, p.entrega ? mapaDe(p.entrega) : "", c.observacao]);
       }
     }
@@ -1908,47 +1960,21 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       x.prazoEntrega && `Prazo de entrega informado: ${x.prazoEntrega}`,
     ].filter(Boolean).map(attr).join(" · ") : "";
 
+    // Opções do pedido: só as variações que a loja cadastrou (antes eram tamanhos e cores genéricos para qualquer produto).
     let seletoresVariacoes = "";
     if (local) {
-      const nomeLower = String(x.nome || "").toLowerCase();
-      const ehCalcado = x.dept === "calc" || /tenis|tênis|sapato|sandalia|sandália|chinelo|bota|chuteira/i.test(nomeLower);
-      const ehVestuario = x.dept === "moda" || /camiseta|camisa|blusa|cropped|calca|calça|shorts|bermuda|vestido|jaqueta|casaco|conjunto|saia/i.test(nomeLower);
-
-      const tamanhos = ehCalcado
-        ? ["36", "37", "38", "39", "40", "41", "42", "43", "44"]
-        : (ehVestuario ? ["P", "M", "G", "GG", "XG"] : ["Padrão / Único"]);
-
-      const modelos = ehVestuario
-        ? ["Tradicional", "Slim", "Babylook", "Oversized"]
-        : ["Padrão", "Especial"];
-
-      const cores = ["Preto", "Branco", "Azul", "Vermelho", "Cinza", "Verde", "Rosa", "Bege"];
-
+      const grupos = Array.isArray(x.variacoes) ? x.variacoes : [];
       seletoresVariacoes = `
       <div class="local-variants" id="variacoes-produto">
-        <div class="variant-title">Opções para o pedido</div>
-        ${modelos.length > 1 ? `
+        <div class="variant-title">${grupos.length ? "Opções para o pedido" : "Detalhes do pedido"}</div>
+        ${grupos.map((g) => `
         <div class="variant-group">
-          <span>Modelo / Estilo:</span>
-          <div class="chips">
-            ${modelos.map((m) => `<button type="button" class="chip-opt" data-var="modelo" data-val="${attr(m)}">${attr(m)}</button>`).join("")}
-          </div>
-        </div>` : ""}
-        <div class="variant-group">
-          <span>Tamanho:</span>
-          <div class="chips">
-            ${tamanhos.map((t) => `<button type="button" class="chip-opt" data-var="tamanho" data-val="${attr(t)}">${attr(t)}</button>`).join("")}
-          </div>
-        </div>
-        <div class="variant-group">
-          <span>Cor:</span>
-          <div class="chips">
-            ${cores.map((c) => `<button type="button" class="chip-opt" data-var="cor" data-val="${attr(c)}">${attr(c)}</button>`).join("")}
-          </div>
-        </div>
+          <span>${attr(g.nome)}:</span>
+          <div class="chips">${g.opcoes.map((o) => `<button type="button" class="chip-opt" data-var="${attr(g.nome.toLowerCase())}" data-val="${attr(o)}">${attr(o)}</button>`).join("")}</div>
+        </div>`).join("")}
         <div class="variant-group">
           <span>Observação para a loja (opcional):</span>
-          <input type="text" class="variant-obs" name="obs" placeholder="Ex: detalhes da estampa, número extra...">
+          <input type="text" class="variant-obs" name="obs" placeholder="Ex.: nome para personalizar, cor preferida, recado...">
         </div>
       </div>`;
     }

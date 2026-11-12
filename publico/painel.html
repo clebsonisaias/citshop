@@ -110,6 +110,11 @@
         <a class="btn" href="/api/painel/mercadopago/conectar">Conectar Mercado Pago</a>
       </div>
       <div class="cartoes" id="cartoes"></div>
+      <div class="box" id="blocoFinanceiro">
+        <h2>Financeiro do mês</h2>
+        <div class="cartoes" id="cartoesFinanceiro" style="margin-top:0"></div>
+        <p class="note" id="notaFinanceiro" style="font-size:13px;margin:10px 0 0"></p>
+      </div>
       <div class="box" id="proximos" hidden>
         <h2>Próximos passos</h2>
         <ul class="proximos" id="listaProximos"></ul>
@@ -167,6 +172,11 @@
         <label class="est-simples">Estoque<select name="esgotado"><option value="false">Tem estoque</option><option value="true">Esgotado</option></select></label>
         <label class="est-qtd" hidden>Quantidade em estoque <small>vazio = sem contagem</small><input name="estoque" type="number" min="0" max="99999" inputmode="numeric" placeholder="Ex.: 12"></label>
         <label>Preço antigo (R$) <small>opcional, para mostrar o desconto</small><input name="precoAntigo" inputmode="decimal" placeholder="129,90"></label>
+        <div class="dois">
+          <label>Marca <small>opcional</small><input name="marca" maxlength="60"></label>
+          <label>Código (SKU) <small>opcional, só você vê</small><input name="sku" maxlength="40" autocomplete="off"></label>
+        </div>
+        <label>Variações <small>opcional, uma por linha, no formato "Cor: Rosa, Lilás" ou "Tamanho: RN, P, M". O cliente escolhe na hora do pedido.</small><textarea name="variacoes" rows="3" maxlength="1200" placeholder="Cor: Rosa, Lilás, Amarelo&#10;Tamanho: RN, P"></textarea></label>
         <label>Descrição <small>tamanhos, cores, como entrega</small><textarea name="descricao" maxlength="1000"></textarea></label>
         <div><b style="font-size:13px">Fotos</b> <small class="note">até 4, JPG ou PNG</small>
           <div class="fotos" id="fotos" style="margin-top:8px"></div>
@@ -272,6 +282,10 @@
         </select></label>
         <label>Horário de atendimento<input name="horario" maxlength="120" placeholder="Segunda a sábado, 9h às 18h"></label>
         <label>Prazo de entrega <small>opcional; será exibido como informado pela loja</small><input name="prazoEntrega" maxlength="120" placeholder="Entrega em até 2 dias úteis"></label>
+        <div class="dois">
+          <label>Instagram <small>opcional</small><input name="instagram" maxlength="40" placeholder="@sualoja" autocomplete="off"></label>
+          <label>Telefone <small>opcional</small><input name="telefone" type="tel" inputmode="tel" maxlength="20" placeholder="(84) 3333-4444"></label>
+        </div>
         <label>Bairros atendidos <small>opcional; separe por vírgula</small><textarea name="bairrosAtendidos" maxlength="300" placeholder="Centro, Tirol, Petrópolis"></textarea></label>
         <div class="msg" id="mLoja" hidden role="status"></div>
         <button class="btn">Salvar dados</button>

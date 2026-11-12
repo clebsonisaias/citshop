@@ -61,11 +61,13 @@ window.CIT = (() => {
     const avatar = l.logo ? `<img src="${esc(l.logo)}" alt="Logo ${esc(l.nome)}">` : esc(iniciais(l.nome));
     const info = [
       l.horario && ['Horário', l.horario],
-      l.localEndereco && ['Endereço', l.localEndereco, `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${l.localEndereco}, ${l.cidade}`)}`],
+      l.localEndereco && ['Endereço', l.localEndereco, `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${l.localEndereco}, ${l.cidade}`)}`, 'Ver no mapa'],
+      l.instagram && ['Instagram', `@${l.instagram}`, `https://instagram.com/${encodeURIComponent(l.instagram)}`],
+      l.telefone && ['Telefone', l.telefone, `tel:${String(l.telefone).replace(/[^\d+]/g, '')}`],
       l.bairrosAtendidos && ['Atende', l.bairrosAtendidos],
       l.prazoEntrega && ['Prazo', l.prazoEntrega],
     ]
-      .filter(Boolean).map(([rotulo, valor, mapa]) => `<div><dt>${rotulo}</dt><dd>${esc(valor)}${mapa ? ` · <a href="${esc(mapa)}" target="_blank" rel="noopener">Ver no mapa</a>` : ''}</dd></div>`).join('');
+      .filter(Boolean).map(([rotulo, valor, link, rotuloLink]) => `<div><dt>${rotulo}</dt><dd>${link && !rotuloLink ? `<a href="${esc(link)}" target="_blank" rel="noopener">${esc(valor)}</a>` : esc(valor)}${link && rotuloLink ? ` · <a href="${esc(link)}" target="_blank" rel="noopener">${rotuloLink}</a>` : ''}</dd></div>`).join('');
     const entrega = ENTREGA[l.entrega];
     return `<section class="sellerhead loja-vitrine" aria-label="Sobre a loja" style="--loja:${cor};--loja-ink:${textoSobre(cor)}">
       <div class="lv-capa" aria-hidden="true"></div>
@@ -78,7 +80,7 @@ window.CIT = (() => {
           ${l.sobre ? `<p class="lv-sobre">${esc(l.sobre)}</p>` : ''}
           ${extra ? `<div class="lv-acoes">${extra}</div>` : ''}
         </div>
-        ${info ? `<details class="lv-info" open><summary>${l.localEndereco ? 'Horário, endereço e prazo' : 'Horário, área e prazo'}</summary><dl>${info}</dl></details>` : ''}
+        ${info ? `<details class="lv-info" open><summary>Informações da loja</summary><dl>${info}</dl></details>` : ''}
       </div>
     </section>`;
   }

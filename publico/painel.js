@@ -80,6 +80,10 @@
   // ---------- vendas e pedidos ----------
   const PAGAMENTO = { approved: 'Pago', pending: 'Aguardando pagamento', in_process: 'Pagamento em análise', rejected: 'Pagamento recusado', cancelled: 'Pagamento cancelado', refunded: 'Pagamento devolvido' };
   const ETAPA = { novo: 'Novo', atendimento: 'Em atendimento', vendido: 'Vendido', cancelado: 'Cancelado' };
+  // Entrega separada do pagamento e do atendimento: opções conforme o cliente vai receber ou retirar.
+  const ENVIO_ENTREGA = { aguardando: 'Aguardando', preparando: 'Preparando', saiu: 'Saiu para entrega', entregue: 'Entregue' };
+  const ENVIO_RETIRADA = { aguardando: 'Aguardando', preparando: 'Preparando', pronto: 'Pronto para retirar', retirado: 'Retirado' };
+  const ROTULO_ENVIO = { ...ENVIO_ENTREGA, ...ENVIO_RETIRADA };
   function renderPedidos() {
     const origem = $('fOrigem').value, etapa = $('fEtapa').value, busca = $('fBusca').value.trim().toLowerCase();
     const digitos = busca.replace(/\D/g, '');
@@ -101,7 +105,9 @@
         ${p.entrega ? `<span>Entrega ${esc(String(p.entrega.km).replace('.', ','))} km: ${p.entrega.valor ? brl.format(p.entrega.valor) : 'grátis'}</span>` : ''}
         ${c.whatsapp || p.entrega ? `<div class="acoes-pedido">${c.whatsapp ? `<a class="acao-pedido zap" href="https://wa.me/${esc(c.whatsapp)}" target="_blank" rel="noopener">Chamar no WhatsApp</a>` : ''}${p.entrega ? `<a class="acao-pedido" href="https://www.google.com/maps?q=${esc(p.entrega.lat)},${esc(p.entrega.lng)}" target="_blank" rel="noopener">Abrir no mapa</a>` : ''}</div>` : ''}
         <div class="venda-rodape"><small>${new Date(p.criadoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</small>
-          <label>Situação <select data-pedido="${esc(p.id)}" aria-label="Situação do pedido ${esc(p.id)}">${Object.entries(ETAPA).map(([k, n]) => `<option value="${k}"${(p.etapa ?? 'novo') === k ? ' selected' : ''}>${n}</option>`).join('')}</select></label></div>
+          <label>Atendimento <select data-pedido="${esc(p.id)}" aria-label="Atendimento do pedido ${esc(p.id)}">${Object.entries(ETAPA).map(([k, n]) => `<option value="${k}"${(p.etapa ?? 'novo') === k ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
+          <label>${c.receber === 'entrega' ? 'Entrega' : 'Retirada'} <select data-envio="${esc(p.id)}" aria-label="Entrega do pedido ${esc(p.id)}">${Object.entries(c.receber === 'entrega' ? ENVIO_ENTREGA : ENVIO_RETIRADA).map(([k, n]) => `<option value="${k}"${(p.envio ?? 'aguardando') === k ? ' selected' : ''}>${n}</option>`).join('')}</select></label></div>
+        ${p.historico?.length ? `<details class="hist-pedido"><summary>Histórico (${p.historico.length})</summary><ul>${p.historico.map((h) => `<li>${new Date(h.em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}: ${h.campo === 'envio' ? 'entrega' : 'atendimento'} → ${esc(ROTULO_ENVIO[h.para] ?? ETAPA[h.para] ?? h.para)}</li>`).join('')}</ul></details>` : ''}
       </div>`;
     }).join('') : `<p class="note" style="font-size:13px;margin:0">${(estado.pedidos ?? []).length ? 'Nenhum pedido com esses filtros.' : 'Nenhum pedido ainda. Quando um cliente pagar pelo site ou pedir pelo seu WhatsApp, ele aparece aqui.'}</p>`;
   }
@@ -120,10 +126,11 @@
     catch (err) { mostrarMsg($('mCupom'), err.message); }
   });
   $('pedidos').addEventListener('change', async (e) => {
-    const sel = e.target.closest('select[data-pedido]');
+    const sel = e.target.closest('select[data-pedido], select[data-envio]');
     if (!sel) return;
     sel.disabled = true;
-    try { mostrar(await api(`/api/painel/pedidos/${encodeURIComponent(sel.dataset.pedido)}`, { metodo: 'PATCH', json: { etapa: sel.value } })); }
+    const id = sel.dataset.pedido ?? sel.dataset.envio;
+    try { mostrar(await api(`/api/painel/pedidos/${encodeURIComponent(id)}`, { metodo: 'PATCH', json: sel.dataset.pedido ? { etapa: sel.value } : { envio: sel.value } })); }
     catch (err) { mostrarMsg($('mPedidos'), err.message); sel.disabled = false; }
   });
 
@@ -248,6 +255,24 @@
     ].join('');
     // Loja que vende pelo site e ainda não conectou o Mercado Pago: aviso grande no topo do Início. Depois de conectar, fica só na aba Loja.
     $('avisoMp').hidden = !(estado.loja.modeloCobranca === 'comissao_fixa' && !estado.loja.mpConectado);
+    // Financeiro do mês: parceiro vê o que entrou pelo site e a comissão da CIT; assinante vê vendas e a mensalidade.
+    const fin = estado.financeiro;
+    if (fin) {
+      const parceiro = estado.loja.modeloCobranca === 'comissao_fixa';
+      const c = (rotulo, valor, sub) => `<div class="cartao"><span>${rotulo}</span><b>${valor}</b><small>${sub}</small></div>`;
+      $('cartoesFinanceiro').innerHTML = [
+        c('Vendas no mês', brl.format(fin.vendasMes.valor), `${fin.vendasMes.qtd} ${fin.vendasMes.qtd === 1 ? 'venda' : 'vendas'}`),
+        ...(parceiro ? [
+          c('Recebido pelo site', brl.format(fin.recebidoSiteMes), 'direto na sua conta Mercado Pago'),
+          c('Aguardando pagamento', brl.format(fin.aguardandoPagamento), 'Pix ou cartão em análise'),
+          c('Reembolsado', brl.format(fin.reembolsadoMes), 'no mês'),
+          c('Comissão CIT', brl.format(fin.comissaoMes ?? 0), 'R$ 1 por unidade vendida'),
+        ] : [c('Mensalidade', estado.plano?.precoContratado ? brl.format(estado.plano.precoContratado) : brl.format(estado.preco), estado.plano?.beneficio ? `com ${estado.plano.beneficio.codigo}` : 'por mês')]),
+      ].join('');
+      $('notaFinanceiro').textContent = parceiro
+        ? 'Os pagamentos pelo site caem na sua conta do Mercado Pago; a CIT recebe só a comissão por unidade.'
+        : 'Lojas de assinatura não pagam comissão sobre as vendas.';
+    }
     $('abaNovos').hidden = !r.novos;
     $('abaNovos').textContent = r.novos;
     const rank = (lista, texto) => lista.length ? lista.map((i) => `<li><span>${esc(i.nome)}</span><b>${texto(i)}</b></li>`).join('') : '<li class="vazio">Ainda sem dados.</li>';
@@ -316,7 +341,7 @@
     $('pBeneficio').hidden = !pl.beneficio;
     $('pBeneficio').textContent = pl.beneficio ? `Benefício ${pl.beneficio.codigo}: ${pl.beneficio.percentual}% de desconto na mensalidade, a partir da primeira cobrança e enquanto a assinatura continuar ativa.` : '';
     const f = $('fLoja');
-    for (const k of ['nome', 'responsavel', 'whatsapp', 'cidade', 'categoria', 'entrega', 'horario', 'bairrosAtendidos', 'prazoEntrega']) f[k].value = s.loja[k] ?? '';
+    for (const k of ['nome', 'responsavel', 'whatsapp', 'cidade', 'categoria', 'entrega', 'horario', 'bairrosAtendidos', 'prazoEntrega', 'instagram', 'telefone']) f[k].value = s.loja[k] ?? '';
     $('mpStatus').textContent = s.loja.mpConectado ? 'Conta Mercado Pago conectada: as vendas pelo site caem nela.' : 'Nenhuma conta conectada ainda.';
     $('mpConectar').textContent = s.loja.mpConectado ? 'Conectar outra conta' : 'Conectar Mercado Pago';
     $('mpDesconectar').hidden = !s.loja.mpConectado;
@@ -341,6 +366,7 @@
       ...estado.loja, cor: $('vCor').value, sobre: $('vSobre').value,
       localEndereco: estado.loja.local?.publico ? estado.loja.local.endereco : '', // como o cliente vê (só se a loja escolheu mostrar)
       horario: f.horario.value, bairrosAtendidos: f.bairrosAtendidos.value, prazoEntrega: f.prazoEntrega.value,
+      instagram: f.instagram.value.replace(/^@/, ''), telefone: estado.loja.modeloCobranca === 'comissao_fixa' ? '' : f.telefone.value, // como o cliente vê
     }).replace('class="sellerhead', 'id="amostra" class="sellerhead');
   };
   $('vCor').addEventListener('input', amostra);
@@ -405,7 +431,7 @@
     const ps = estado.produtos;
     $('lista').innerHTML = ps.length ? ps.map((p) => `<div class="item ${p.ativo && !p.bloqueado ? '' : 'off'}">
         <img src="${esc(p.fotos[0])}" alt="">
-        <div><b>${esc(p.nome)}</b><br><small class="note">${brl.format(p.preco)} · ${esc(D[p.dept]?.n ?? '')} · ${esc(ROTULO_DISPONIBILIDADE[p.disponibilidade] ?? ROTULO_DISPONIBILIDADE.consulte)}${p.bloqueado ? ' · ocultado pela CIT Shopping' : p.ativo ? '' : ' · pausado'} · ${p.cliquesContato ?? 0} cliques no WhatsApp</small>
+        <div><b>${esc(p.nome)}</b><br><small class="note">${brl.format(p.preco)} · ${esc(D[p.dept]?.n ?? '')} · ${esc(ROTULO_DISPONIBILIDADE[p.disponibilidade] ?? ROTULO_DISPONIBILIDADE.consulte)}${p.bloqueado ? ' · ocultado pela CIT Shopping' : p.ativo ? '' : ' · pausado'}${p.marca ? ` · ${esc(p.marca)}` : ''}${p.sku ? ` · SKU ${esc(p.sku)}` : ''}${p.variacoes?.length ? ` · ${esc(p.variacoes.map((g) => g.nome).join(' e '))}` : ''}</small>
           ${linhaEstoque(p)}</div>
         <div class="acoes">
           <button class="btn sec" data-ed="${p.id}">Editar</button>
@@ -432,6 +458,9 @@
     if (p) for (const k of ['nome', 'dept', 'descricao', 'disponibilidade']) f[k].value = p[k] ?? 'consulte';
     f.esgotado.value = p?.esgotado ? 'true' : 'false';
     f.estoque.value = p?.estoque ?? '';
+    f.marca.value = p?.marca ?? '';
+    f.sku.value = p?.sku ?? '';
+    f.variacoes.value = (p?.variacoes ?? []).map((g) => `${g.nome}: ${g.opcoes.join(', ')}`).join('\n');
     if (p) { f.preco.value = String(p.preco).replace('.', ','); f.precoAntigo.value = p.precoAntigo ? String(p.precoAntigo).replace('.', ',') : ''; }
     manter = p ? [...p.fotos] : [];
     novas = [];

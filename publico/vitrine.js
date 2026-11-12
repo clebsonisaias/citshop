@@ -262,50 +262,27 @@ import { filtrarCatalogo } from './catalogo.js';
       const disponibilidade = DISPONIBILIDADE[x.disponibilidade] ?? DISPONIBILIDADE.consulte;
       $('mnote').textContent = `Vendido por ${x.lojaNome}, ${x.cidade}${x.entrega ? ` · ${window.CIT.textoEntrega(x.entrega)}` : ''} · ${disponibilidade}. ${x.compraOnline ? 'Pague aqui com Pix ou cartão; a loja combina a entrega com você pelo WhatsApp.' : x.soPeloSite ? 'Compra pelo site com Pix ou cartão disponível em breve.' : 'Combine pagamento e entrega direto com a loja.'}`;
 
-      const nomeLower = String(x.nome || '').toLowerCase();
-      const ehCalcado = x.dept === 'calc' || /tenis|tênis|sapato|sandalia|sandália|chinelo|bota|chuteira/i.test(nomeLower);
-      const ehVestuario = x.dept === 'moda' || /camiseta|camisa|blusa|cropped|calca|calça|shorts|bermuda|vestido|jaqueta|casaco|conjunto|saia/i.test(nomeLower);
-      const tamanhos = ehCalcado ? ['36', '37', '38', '39', '40', '41', '42', '43', '44'] : (ehVestuario ? ['P', 'M', 'G', 'GG', 'XG'] : ['Padrão / Único']);
-      const modelos = ehVestuario ? ['Tradicional', 'Slim', 'Babylook', 'Oversized'] : ['Padrão'];
-      const cores = ['Preto', 'Branco', 'Azul', 'Vermelho', 'Cinza', 'Verde', 'Rosa', 'Bege'];
-
+      // Opções do pedido: só as variações cadastradas pela loja (sem tamanhos e cores inventados).
+      const grupos = Array.isArray(x.variacoes) ? x.variacoes : [];
       $('mvariants').hidden = false;
       $('mvariants').innerHTML = `
-        <div class="variant-title">Opções para o pedido</div>
-        ${modelos.length > 1 ? `
+        <div class="variant-title">${grupos.length ? 'Opções para o pedido' : 'Detalhes do pedido'}</div>
+        ${grupos.map((g) => `
         <div class="variant-group">
-          <span>Modelo / Estilo:</span>
-          <div class="chips">
-            ${modelos.map((m) => `<button type="button" class="chip-opt" data-var="modelo" data-val="${esc(m)}">${esc(m)}</button>`).join('')}
-          </div>
-        </div>` : ''}
-        <div class="variant-group">
-          <span>Tamanho:</span>
-          <div class="chips">
-            ${tamanhos.map((t) => `<button type="button" class="chip-opt" data-var="tamanho" data-val="${esc(t)}">${esc(t)}</button>`).join('')}
-          </div>
-        </div>
-        <div class="variant-group">
-          <span>Cor:</span>
-          <div class="chips">
-            ${cores.map((c) => `<button type="button" class="chip-opt" data-var="cor" data-val="${esc(c)}">${esc(c)}</button>`).join('')}
-          </div>
-        </div>
+          <span>${esc(g.nome)}:</span>
+          <div class="chips">${g.opcoes.map((o) => `<button type="button" class="chip-opt" data-var="${esc(g.nome.toLowerCase())}" data-val="${esc(o)}">${esc(o)}</button>`).join('')}</div>
+        </div>`).join('')}
         <div class="variant-group">
           <span>Observação para a loja (opcional):</span>
-          <input type="text" class="variant-obs" id="mvar-obs" placeholder="Ex: detalhes da estampa, número extra...">
+          <input type="text" class="variant-obs" id="mvar-obs" placeholder="Ex.: nome para personalizar, cor preferida, recado...">
         </div>
       `;
 
       function atualizarLinkModal() {
         const url = new URL(baseContato, location.origin);
-        const mod = $('mvariants').querySelector('.chip-opt[data-var="modelo"].active')?.dataset.val || '';
-        const tam = $('mvariants').querySelector('.chip-opt[data-var="tamanho"].active')?.dataset.val || '';
-        const cor = $('mvariants').querySelector('.chip-opt[data-var="cor"].active')?.dataset.val || '';
-        const obs = $('mvar-obs')?.value?.trim() || '';
-        if (mod) url.searchParams.set('modelo', mod);
-        if (tam) url.searchParams.set('tamanho', tam);
-        if (cor) url.searchParams.set('cor', cor);
+        // Variações escolhidas + observação vão juntas no recado do WhatsApp.
+        const escolhas = [...$('mvariants').querySelectorAll('.chip-opt.active')].map((c) => `${c.dataset.var}: ${c.dataset.val}`);
+        const obs = [...escolhas, $('mvar-obs')?.value?.trim()].filter(Boolean).join('; ');
         if (obs) url.searchParams.set('obs', obs);
         $('mbuy').href = url.pathname + url.search;
       }
