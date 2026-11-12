@@ -13,3 +13,11 @@ test("campanha só existe no próprio dia da data dupla (horário de Brasília)"
   assert.equal(em("2027-02-02T22:00:00-03:00"), "2.2", "22h em Brasília já é dia 3 em UTC");
   assert.equal(em("2027-11-11T08:00:00-03:00"), "11.11");
 });
+
+import { proximaCampanha } from "../servidor/campanha.js";
+test("contagem: próxima data dupla e dias que faltam (0 no dia)", () => {
+  assert.deepEqual(proximaCampanha(Date.parse("2026-11-12T12:00:00-03:00")), { nome: "12.12", dias: 30 });
+  assert.deepEqual(proximaCampanha(Date.parse("2026-12-12T20:00:00-03:00")), { nome: "12.12", dias: 0 });
+  assert.deepEqual(proximaCampanha(Date.parse("2026-12-13T08:00:00-03:00")), { nome: "1.1", dias: 19 });
+  assert.deepEqual(proximaCampanha(Date.parse("2027-01-31T08:00:00-03:00")), { nome: "2.2", dias: 2 });
+});

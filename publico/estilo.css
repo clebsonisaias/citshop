@@ -657,7 +657,7 @@ footer.site a:hover { text-decoration: underline; }
 
 
 /* Compra pelo site (comprar.js): formulário em <dialog> e aviso de volta do Mercado Pago */
-dialog.compra { width: min(460px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); border: 0; border-radius: 18px; padding: 0; color: var(--ink); box-shadow: 0 24px 60px -20px rgba(3,48,58,.45); }
+dialog.compra { width: min(460px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); border: 0; border-radius: 18px; padding: 0; color: var(--ink); box-shadow: 0 24px 60px -20px rgba(0,0,0,.35); }
 dialog.compra::backdrop { background: rgba(3, 48, 58, .55); }
 .compra-form { display: grid; gap: 12px; padding: 20px; }
 .compra-topo { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
@@ -700,3 +700,27 @@ dialog.compra::backdrop { background: rgba(3, 48, 58, .55); }
 .venda-rodape label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
 .venda-rodape select { min-height: 40px; font-size: 15px; }
 @media (max-width: 640px) { .pedidos-filtros { grid-template-columns: 1fr; } }
+/* Sino "Avisar quando baixar o preço" (alerta.js) */
+.alertabtn { display: flex; justify-content: center; align-items: center; gap: 8px; width: 100%; min-height: 48px; margin-top: 10px; padding: 12px; border: 1.5px dashed var(--brand); border-radius: 12px; background: #F2F9F8; color: var(--deep); font: 700 15px var(--font); cursor: pointer; }
+.alertabtn .ic { stroke: currentColor; fill: none; stroke-width: 2; }
+.alertabtn:hover { background: #E6F4F2; }
+/* Favoritos (favoritos.js) e contagem para a próxima data dupla */
+.favbtn { display: flex; justify-content: center; align-items: center; gap: 8px; width: 100%; min-height: 48px; margin-top: 10px; padding: 12px; border: 1.5px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink); font: 700 15px var(--font); cursor: pointer; }
+.favbtn .ic { stroke: #C8323A; fill: none; stroke-width: 2; }
+.favbtn[aria-pressed="true"] { border-color: #C8323A; background: #FFF4F4; }
+.favbtn[aria-pressed="true"] .ic { fill: #C8323A; }
+.contagem { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 14px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px; background: #F7FBFA; font-size: 14px; }
+.contagem-dias { font-weight: 700; color: var(--deep); }
+.contagem button { border: 0; background: none; color: var(--brand); font: 700 14px var(--font); min-height: 44px; padding: 0 4px; cursor: pointer; text-decoration: underline; }
+/* Página /cupons */
+.cupons-pg { padding-block: 24px 48px; max-width: 860px; }
+.cupons-pg h1 { color: var(--deep); margin: 0 0 6px; }
+.cupons-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; margin-top: 18px; }
+.cupom { border: 1.5px dashed var(--brand); border-radius: 16px; padding: 16px; display: grid; gap: 10px; background: #fff; }
+.cupom-loja { font-size: 13px; font-weight: 700; color: var(--brand); }
+.cupom-desc { margin: 0; font-weight: 700; font-size: 16px; }
+.cupom-codigo { display: flex; gap: 8px; align-items: stretch; }
+.cupom-codigo code { flex: 1; display: grid; place-items: center; font: 800 18px/1 var(--font); letter-spacing: .06em; background: #F2F9F8; border-radius: 10px; padding: 10px; color: var(--deep); user-select: all; }
+.cupom-codigo button { border: 0; border-radius: 10px; background: var(--deep); color: #fff; font: 700 14px var(--font); padding: 0 14px; min-height: 46px; cursor: pointer; }
+.cupom-rodape { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.cupom-rodape a { color: var(--deep); font-weight: 700; }

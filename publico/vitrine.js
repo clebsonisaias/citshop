@@ -7,7 +7,7 @@ import { filtrarCatalogo } from './catalogo.js';
   const DISPONIBILIDADE = { disponivel: 'Disponível, informado pela loja', 'sob-encomenda': 'Sob encomenda', consulte: 'Consulte disponibilidade' };
   const $ = (id) => document.getElementById(id);
   const num = new Intl.NumberFormat('pt-BR');
-  let P = [], LOJAS = [], CAMPANHA = null; // CAMPANHA: data especial em andamento (ex.: "12.12"), vem do servidor
+  let P = [], LOJAS = [], CAMPANHA = null, PROXIMA = null, CUPONS = []; // CAMPANHA: data especial em andamento (ex.: "12.12"), vem do servidor
 
   const off = (x) => (x.precoAntigo > x.preco ? Math.round((1 - x.preco / x.precoAntigo) * 100) : 0);
   // Quanto (em %) caiu desde o maior preço que a CIT Shopping viu nos últimos dias.
@@ -47,9 +47,11 @@ import { filtrarCatalogo } from './catalogo.js';
     const selo = x.selo === '11.11' || x.superOferta ? `<div class="ship" style="color:#e63946;font-weight:700">🔥 Super Oferta${CAMPANHA ? ` ${esc(CAMPANHA)}` : ''}</div>` : (x.menor30 && x.loja !== 'local' ? '<div class="ship"><b>Menor preço em 30 dias</b></div>' : '');
     const tags = [];
     const temFrete = x.freteGratis || x.preco >= 79 || x.loja === 'local' || /frete gr[aá]tis/i.test(x.nome);
-    const temCupom = x.cupom || (off(x) >= 30) || x.superOferta || x.selo === '11.11';
+    // Selo de cupom só quando existe cupom válido cadastrado para a loja do produto (página /cupons).
+    const mesmaLoja = (a, b) => a === b || (['ml', 'mercado-livre'].includes(a) && ['ml', 'mercado-livre'].includes(b));
+    const temCupom = CUPONS.some((c) => mesmaLoja(c.loja, x.loja) && (x.loja !== 'local' || c.lojaSlug === x.lojaSlug));
     if (temFrete) tags.push('<span class="tag-frete">🚚 Frete Grátis</span>');
-    if (temCupom) tags.push('<span class="tag-cupom">🎟️ Cupom Ativo</span>');
+    if (temCupom) tags.push('<span class="tag-cupom">🎟️ Tem cupom</span>');
     const tagsHtml = tags.length ? `<div class="tags-row">${tags.join('')}</div>` : '';
 
     // Na página da própria loja o card fica enxuto: quem vende e como entrega já estão no cabeçalho.
@@ -237,6 +239,9 @@ import { filtrarCatalogo } from './catalogo.js';
     // Link próprio do produto: o servidor monta a prévia (título, preço e foto) que o WhatsApp mostra.
     const link = `${location.origin}/p/${encodeURIComponent(x.id)}`;
     // Comprar no site (Pix/cartão) só em lojas que pagam por venda e conectaram o Mercado Pago (comprar.js).
+    $('malerta').dataset.alerta = x.id; // sino "baixou de preço" (alerta.js)
+    $('mfavorito').dataset.favorito = x.id; // favoritos (favoritos.js)
+    window.CITFavoritos?.pintar();
     $('mcomprar').hidden = !(local && x.compraOnline);
     $('mcomprar').dataset.comprar = x.id;
     $('mcomprar').dataset.entrega = x.entrega ?? '';
@@ -348,6 +353,23 @@ import { filtrarCatalogo } from './catalogo.js';
   }
   function fecharMega() { $('mega').hidden = true; $('allbtn').setAttribute('aria-expanded', 'false'); }
 
+  // Contagem discreta para a próxima data dupla, com os favoritos salvos neste aparelho.
+  function montarContagem() {
+    if (!PROXIMA) return;
+    const favoritos = window.CITFavoritos?.ler() ?? [];
+    const quando = PROXIMA.dias === 0 ? `É hoje o ${PROXIMA.nome}!` : `Faltam ${PROXIMA.dias} ${PROXIMA.dias === 1 ? 'dia' : 'dias'} para o ${PROXIMA.nome}`;
+    $('contagem').innerHTML = `<span class="contagem-dias">${esc(quando)}</span><button type="button" id="verFavoritos">Seus favoritos (${favoritos.length})</button>`;
+    $('contagem').hidden = false;
+  }
+  document.addEventListener('favoritos', montarContagem);
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#verFavoritos')) return;
+    const ids = window.CITFavoritos?.ler() ?? [];
+    const lista = P.filter((x) => ids.includes(x.id));
+    showResults(`Seus favoritos para o ${PROXIMA?.nome ?? 'próximo dia de ofertas'}`, lista,
+      lista.length ? '' : '<p class="empty">Toque em "Salvar nos favoritos" nos produtos para montar sua lista. Ela fica guardada neste aparelho.</p>');
+  });
+
   function montarHome() {
     $('sellers').innerHTML = LOJAS.slice(0, 12).map((l) => `<a class="seller" href="/loja/${esc(l.slug)}" data-seller="${esc(l.slug)}" style="border-top:4px solid ${esc(l.cor || '#036271')}">
         <div class="top"><span class="avatar" style="background:${esc(l.cor || '#036271')};color:${window.CIT.textoSobre(l.cor || '#036271')}">${l.logo ? `<img src="${esc(l.logo)}" alt="">` : esc(iniciais(l.nome))}</span><span><b>${esc(l.nome)}</b><small>${esc(l.categoria || 'Loja local')}</small></span></div>
@@ -430,7 +452,7 @@ import { filtrarCatalogo } from './catalogo.js';
 
   fetch('/api/vitrine')
     .then((r) => r.json())
-    .then((d) => { P = d.produtos.map((x) => ({ ...x, categoriaNome: D[x.dept]?.n ?? x.dept })); LOJAS = d.lojas; CAMPANHA = d.campanha ?? null;
+    .then((d) => { P = d.produtos.map((x) => ({ ...x, categoriaNome: D[x.dept]?.n ?? x.dept })); LOJAS = d.lojas; CAMPANHA = d.campanha ?? null; PROXIMA = d.proximaCampanha ?? null; CUPONS = d.cupons ?? []; montarContagem();
       // Faixa "Especial" só no dia da data dupla (12/12, 1/1...); nos outros dias fica escondida.
       if (CAMPANHA) { $('seloCampanha').textContent = `Especial ${CAMPANHA}`; $('seloCampanha').hidden = false; $('faixaCampanha').hidden = false; }
       montarHome(); rota();

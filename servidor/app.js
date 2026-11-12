@@ -22,7 +22,7 @@ import { RadarOfertas } from "./motor-ofertas/radar.js";
 import { ConectorInstagram } from "./integracoes/instagram/conector.js";
 import { GeradorCardInstagram } from "./integracoes/instagram/gerador-card.js";
 import { aplicarCatalogo } from "./catalogo-loja.js";
-import { campanhaAtual } from "./campanha.js";
+import { campanhaAtual, proximaCampanha } from "./campanha.js";
 import { ConectorTelegram } from "./integracoes/telegram/conector.js";
 
 export const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -265,6 +265,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     return {
       atualizadoEm: af.atualizadoEm ?? null,
       campanha: campanhaAtual(agora()),
+      proximaCampanha: proximaCampanha(agora()),
+      cupons: cuponsAtivos().map(cupomPublico),
       lojas: [...visiveis.values()].map(lojaPublica),
       produtos: ordenarVitrine([...locais, ...af.produtos.map(produtoAfiliado)]),
     };
@@ -337,6 +339,123 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     res.json({ ok: true, pedido: pedido.id, url: `https://wa.me/${encodeURIComponent(x.whatsapp)}?text=${encodeURIComponent(mensagem)}` });
   });
 
+  // ---------- cupons ----------
+  // Cupons de verdade: o admin cadastra os das lojas parceiras (Shopee, Amazon, Mercado Livre, SHEIN) e cada loja
+  // local cadastra os dela no painel. Vale até o fim do dia da validade (Brasília).
+  const LOJAS_CUPOM = ["shopee", "amazon", "mercado-livre", "shein"];
+  const hojeBR = () => new Date(agora() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const cuponsAtivos = () => (banco.d.cupons ?? [])
+    .filter((c) => c.validoAte >= hojeBR() && (c.loja !== "local" || lojaVisivel(banco.loja(c.lojaId), agora())))
+    .sort((x, y) => x.validoAte.localeCompare(y.validoAte));
+  function cupomPublico(c) {
+    const l = c.loja === "local" ? banco.loja(c.lojaId) : null;
+    return { id: c.id, codigo: c.codigo, descricao: c.descricao, validoAte: c.validoAte, loja: c.loja,
+      lojaNome: l?.nome ?? NOME_LOJA[c.loja] ?? "Loja parceira", lojaSlug: l?.slug ?? null, link: c.link ?? (l ? `/loja/${l.slug}` : null) };
+  }
+  function lerCupom(b = {}) {
+    const cupom = {
+      codigo: txt(b.codigo, 40).toUpperCase().replace(/\s+/g, ""), descricao: txt(b.descricao, 140),
+      validoAte: /^\d{4}-\d{2}-\d{2}$/.test(b.validoAte ?? "") ? b.validoAte : "",
+      link: /^https:\/\/[^\s"<>]+$/.test(b.link ?? "") ? String(b.link).slice(0, 300) : null,
+    };
+    if (cupom.codigo.length < 3) return { erro: "Informe o código do cupom." };
+    if (cupom.descricao.length < 3) return { erro: "Diga o que o cupom dá (ex.: 10% em laços)." };
+    if (!cupom.validoAte || cupom.validoAte < hojeBR()) return { erro: "Informe uma validade de hoje em diante." };
+    return { cupom };
+  }
+  app.get("/api/cupons", (req, res) => res.set("Cache-Control", "no-cache").json(cuponsAtivos().map(cupomPublico)));
+  app.get("/cupons", (req, res) => { semCache(res); res.sendFile(join(publico, "cupons.html")); });
+
+  // ---------- alerta "baixou de preço" ----------
+  // O cliente deixa o WhatsApp num produto; quando o preço cair abaixo do daquele dia, recebe um aviso
+  // pelo robô (WAHA) e o alerta acaba. Alertas sem queda expiram em 90 dias. O aviso traz link para cancelar.
+  const DIAS_ALERTA = 90;
+  const limiteAlerta = new S.Limitador({ maximo: 15, janelaMs: 60 * 60_000 });
+  app.post("/api/alertas", (req, res) => {
+    if (!limiteAlerta.registrar(`al|${S.ipDe(req)}`).permitido) return erro(res, 429, "Muitos alertas seguidos. Espere um pouco.");
+    const x = produtoPorId(String(req.body?.produtoId ?? ""));
+    if (!x) return erro(res, 404, "Produto não encontrado.");
+    const zap = whatsapp(req.body?.whatsapp);
+    if (!zap) return erro(res, 400, "Informe seu WhatsApp com DDD.");
+    banco.d.alertas ??= [];
+    if (banco.d.alertas.filter((a) => a.whatsapp === zap).length >= 30) return erro(res, 400, "Você já tem 30 alertas ativos. Cancele algum para criar outro.");
+    const existente = banco.d.alertas.find((a) => a.whatsapp === zap && a.produtoId === x.id);
+    if (!existente) banco.d.alertas.push({ id: randomBytes(12).toString("hex"), produtoId: x.id, produtoNome: x.nome, whatsapp: zap, precoBase: x.preco, criadoEm: iso() });
+    banco.salvar();
+    res.json({ ok: true, preco: x.preco });
+  });
+  app.get("/alertas/cancelar/:id", (req, res) => {
+    banco.d.alertas = (banco.d.alertas ?? []).filter((a) => a.id !== req.params.id);
+    banco.salvar();
+    res.set("Cache-Control", "no-store").type("html").send(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Alerta cancelado · CIT Shopping</title><link rel="stylesheet" href="/estilo.css"></head><body><main class="wrap" style="padding:48px 16px;max-width:520px"><h1 style="color:var(--deep)">Alerta cancelado</h1><p>Você não vai mais receber o aviso de queda de preço desse produto.</p><p><a class="btn" href="/">Voltar às ofertas</a></p></main></body></html>`);
+  });
+  // Roda a cada hora (servidor.js): avisa quem tem alerta de produto que baixou e limpa os vencidos.
+  async function verificarAlertas() {
+    const alertas = banco.d.alertas ?? [];
+    if (!alertas.length) return { avisados: 0 };
+    const limite = agora() - DIAS_ALERTA * DIA;
+    const ficam = [];
+    let avisados = 0;
+    for (const a of alertas) {
+      if (Date.parse(a.criadoEm) < limite) continue;
+      const x = produtoPorId(a.produtoId);
+      // Queda que vale aviso: pelo menos 1% e R$ 0,50 abaixo do preço do dia do alerta.
+      if (!x || !(x.preco <= a.precoBase * 0.99 && a.precoBase - x.preco >= 0.5)) { if (x) ficam.push(a); continue; }
+      const texto = [
+        "🔔 *Baixou de preço!*",
+        "",
+        `📦 ${x.nome}`,
+        `De ${reais(a.precoBase)} por *${reais(x.preco)}*`,
+        "",
+        `👉 ${urlPublica}/p/${encodeURIComponent(x.id)}`,
+        "",
+        `Não quer mais esse aviso? ${urlPublica}/alertas/cancelar/${a.id}`,
+      ].join("\n");
+      try {
+        await conectorWaha.enviarTexto({ chatId: a.whatsapp, texto });
+        avisados++;
+      } catch (e) {
+        log.warn?.(`[alertas] aviso de ${x.id} falhou: ${e.message}`);
+        ficam.push(a); // tenta de novo na próxima rodada
+      }
+    }
+    banco.d.alertas = ficam;
+    banco.salvar();
+    if (avisados) log.info?.(`[alertas] ${avisados} aviso(s) de queda de preço enviados`);
+    return { avisados };
+  }
+
+  // ---------- Story diário da loja local ----------
+  // Benefício das lojas de mensalidade: 1 Story por dia (a partir das 10h de Brasília) com o card de um produto,
+  // em rodízio entre as lojas com assinatura ativa. Liga e desliga no /admin (Instagram).
+  async function publicarStoryDoDia() {
+    const cfg = await monitoramentoMotor.obterConfiguracao();
+    if (!cfg.instagram?.storyDiario || !conectorInstagram.estaConfigurado()) return { publicado: false, motivo: "desligado" };
+    const br = new Date(agora() - 3 * 60 * 60 * 1000);
+    const hoje = br.toISOString().slice(0, 10);
+    const registro = (banco.d.storiesLojas ??= { ultimoDia: null, porLoja: {} });
+    if (registro.ultimoDia === hoje || br.getUTCHours() < 10) return { publicado: false, motivo: "fora do horário ou já publicado hoje" };
+    const t = agora();
+    const candidatas = banco.lojas
+      .filter((l) => statusLoja(l, t) === "ativa")
+      .map((l) => ({ l, produtos: banco.produtos.filter((p) => p.lojaId === l.id && p.ativo && !p.bloqueado && p.fotos?.length) }))
+      .filter((c) => c.produtos.length)
+      .sort((a, b) => String(registro.porLoja[a.l.id]?.dia ?? "").localeCompare(String(registro.porLoja[b.l.id]?.dia ?? "")));
+    if (!candidatas.length) return { publicado: false, motivo: "nenhuma loja com assinatura ativa e produto com foto" };
+    const { l, produtos } = candidatas[0];
+    const jaFoi = new Set(registro.porLoja[l.id]?.produtos ?? []);
+    const produto = produtos.find((p) => !jaFoi.has(p.id)) ?? produtos[0];
+    const id = `l-${produto.id}`;
+    await conectorInstagram.publicarStory({ urlImagem: `${urlPublica}/api/instagram/card-stories/${encodeURIComponent(id)}` });
+    const usados = jaFoi.has(produto.id) ? [produto.id] : [...jaFoi, produto.id];
+    registro.ultimoDia = hoje;
+    registro.porLoja[l.id] = { dia: hoje, produtos: usados.slice(-50) };
+    registro.ultimo = { dia: hoje, loja: l.nome, produto: produto.nome };
+    banco.salvar();
+    log.info?.(`[story] ${l.slug}: ${produto.nome}`);
+    return { publicado: true, loja: l.slug, produto: id };
+  }
+
   // Link antigo/sem JavaScript: vai direto ao WhatsApp, sem registrar pedido.
   app.get("/contato/:id", (req, res) => {
     const x = produtoPorId(req.params.id);
@@ -390,6 +509,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     return {
       loja: { ...dados, mpConectado: Boolean(mpConta) },
       pedidos: pedidosDa(loja).slice(0, 200),
+      cupons: (banco.d.cupons ?? []).filter((c) => c.lojaId === loja.id).map(cupomPublico),
       status: statusLoja(loja, t),
       diasTeste: Math.max(0, Math.ceil((Date.parse(loja.testeAte) - t) / DIA)),
       preco: PRECO_PLANO,
@@ -607,6 +727,19 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       res.redirect("/painel?mp=erro");
     }
   }));
+  app.post("/api/painel/cupons", exigirLoja, (req, res) => {
+    const { cupom, erro: msg } = lerCupom(req.body);
+    if (msg) return erro(res, 400, msg);
+    if ((banco.d.cupons ?? []).filter((c) => c.lojaId === req.loja.id).length >= 20) return erro(res, 400, "Limite de 20 cupons. Apague algum antigo.");
+    (banco.d.cupons ??= []).push({ id: randomUUID(), ...cupom, link: null, loja: "local", lojaId: req.loja.id, criadoEm: iso() });
+    banco.salvar();
+    res.status(201).json(painelDe(req.loja));
+  });
+  app.delete("/api/painel/cupons/:id", exigirLoja, (req, res) => {
+    banco.d.cupons = (banco.d.cupons ?? []).filter((c) => !(c.id === req.params.id && c.lojaId === req.loja.id));
+    banco.salvar();
+    res.json(painelDe(req.loja));
+  });
   app.patch("/api/painel/pedidos/:id", exigirLoja, (req, res) => {
     const p = (banco.d.pedidos ?? []).find((x) => x.id === req.params.id && x.lojaId === req.loja.id);
     if (!p) return erro(res, 404, "Pedido não encontrado.");
@@ -824,6 +957,20 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     log.info?.(`[loja] excluída ${req.loja.slug}`);
     res.json({ ok: true });
   }));
+  app.get("/api/admin/cupons", exigirAdmin, (req, res) => res.json((banco.d.cupons ?? []).filter((c) => c.loja !== "local").map(cupomPublico)));
+  app.post("/api/admin/cupons", exigirAdmin, (req, res) => {
+    if (!LOJAS_CUPOM.includes(req.body?.loja)) return erro(res, 400, "Escolha a loja do cupom.");
+    const { cupom, erro: msg } = lerCupom(req.body);
+    if (msg) return erro(res, 400, msg);
+    (banco.d.cupons ??= []).push({ id: randomUUID(), ...cupom, loja: req.body.loja, criadoEm: iso() });
+    banco.salvar();
+    res.status(201).json({ ok: true });
+  });
+  app.delete("/api/admin/cupons/:id", exigirAdmin, (req, res) => {
+    banco.d.cupons = (banco.d.cupons ?? []).filter((c) => c.id !== req.params.id);
+    banco.salvar();
+    res.json({ ok: true });
+  });
   app.post("/api/admin/produtos/:id/bloqueado", exigirAdmin, (req, res) => {
     const p = banco.produto(req.params.id);
     if (!p) return erro(res, 404, "Produto não encontrado.");
@@ -1067,6 +1214,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       conexaoErro,
       linkBio: `${urlPublica}/bio`,
       postarAutomatico: Boolean(cfg.instagram?.postarAutomatico ?? cfg.radar?.postarInstagram),
+      storyDiario: Boolean(cfg.instagram?.storyDiario),
+      ultimoStory: banco.d.storiesLojas?.ultimo ?? null,
     });
   }));
 
@@ -1312,6 +1461,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
         ? `<button type="button" class="buybtn product-buy" data-comprar="${attr(x.id)}" data-entrega="${attr(x.entrega ?? "")}">Comprar com Pix ou cartão</button>`
         : "",
       CLASSE_COMPRA: x.compraOnline ? "zapbtn product-buy" : "buybtn product-buy",
+      BOTAO_FAVORITO: `<button type="button" class="favbtn" data-favorito="${attr(x.id)}" aria-pressed="false"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg><span>Salvar nos favoritos</span></button>`,
+      BOTAO_ALERTA: `<button type="button" class="alertabtn" data-alerta="${attr(x.id)}"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0"/></svg>Avisar quando baixar o preço</button>`,
       ATTR_PEDIDO: local ? `data-pedir-zap="${attr(x.id)}" data-entrega="${attr(x.entrega ?? "")}"` : "",
       LINK_COMPRA: attr(destino), ALVO_COMPRA: local ? "_self" : "_blank",
       REL_COMPRA: local ? "" : "sponsored nofollow noopener",
@@ -1365,5 +1516,5 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     erro(res, 500, "Algo deu errado do nosso lado. Tente de novo.");
   });
 
-  return { app, banco, dadosDir, sincronizarAssinaturas, monitoramentoMotor, agendadorOfertas };
+  return { app, banco, dadosDir, sincronizarAssinaturas, verificarAlertas, publicarStoryDoDia, monitoramentoMotor, agendadorOfertas };
 }

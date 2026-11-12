@@ -125,6 +125,21 @@
       <div class="vendas" id="pedidos"></div>
     </div>
 
+    <div class="box" id="blocoCupons">
+      <h2>Cupons da loja</h2>
+      <p class="note" style="font-size:13px;margin:-4px 0 12px">Cupons aparecem na página "Cupons do dia" e os seus produtos ganham o selo "Tem cupom" enquanto estiverem válidos.</p>
+      <form class="form" id="fCupom">
+        <div class="dois">
+          <label>Código<input name="codigo" required maxlength="40" placeholder="EX.: LACO10" autocapitalize="characters"></label>
+          <label>Válido até<input name="validoAte" type="date" required></label>
+        </div>
+        <label>O que o cupom dá<input name="descricao" required maxlength="140" placeholder="Ex.: 10% em laços acima de R$ 30"></label>
+        <div class="msg" id="mCupom" hidden role="status"></div>
+        <button class="btn">Publicar cupom</button>
+      </form>
+      <div class="vendas" id="listaCupons"></div>
+    </div>
+
     <div class="box" id="blocoPagamento">
       <h2>Receber vendas pelo Mercado Pago</h2>
       <p class="note" style="font-size:13px;margin:-4px 0 14px">Conecte a conta Mercado Pago da loja. O valor de cada venda feita no site cai direto nela; a CIT Shopping recebe só a taxa combinada.</p>

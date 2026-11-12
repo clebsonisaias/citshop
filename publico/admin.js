@@ -31,7 +31,25 @@
         <button class="btn sec" data-senha="${l.id}">Senha provisória</button>
         <button class="btn perigo" data-excluir="${l.id}">Excluir loja</button></td></tr>`).join('');
   }
-  async function carregar() { lojas = await api('/api/admin/lojas'); render(); }
+  async function carregar() { lojas = await api('/api/admin/lojas'); render(); carregarCupons(); }
+  async function carregarCupons() {
+    const cupons = await api('/api/admin/cupons').catch(() => []);
+    $('listaCuponsAdm').innerHTML = cupons.length ? cupons.map((c) => `<p class="note"><b>${esc(c.codigo)}</b> · ${esc(c.lojaNome)} · ${esc(c.descricao)} · até ${new Date(`${c.validoAte}T12:00:00`).toLocaleDateString('pt-BR')} <button class="btn sec" type="button" data-apagar-cupom="${esc(c.id)}">Apagar</button></p>`).join('') : '<p class="note">Nenhum cupom cadastrado.</p>';
+  }
+  $('fCupomAdm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = $('mCupomAdm');
+    try {
+      await api('/api/admin/cupons', 'POST', Object.fromEntries(new FormData(e.target)));
+      e.target.reset(); msg.className = 'msg ok'; msg.textContent = 'Cupom publicado.'; msg.hidden = false; carregarCupons();
+    } catch (err) { msg.className = 'msg'; msg.textContent = err.message; msg.hidden = false; }
+  });
+  $('listaCuponsAdm').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-apagar-cupom]');
+    if (!b || !confirm('Apagar este cupom?')) return;
+    await api(`/api/admin/cupons/${encodeURIComponent(b.dataset.apagarCupom)}`, 'DELETE').catch(() => {});
+    carregarCupons();
+  });
 
   $('linhas').addEventListener('click', async (e) => {
     const b = e.target.closest('button');
@@ -369,6 +387,8 @@
       if ($('instaPostarAutomatico') && st.postarAutomatico !== undefined) {
         $('instaPostarAutomatico').checked = Boolean(st.postarAutomatico);
       }
+      if ($('instaStoryDiario')) $('instaStoryDiario').checked = Boolean(st.storyDiario);
+      if ($('instaUltimoStory')) $('instaUltimoStory').textContent = st.ultimoStory ? `Último Story: ${st.ultimoStory.produto} (${st.ultimoStory.loja}), em ${new Date(`${st.ultimoStory.dia}T12:00:00`).toLocaleDateString('pt-BR')}` : 'Nenhum Story de loja publicado ainda.';
 
       const v = await api('/api/vitrine');
       produtosInsta = v.produtos || [];
@@ -442,6 +462,7 @@
           accountId: $('instaAccountId').value.trim(),
           accessToken: $('instaToken').value.trim(),
           postarAutomatico: $('instaPostarAutomatico')?.checked || false,
+          storyDiario: $('instaStoryDiario')?.checked || false,
         });
         alert('Configurações do Instagram salvas com sucesso!');
       } catch (err) {

@@ -87,6 +87,19 @@
     }).join('') : `<p class="note" style="font-size:13px;margin:0">${(estado.pedidos ?? []).length ? 'Nenhum pedido com esses filtros.' : 'Nenhum pedido ainda. Quando um cliente pagar pelo site ou pedir pelo seu WhatsApp, ele aparece aqui.'}</p>`;
   }
   ['fOrigem', 'fEtapa', 'fBusca'].forEach((id) => $(id).addEventListener('input', renderPedidos));
+  $('fCupom').addEventListener('submit', (e) => {
+    e.preventDefault();
+    enviando(e.submitter, async () => {
+      try { mostrar(await api('/api/painel/cupons', { metodo: 'POST', json: dados(e.target) })); e.target.reset(); mostrarMsg($('mCupom'), 'Cupom publicado.', 'ok'); }
+      catch (err) { mostrarMsg($('mCupom'), err.message); }
+    });
+  });
+  $('listaCupons').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-apagar-cupom]');
+    if (!b || !confirm('Apagar este cupom?')) return;
+    try { mostrar(await api(`/api/painel/cupons/${encodeURIComponent(b.dataset.apagarCupom)}`, { metodo: 'DELETE' })); }
+    catch (err) { mostrarMsg($('mCupom'), err.message); }
+  });
   $('pedidos').addEventListener('change', async (e) => {
     const sel = e.target.closest('select[data-pedido]');
     if (!sel) return;
@@ -114,6 +127,8 @@
     $('mpConectar').textContent = s.loja.mpConectado ? 'Conectar outra conta' : 'Conectar Mercado Pago';
     $('mpDesconectar').hidden = !s.loja.mpConectado;
     renderPedidos();
+    $('listaCupons').innerHTML = (s.cupons ?? []).map((c) => `<div class="venda"><b>${esc(c.codigo)}</b><span>${esc(c.descricao)}</span>
+      <div class="venda-rodape"><small>Válido até ${new Date(`${c.validoAte}T12:00:00`).toLocaleDateString('pt-BR')}</small><button class="btn sec" type="button" data-apagar-cupom="${esc(c.id)}">Apagar</button></div></div>`).join('');
     $('vCor').value = s.loja.cor || '#036271';
     $('vSobre').value = s.loja.sobre ?? '';
     $('tirarLogo').hidden = !s.loja.logo;

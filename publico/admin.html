@@ -34,6 +34,22 @@
         <tbody id="linhas"></tbody>
       </table>
     </div>
+    <h1 style="margin-top:32px">Cupons das lojas parceiras</h1>
+    <div class="box form">
+      <p class="note">Cupons aparecem em /cupons e os produtos da loja ganham o selo "Tem cupom" enquanto estiverem válidos. Cupons das lojas locais são cadastrados por elas no painel.</p>
+      <form class="form" id="fCupomAdm">
+        <label>Loja<select name="loja" required><option value="shopee">Shopee</option><option value="amazon">Amazon</option><option value="mercado-livre">Mercado Livre</option><option value="shein">SHEIN</option></select></label>
+        <div class="dois">
+          <label>Código<input name="codigo" required maxlength="40" placeholder="EX.: LACO10" autocapitalize="characters"></label>
+          <label>Válido até<input name="validoAte" type="date" required></label>
+        </div>
+        <label>O que o cupom dá<input name="descricao" required maxlength="140" placeholder="Ex.: 10% em laços acima de R$ 30"></label>
+        <label>Link (opcional)<input name="link" type="url" placeholder="https://..."></label>
+        <div class="msg" id="mCupomAdm" hidden role="status"></div>
+        <button class="btn">Publicar cupom</button>
+      </form>
+      <div id="listaCuponsAdm"></div>
+    </div>
     <h1 style="margin-top:32px">Central de Ofertas (Automação de Afiliados)</h1>
     <div class="box form">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
@@ -239,6 +255,11 @@
           <input type="checkbox" id="instaPostarAutomatico">
           <span><b>Piloto Automático:</b> Postar automaticamente as melhores ofertas no Feed do Instagram a cada rodada do Radar</span>
         </label>
+        <label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer">
+          <input type="checkbox" id="instaStoryDiario">
+          <span><b>Story diário da loja local:</b> 1 Story por dia (a partir das 10h) com um produto de uma loja de mensalidade ativa, em rodízio</span>
+        </label>
+        <p class="note" id="instaUltimoStory" style="font-size:13px;margin:6px 0 0"></p>
         <div style="margin-top:12px;padding:10px;background:#f1f5f9;border-radius:8px;font-size:13px">
           <b>URL do Webhook para resposta "EU QUERO" no Direct:</b><br>
           <code>https://shop.citmax.com.br/api/webhook/instagram</code><br>

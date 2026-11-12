@@ -25,6 +25,8 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400..800&display=swap">
 <link rel="stylesheet" href="/estilo.css">
 <script src="/comprar.js" defer></script>
+<script src="/alerta.js" defer></script>
+<script src="/favoritos.js" defer></script>
 <!--structured-->
 </head>
 <body>
@@ -51,6 +53,8 @@
       {{BOTAO_COMPRA_ONLINE}}
       <a class="{{CLASSE_COMPRA}}" id="btn-comprar" {{ATTR_PEDIDO}} href="{{LINK_COMPRA}}" target="{{ALVO_COMPRA}}" rel="{{REL_COMPRA}}">{{TEXTO_COMPRA}}</a>
       <p class="product-note">{{AVISO_COMPRA}}</p>
+      {{BOTAO_FAVORITO}}
+      {{BOTAO_ALERTA}}
       <a class="product-share" href="https://wa.me/?text={{COMPARTILHAR}}" target="_blank" rel="noopener">Compartilhar produto</a>
     </div>
   </article>
