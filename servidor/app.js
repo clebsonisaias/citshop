@@ -21,7 +21,7 @@ import { TIPOS_LANCAMENTO, estornarComissao, lancar, lancarComissao, registrarEv
 import { MARKETPLACE, criarClienteAmazon } from "./amazon.js";
 import { atualizarAfiliados } from "./afiliados.js";
 import { instalarFood } from "./food.js";
-import { CanaisAfiliado, canalValido, lancarComissoesShopee, vendasPorCanal } from "./afiliados-canal.js";
+import { CanaisAfiliado, canalValido, filtrarCampanhas, lancarComissoesShopee, vendasPorCanal } from "./afiliados-canal.js";
 import { MonitoramentoMotor } from "./tarefas/monitoramento.js";
 import { AgendadorOfertas } from "./tarefas/agendador.js";
 import { ConectorWaha } from "./integracoes/whatsapp/waha.js";
@@ -356,6 +356,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       atualizadoEm: af.atualizadoEm ?? null,
       campanha: campanhaAtual(agora()),
       proximaCampanha: proximaCampanha(agora()),
+      campanhasShopee: campanhasValidas().map(({ id, nome, imagem, fim }) => ({ id, nome, imagem, fim })), // link só pelo /ir (clique e canal)
       cupons: cuponsAtivos().map(cupomPublico),
       lojas: [...visiveis.values()].map(lojaPublica),
       produtos: ordenarVitrine([...locais, ...af.produtos.map(produtoAfiliado)]),
@@ -1613,7 +1614,9 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   const conectorShopee = () => (canais.shopee ??= agendadorOfertas.coletor?.conectores?.shopee ?? null);
   // Todo "Comprar" de afiliado passa aqui: conta o clique por canal e manda para o link com a origem marcada.
   app.get("/ir/:id", a(async (req, res) => {
-    const p = (afiliados().produtos ?? []).find((x) => x.id === req.params.id); // a mesma lista da vitrine (Amazon da API, Amazon desligada)
+    const id = req.params.id;
+    // Produto: a mesma lista da vitrine (Amazon da API, Amazon desligada). Campanha da Shopee: campanhas.json.
+    const p = id.startsWith("campanha-") ? campanhasValidas().map((c) => ({ ...c, loja: "shopee" })).find((x) => x.id === id) : (afiliados().produtos ?? []).find((x) => x.id === id);
     res.set("Cache-Control", "no-store");
     if (!p) return res.redirect(302, "/");
     conectorShopee();
@@ -1622,6 +1625,17 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const destino = await canais.destino(p, canal);
     res.redirect(302, destino ?? `/p/${encodeURIComponent(p.id)}`);
   }));
+  // Campanhas da Shopee (shopeeOfferV2) para a faixa da home: atualizadas a cada 3 h; vencidas saem na leitura.
+  const campanhasValidas = () => filtrarCampanhas(ler("campanhas.json", { campanhas: [] }).campanhas, agora());
+  async function atualizarCampanhasShopee() {
+    const c = conectorShopee();
+    if (!c?.estaConfigurado?.()) return 0;
+    const campanhas = filtrarCampanhas(await c.buscarCampanhas({ limite: 100 }), agora());
+    const arq = join(dadosDir, "campanhas.json");
+    writeFileSync(`${arq}.tmp`, JSON.stringify({ atualizadoEm: iso(), campanhas }));
+    renameSync(`${arq}.tmp`, arq);
+    return campanhas.length;
+  }
   async function sincronizarComissoesShopee() {
     const c = conectorShopee();
     if (!c?.estaConfigurado?.()) return 0;
@@ -2241,5 +2255,5 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     erro(res, 500, "Algo deu errado do nosso lado. Tente de novo.");
   });
 
-  return { app, banco, dadosDir, sincronizarAssinaturas, verificarAlertas, publicarStoryDoDia, monitoramentoMotor, agendadorOfertas, tarefa, tarefas, canais, sincronizarComissoesShopee };
+  return { app, banco, dadosDir, sincronizarAssinaturas, verificarAlertas, publicarStoryDoDia, monitoramentoMotor, agendadorOfertas, tarefa, tarefas, canais, sincronizarComissoesShopee, atualizarCampanhasShopee };
 }

@@ -6,9 +6,9 @@ import { rodarColeta } from "./coletor.js";
 
 const PORTA = Number(process.env.PORT ?? 3000);
 
-let app, banco, dadosDir, sincronizarAssinaturas, verificarAlertas, publicarStoryDoDia, agendadorOfertas, tarefa, canais, sincronizarComissoesShopee;
+let app, banco, dadosDir, sincronizarAssinaturas, verificarAlertas, publicarStoryDoDia, agendadorOfertas, tarefa, canais, sincronizarComissoesShopee, atualizarCampanhasShopee;
 try {
-  ({ app, banco, dadosDir, sincronizarAssinaturas, verificarAlertas, publicarStoryDoDia, agendadorOfertas, tarefa, canais, sincronizarComissoesShopee } = criarApp({ log: { info: console.log, warn: console.warn, error: console.error } }));
+  ({ app, banco, dadosDir, sincronizarAssinaturas, verificarAlertas, publicarStoryDoDia, agendadorOfertas, tarefa, canais, sincronizarComissoesShopee, atualizarCampanhasShopee } = criarApp({ log: { info: console.log, warn: console.warn, error: console.error } }));
 } catch (e) {
   console.error(`[fatal] ${e.message}`);
   process.exit(1);
@@ -59,6 +59,9 @@ setInterval(() => { try { canais.descarregar(); } catch (e) { console.error(`[ca
 const comissoes = tarefa("comissoes-shopee", async () => { const n = await sincronizarComissoesShopee(); if (n) console.log(`[comissoes] ${n} lançamento(s) da Shopee`); });
 setTimeout(comissoes, 3 * 60_000).unref();
 setInterval(comissoes, 6 * 60 * 60 * 1000).unref();
+const campanhas = tarefa("campanhas-shopee", async () => console.log(`[campanhas] ${await atualizarCampanhasShopee()} campanha(s) da Shopee`));
+setTimeout(campanhas, 2 * 60_000).unref();
+setInterval(campanhas, 3 * 60 * 60 * 1000).unref();
 
 const servidor = app.listen(PORTA, () => console.log(`[citshop] ouvindo na porta ${PORTA}`));
 const encerrar = () => { try { canais.descarregar(); } catch { /* sem disco */ } servidor.close(() => process.exit(0)); };

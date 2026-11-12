@@ -82,6 +82,19 @@ export class CanaisAfiliado {
   }
 }
 
+const IMAGEM_OK = /^https:\/\/([a-z0-9-]+\.)*(susercontent\.com|shopee\.com\.br|shopeemobile\.com)\//;
+/**
+ * Campanhas da Shopee que podem ir para a vitrine: com nome, imagem e link das lojas parceiras, ainda no prazo,
+ * sem repetir. Ordem: as que acabam primeiro (o "termina em" é o que chama atenção). No máximo 16.
+ */
+export function filtrarCampanhas(lista, agora) {
+  const vistos = new Set();
+  return (lista ?? []).filter((c) => c?.nome && IMAGEM_OK.test(c.imagem ?? "") && DESTINO_OK.test(c.link ?? "")
+      && (!c.fim || Date.parse(c.fim) > agora) && (!c.inicio || Date.parse(c.inicio) <= agora) && !vistos.has(c.id) && vistos.add(c.id))
+    .sort((a, b) => (a.fim ? Date.parse(a.fim) : Infinity) - (b.fim ? Date.parse(b.fim) : Infinity) || (b.comissaoPct ?? 0) - (a.comissaoPct ?? 0))
+    .slice(0, 16);
+}
+
 /** Vendas da Shopee por canal: pedidos, comissão estimada (em andamento) e confirmada (concluídos). */
 export function vendasPorCanal(conversoes) {
   const r = {};

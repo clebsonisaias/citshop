@@ -485,6 +485,25 @@ export class ConectorShopee extends ConectorMarketplace {
   }
 
   /**
+   * Campanhas e coleções da própria Shopee (shopeeOfferV2): nome, imagem, link, comissão e período.
+   * Os campos vêm de documentação não oficial: se a API recusar algum, tenta de novo só com o essencial.
+   */
+  async buscarCampanhas({ limite = 50 } = {}) {
+    if (!this.estaConfigurado()) return [];
+    const consulta = (campos) => `{ shopeeOfferV2(sortType: 2, page: 1, limit: ${Math.min(500, limite)}) { nodes { ${campos} } } }`;
+    let dados;
+    try { dados = await this.chamarGraphQL(consulta("offerName imageUrl offerLink originalLink commissionRate periodStartTime periodEndTime offerType collectionId categoryId")); }
+    catch { dados = await this.chamarGraphQL(consulta("offerName imageUrl offerLink periodStartTime periodEndTime")); }
+    return (dados?.shopeeOfferV2?.nodes ?? []).map((n) => ({
+      id: `campanha-${String(n.collectionId ?? n.categoryId ?? n.offerName ?? "").replace(/[^A-Za-z0-9]/g, "").slice(0, 40) || Math.random().toString(36).slice(2, 10)}`,
+      nome: String(n.offerName ?? "").trim().slice(0, 120), imagem: n.imageUrl ?? null, link: n.offerLink ?? null, linkOriginal: n.originalLink ?? null,
+      comissaoPct: n.commissionRate ? Math.round(Number(n.commissionRate) * 1000) / 10 : null,
+      inicio: n.periodStartTime ? new Date(n.periodStartTime * 1000).toISOString() : null, fim: n.periodEndTime ? new Date(n.periodEndTime * 1000).toISOString() : null,
+      tipo: Number(n.offerType) === 2 ? "categoria" : "colecao",
+    }));
+  }
+
+  /**
    * Link curto com subIds (até 5), que voltam no conversionReport como utmContent: é assim que se sabe de qual canal
    * do CITshop veio cada venda. subIds: só letras, números e _ (o resto é tirado).
    */

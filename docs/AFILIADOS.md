@@ -74,3 +74,15 @@ As duas primeiras correções mudam o que é publicado. Por isso ficam para apro
   Vendas por links antigos ou diretos aparecem como "sem canal".
 - **Livro financeiro:** a tarefa `comissoes-shopee` (a cada 6 h, também em `/saude`) lança como `afiliado` a comissão de cada pedido CONCLUÍDO, uma vez por pedido. Se o pedido for cancelado ou devolvido depois, entra um `ajuste` negativo, também uma vez só.
 - **Não usado:** `validatedReport`. A documentação disponível não explica como obter o `validationId`. Hoje o livro usa o pedido concluído do `conversionReport`; dá para trocar quando houver a documentação oficial.
+
+## Campanhas da Shopee na home
+- **Atualização:** a tarefa `campanhas-shopee` (a cada 3 h, também em `/saude`) busca as campanhas e coleções da própria Shopee pelo `shopeeOfferV2`, ordenadas por comissão, e grava `<DADOS_DIR>/campanhas.json`.
+- **Filtro** (`filtrarCampanhas`), o que entra:
+  - tem nome;
+  - imagem do CDN da Shopee;
+  - link das lojas parceiras;
+  - já começou e ainda não terminou;
+  - sem repetidas.
+  A ordem é das que acabam primeiro; no máximo 16. Vencidas saem na hora da leitura.
+- **Home:** faixa "Campanhas Shopee" com imagem, nome e "Termina em…". O link não vai para a página: o clique passa por `/ir/campanha-…?c=site` (conta o clique e marca o canal, se a API devolver `originalLink`).
+- **Ressalva:** os nomes dos campos vêm de documentação não oficial. Se a API recusar algum, o conector tenta de novo só com o essencial (nome, imagem, link e período).

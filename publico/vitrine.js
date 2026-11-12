@@ -7,7 +7,7 @@ import { filtrarCatalogo } from './catalogo.js';
   const DISPONIBILIDADE = { disponivel: 'Disponível, informado pela loja', 'sob-encomenda': 'Sob encomenda', consulte: 'Consulte disponibilidade' };
   const $ = (id) => document.getElementById(id);
   const num = new Intl.NumberFormat('pt-BR');
-  let P = [], LOJAS = [], CAMPANHA = null, PROXIMA = null, CUPONS = []; // CAMPANHA: data especial em andamento (ex.: "12.12"), vem do servidor
+  let P = [], LOJAS = [], CAMPANHA = null, PROXIMA = null, CUPONS = [], CAMPANHAS_SHOPEE = []; // CAMPANHA: data especial em andamento (ex.: "12.12"), vem do servidor
 
   const off = (x) => (x.precoAntigo > x.preco ? Math.round((1 - x.preco / x.precoAntigo) * 100) : 0);
   // Quanto (em %) caiu desde o maior preço que a CIT Shopping viu nos últimos dias.
@@ -372,7 +372,23 @@ import { filtrarCatalogo } from './catalogo.js';
       lista.length ? '' : '<p class="empty">Toque em "Salvar nos favoritos" nos produtos para montar sua lista. Ela fica guardada neste aparelho.</p>');
   });
 
+  // Campanhas da própria Shopee (imagem e prazo vêm da API); o clique passa pelo /ir (conta e marca o canal).
+  function terminaEm(fim) {
+    if (!fim) return '';
+    const ms = Date.parse(fim) - Date.now(), h = Math.floor(ms / 3600000), d = Math.floor(h / 24);
+    if (ms <= 0) return 'Encerrada';
+    if (d >= 1) return `Termina em ${d} ${d === 1 ? 'dia' : 'dias'}`;
+    if (h >= 1) return `Termina em ${h} h`;
+    return `Termina em ${Math.max(1, Math.floor(ms / 60000))} min`;
+  }
+  function montarCampanhas() {
+    const lista = CAMPANHAS_SHOPEE.filter((c) => !c.fim || Date.parse(c.fim) > Date.now());
+    $('sCampanhas').hidden = !lista.length;
+    $('r-campanhas').innerHTML = lista.map((c) => `<a class="camp-card" href="/ir/${encodeURIComponent(c.id)}?c=site" target="_blank" rel="sponsored nofollow noopener">
+      <img src="${esc(c.imagem)}" alt="" loading="lazy" width="320" height="160"><span><b>${esc(c.nome)}</b>${c.fim ? `<small>${terminaEm(c.fim)}</small>` : ''}</span></a>`).join('');
+  }
   function montarHome() {
+    montarCampanhas();
     const lojasFav = new Set((window.CITFavoritos?.ler() ?? []).filter((id) => id.startsWith('loja:')).map((id) => id.slice(5)));
     const lojasHome = [...LOJAS.filter((l) => lojasFav.has(l.slug)), ...LOJAS.filter((l) => !lojasFav.has(l.slug))];
     $('sellers').innerHTML = lojasHome.slice(0, 12).map((l) => `<a class="seller" href="/loja/${esc(l.slug)}" data-seller="${esc(l.slug)}" style="border-top:4px solid ${esc(l.cor || '#036271')}">
@@ -458,7 +474,7 @@ import { filtrarCatalogo } from './catalogo.js';
 
   fetch('/api/vitrine')
     .then((r) => r.json())
-    .then((d) => { P = d.produtos.map((x) => ({ ...x, categoriaNome: D[x.dept]?.n ?? x.dept })); LOJAS = d.lojas; CAMPANHA = d.campanha ?? null; PROXIMA = d.proximaCampanha ?? null; CUPONS = d.cupons ?? []; montarContagem();
+    .then((d) => { P = d.produtos.map((x) => ({ ...x, categoriaNome: D[x.dept]?.n ?? x.dept })); LOJAS = d.lojas; CAMPANHA = d.campanha ?? null; PROXIMA = d.proximaCampanha ?? null; CUPONS = d.cupons ?? []; CAMPANHAS_SHOPEE = d.campanhasShopee ?? []; montarContagem();
       // Faixa "Especial" só no dia da data dupla (12/12, 1/1...); nos outros dias fica escondida.
       if (CAMPANHA) { $('seloCampanha').textContent = `Especial ${CAMPANHA}`; $('seloCampanha').hidden = false; $('faixaCampanha').hidden = false; }
       montarHome(); rota();
