@@ -76,3 +76,21 @@ test("robô de afiliados: uma busca da Shopee com erro não derruba as outras; t
   await assert.rejects(atualizarAfiliados({ env, dadosDir: dir, manual, buscar: async () => { throw new Error("error [10000]: System Error"); }, espera: 0 }), /todas as \d+ buscas/);
   assert.equal(readFileSync(join(dir, "afiliados.json"), "utf8"), antes, "lista anterior preservada");
 });
+
+test("robô de afiliados: com o motor de ofertas ativo, não grava por cima da lista do motor", async (t) => {
+  const { mkdtempSync, rmSync, writeFileSync, readFileSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { atualizarAfiliados } = await import("../servidor/afiliados.js");
+  const dir = mkdtempSync(join(tmpdir(), "cit-afil-motor-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  writeFileSync(join(dir, "manual.json"), "[]");
+  writeFileSync(join(dir, "motor-status.json"), JSON.stringify({ ultimaExecucao: new Date().toISOString() }));
+  const doMotor = JSON.stringify({ produtos: Array.from({ length: 384 }, (_, i) => ({ id: `shopee-${i}`, loja: "shopee" })) });
+  writeFileSync(join(dir, "afiliados.json"), doMotor);
+  let chamou = false;
+  const r = await atualizarAfiliados({ env: { SHOPEE_APP_ID: "a", SHOPEE_SECRET: "b" }, dadosDir: dir, manual: join(dir, "manual.json"), buscar: async () => { chamou = true; return []; }, espera: 0 });
+  assert.equal(r.ignorado, "motor de ofertas ativo");
+  assert.equal(chamou, false, "nem gasta chamada na API da Shopee");
+  assert.equal(readFileSync(join(dir, "afiliados.json"), "utf8"), doMotor, "lista do motor intacta");
+});

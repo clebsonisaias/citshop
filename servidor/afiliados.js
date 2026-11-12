@@ -144,6 +144,10 @@ export async function atualizarAmazon({ env, dadosDir, manual }) {
 /** Uma rodada completa. Se a Shopee falhar, lança e o afiliados.json anterior continua valendo. */
 export async function atualizarAfiliados({ env, dadosDir, manual, buscar = buscarShopee, espera = 400 }) {
   const saida = join(dadosDir, "afiliados.json");
+  // O motor de ofertas (servidor/motor-ofertas, central de automação) é quem publica afiliados.json: valida, remove
+  // duplicados e ranqueia. Com ele ativo (motor-status.json existe), este robô antigo NÃO grava por cima — senão a
+  // vitrine perde as ofertas do motor (aconteceu em 12/11: 384 ofertas da Shopee viraram 33).
+  try { await readFile(join(dadosDir, "motor-status.json"), "utf8"); return { ignorado: "motor de ofertas ativo", total: 0, shopee: 0, manuais: 0, coleta: 0, buscasComFalha: 0 }; } catch { /* sem motor: segue */ }
   const lista = JSON.parse(await readFile(manual, "utf8"))
     .map((p) => (p.loja === "amazon" && p.asin && env.AMAZON_TAG ? { ...p, link: carrinhoAmazon(p.asin, env.AMAZON_TAG) } : p));
   let antigos = [];
