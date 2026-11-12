@@ -226,8 +226,12 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const ids = new Set(frescos.map((p) => p.id));
     return { atualizadoEm: af.atualizadoEm, produtos: [...frescos, ...af.produtos.filter((p) => !ids.has(p.id))] };
   }
+  // Loja que paga por venda (comissão) vende só pelo Mercado Pago, para a comissão da CIT cair em toda venda:
+  // sem pedido pelo WhatsApp e sem o número dela no site.
+  const soPeloSite = (l) => l.modeloCobranca === "comissao_fixa";
   const lojaPublica = (l) => ({
-    slug: l.slug, nome: l.nome, cidade: l.cidade, categoria: l.categoria, whatsapp: l.whatsapp, desde: l.criadaEm,
+    slug: l.slug, nome: l.nome, cidade: l.cidade, categoria: l.categoria, whatsapp: soPeloSite(l) ? null : l.whatsapp, desde: l.criadaEm,
+    soPeloSite: soPeloSite(l),
     logo: l.logo ?? null, cor: l.cor ?? null, sobre: l.sobre ?? "", entrega: l.entrega ?? null,
     horario: l.horario ?? "", bairrosAtendidos: l.bairrosAtendidos ?? "", prazoEntrega: l.prazoEntrega ?? "",
     modeloCobranca: l.modeloCobranca ?? "mensalidade",
@@ -235,7 +239,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   const produtoLocal = (p, l) => ({
     id: `l-${p.id}`, nome: p.nome, descricao: p.descricao, dept: p.dept, loja: "local",
     lojaId: l.id,
-    lojaSlug: l.slug, lojaNome: l.nome, lojaLogo: l.logo ?? null, cidade: l.cidade, whatsapp: l.whatsapp,
+    lojaSlug: l.slug, lojaNome: l.nome, lojaLogo: l.logo ?? null, cidade: l.cidade, whatsapp: soPeloSite(l) ? null : l.whatsapp,
+    soPeloSite: soPeloSite(l),
     preco: p.preco, precoAntigo: p.precoAntigo, fotos: p.fotos, nota: 0, vendidos: 0, entrega: l.entrega ?? null,
     disponibilidade: p.disponibilidade ?? "consulte", horario: l.horario ?? "",
     bairrosAtendidos: l.bairrosAtendidos ?? "", prazoEntrega: l.prazoEntrega ?? "",
@@ -308,33 +313,57 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   }
   const quantidadeDe = (v) => Math.min(10, Math.max(1, Math.floor(Number(v)) || 1));
   const reais = (n) => Number(n).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const MAX_ITENS_PEDIDO = 20;
+  // Itens do pedido: um produto (produtoId + quantidade) ou o carrinho de uma loja (itens: [{produtoId, quantidade, observacao}]).
+  // Nome e preço vêm sempre do servidor; o carrinho finaliza uma loja por vez.
+  function lerItens(corpo = {}) {
+    const brutos = Array.isArray(corpo.itens) ? corpo.itens : [{ produtoId: corpo.produtoId, quantidade: corpo.quantidade }];
+    if (!brutos.length || brutos.length > MAX_ITENS_PEDIDO) return { status: 400, erro: `O pedido precisa ter de 1 a ${MAX_ITENS_PEDIDO} produtos.` };
+    const produtos = brutos.map((b) => produtoPorId(String(b?.produtoId ?? "")));
+    if (produtos.some((x) => !x || x.loja !== "local")) {
+      return { status: 404, erro: brutos.length > 1 ? "Um dos produtos não está mais disponível. Atualize o carrinho." : "Produto não encontrado." };
+    }
+    if (new Set(produtos.map((x) => x.lojaId)).size > 1) return { status: 400, erro: "Finalize um pedido por loja." };
+    const itens = produtos.map((x, i) => ({
+      produtoId: x.id, nome: x.nome, preco: x.preco, quantidade: quantidadeDe(brutos[i].quantidade), observacao: txt(brutos[i].observacao, 150),
+    }));
+    const valorTotal = Math.round(itens.reduce((s, i) => s + i.preco * i.quantidade, 0) * 100) / 100;
+    const unidades = itens.reduce((s, i) => s + i.quantidade, 0);
+    // Resumo nos campos antigos, para quem lê pedidos de um produto só (painel, planilha, avisos).
+    const resumo = { produtoId: itens[0].produtoId, produtoNome: itens.length === 1 ? itens[0].nome : `${itens.length} produtos`, quantidade: unidades, valorTotal, itens };
+    return { x: produtos[0], itens, valorTotal, unidades, resumo };
+  }
+  const linhaItem = (i) => `${i.quantidade}x ${i.nome} (${reais(i.preco * i.quantidade)})${i.observacao ? ` · ${i.observacao}` : ""}`;
+  const itensDo = (p) => p.itens ?? [{ nome: p.produtoNome ?? p.produtoId, quantidade: p.quantidade, preco: p.valorTotal / (p.quantidade || 1) }];
 
   // Pedido pelo WhatsApp: registra o pedido (com código) e devolve o link do WhatsApp da loja já com a mensagem.
   app.post("/api/pedidos/whatsapp", (req, res) => {
     if (!limitePedido.registrar(`ped|${S.ipDe(req)}`).permitido) return erro(res, 429, "Muitos pedidos seguidos. Espere alguns minutos.");
-    const x = produtoPorId(String(req.body?.produtoId ?? ""));
-    if (!x || x.loja !== "local") return erro(res, 404, "Produto não encontrado.");
+    const lido = lerItens(req.body);
+    if (lido.erro) return erro(res, lido.status, lido.erro);
+    const { x, itens, resumo } = lido;
+    if (x.soPeloSite) return erro(res, 409, "Esta loja vende só pelo site, com Pix ou cartão.");
     const { comprador, erro: msg } = lerComprador(req.body?.comprador);
     if (msg) return erro(res, 400, msg);
-    const qtd = quantidadeDe(req.body?.quantidade);
     const pedido = {
-      id: `P-${randomBytes(3).toString("hex").toUpperCase()}`, origem: "whatsapp", lojaId: x.lojaId, produtoId: x.id, produtoNome: x.nome,
-      quantidade: qtd, valorTotal: Math.round(x.preco * qtd * 100) / 100, comprador, etapa: "novo", criadoEm: iso(),
+      id: `P-${randomBytes(3).toString("hex").toUpperCase()}`, origem: "whatsapp", lojaId: x.lojaId, ...resumo,
+      comprador, etapa: "novo", criadoEm: iso(),
     };
     limparPedidosVencidos();
     (banco.d.pedidos ??= []).push(pedido);
-    banco.registrarCliqueContato(`produto:${x.id.slice(2)}`, iso());
+    for (const i of itens) banco.registrarCliqueContato(`produto:${i.produtoId.slice(2)}`, iso());
     banco.salvar();
     const mensagem = [
       "Olá! Vi no CIT Shopping e quero fazer um pedido:",
-      `🛍️ *${qtd}x ${x.nome}* (${reais(pedido.valorTotal)})`,
+      ...itens.map((i) => `🛍️ *${linhaItem(i)}*`),
+      ...(itens.length > 1 ? [`💰 Total: ${reais(pedido.valorTotal)}`] : []),
       `🧾 Pedido ${pedido.id}`,
       "",
       `👤 ${comprador.nome}`,
       comprador.receber === "entrega" ? `🚚 Entrega em: ${comprador.endereco}` : "🏪 Vou retirar na loja",
       ...(comprador.observacao ? [`📝 ${comprador.observacao}`] : []),
       "",
-      `🔗 ${urlPublica}/p/${encodeURIComponent(x.id)}`,
+      `🔗 ${urlPublica}/${itens.length > 1 ? encodeURIComponent(x.lojaSlug) : `p/${encodeURIComponent(x.id)}`}`,
     ].join("\n");
     res.json({ ok: true, pedido: pedido.id, url: `https://wa.me/${encodeURIComponent(x.whatsapp)}?text=${encodeURIComponent(mensagem)}` });
   });
@@ -365,6 +394,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   }
   app.get("/api/cupons", (req, res) => res.set("Cache-Control", "no-cache").json(cuponsAtivos().map(cupomPublico)));
   app.get("/cupons", (req, res) => { semCache(res); res.sendFile(join(publico, "cupons.html")); });
+  app.get("/carrinho", (req, res) => { semCache(res); res.sendFile(join(publico, "carrinho.html")); });
 
   // ---------- alerta "baixou de preço" ----------
   // O cliente deixa o WhatsApp num produto; quando o preço cair abaixo do daquele dia, recebe um aviso
@@ -460,6 +490,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   app.get("/contato/:id", (req, res) => {
     const x = produtoPorId(req.params.id);
     if (!x || x.loja !== "local") return res.status(404).sendFile(join(publico, "404.html"));
+    if (x.soPeloSite) return res.redirect(302, `/p/${encodeURIComponent(x.id)}`);
     banco.registrarCliqueContato(`produto:${req.params.id.slice(2)}`, iso());
     const pagina = `${urlPublica}/p/${encodeURIComponent(req.params.id)}`;
     const precoFormatado = x.preco.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -491,6 +522,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   app.get("/contato/loja/:slug", (req, res) => {
     const loja = banco.lojas.find((l) => l.slug === req.params.slug && lojaVisivel(l, agora()));
     if (!loja) return res.status(404).sendFile(join(publico, "404.html"));
+    if (soPeloSite(loja)) return res.redirect(302, `/${encodeURIComponent(loja.slug)}`);
     banco.registrarCliqueContato(`loja:${loja.id}`, iso());
     const pagina = `${urlPublica}/loja/${encodeURIComponent(loja.slug)}`;
     const mensagem = `Olá! Encontrei sua loja na CIT Shopping. ${pagina}`;
@@ -752,12 +784,16 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   app.get("/api/painel/pedidos.csv", exigirLoja, (req, res) => {
     const cel = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
     const ETAPA = { novo: "Novo", atendimento: "Em atendimento", vendido: "Vendido", cancelado: "Cancelado" };
-    const linhas = [["Data", "Pedido", "Origem", "Pagamento", "Situação", "Produto", "Qtd", "Valor", "Cliente", "WhatsApp", "Receber", "Endereço", "Observação"]];
+    // Uma linha por produto; o código do pedido agrupa as linhas de um mesmo carrinho.
+    const linhas = [["Data", "Pedido", "Origem", "Pagamento", "Situação", "Produto", "Opções", "Qtd", "Valor", "Total do pedido", "Cliente", "WhatsApp", "Receber", "Endereço", "Observação"]];
+    const virgula = (n) => String(Math.round(n * 100) / 100).replace(".", ",");
     for (const p of pedidosDa(req.loja)) {
       const c = p.comprador ?? {};
-      linhas.push([new Date(p.criadoEm).toLocaleString("pt-BR", { timeZone: "America/Fortaleza" }), p.id, p.origem === "whatsapp" ? "Pedido no WhatsApp" : "Pago no site",
-        p.origem === "whatsapp" ? "" : p.status, ETAPA[p.etapa ?? "novo"], p.produtoNome, p.quantidade, String(p.valorTotal).replace(".", ","),
-        c.nome, c.whatsapp, c.receber === "entrega" ? "Entrega" : "Retirada", c.endereco, c.observacao]);
+      for (const i of itensDo(p)) {
+        linhas.push([new Date(p.criadoEm).toLocaleString("pt-BR", { timeZone: "America/Fortaleza" }), p.id, p.origem === "whatsapp" ? "Pedido no WhatsApp" : "Pago no site",
+          p.origem === "whatsapp" ? "" : p.status, ETAPA[p.etapa ?? "novo"], i.nome, i.observacao, i.quantidade, virgula(i.preco * i.quantidade), virgula(p.valorTotal),
+          c.nome, c.whatsapp, c.receber === "entrega" ? "Entrega" : "Retirada", c.endereco, c.observacao]);
+      }
     }
     res.set("Content-Type", "text/csv; charset=utf-8").set("Content-Disposition", `attachment; filename="pedidos-${req.loja.slug}.csv"`)
       .set("Cache-Control", "no-store").send("\ufeff" + linhas.map((l) => l.map(cel).join(";")).join("\r\n"));
@@ -772,9 +808,11 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   // Venda com split: cobrança criada com o token da loja; a CIT recebe a comissão (marketplace_fee/application_fee).
   app.post("/api/pagamento/split", express.json(), a(async (req, res) => {
     if (!limitePagamento.registrar(`pag|${S.ipDe(req)}`).permitido) return erro(res, 429, "Muitas tentativas. Espere alguns minutos.");
-    const { produtoId, quantidade = 1, emailComprador, metodo = "checkout_pro" } = req.body ?? {};
-    const prod = produtoId && produtoPorId(String(produtoId));
-    if (!prod || prod.loja !== "local") return erro(res, 404, "Produto não encontrado.");
+    const { emailComprador, metodo = "checkout_pro" } = req.body ?? {};
+    const lido = lerItens(req.body);
+    if (lido.erro) return erro(res, lido.status, lido.erro);
+    const { x: prod, itens, valorTotal, unidades, resumo } = lido;
+    const carrinho = Array.isArray(req.body?.itens);
     const loja = banco.loja(prod.lojaId);
     if (!loja) return erro(res, 404, "Loja não encontrada.");
     if (!prod.compraOnline) return erro(res, 409, "Esta loja ainda não recebe pagamentos pelo site. Peça pelo WhatsApp.");
@@ -782,19 +820,18 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const { comprador, erro: msgComprador } = lerComprador(req.body?.comprador);
     if (msgComprador) return erro(res, 400, msgComprador);
 
-    const qtd = quantidadeDe(quantidade);
-    const valorTotal = Math.round(Number(prod.preco) * qtd * 100) / 100;
-    const taxaMarketplace = loja.modeloCobranca === "comissao_fixa" ? Number(loja.comissaoPorVenda ?? 1) : 0;
+    // Comissão da CIT: R$ 1 (comissaoPorVenda) por unidade vendida, só nas lojas que pagam por venda.
+    const taxaMarketplace = loja.modeloCobranca === "comissao_fixa" ? Math.round(Number(loja.comissaoPorVenda ?? 1) * unidades * 100) / 100 : 0;
     if (!(taxaMarketplace < valorTotal)) return erro(res, 400, "Valor da compra menor que a taxa da plataforma.");
     const email = String(emailComprador ?? "").trim().toLowerCase();
     if (metodo === "pix" && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return erro(res, 400, "Informe seu e-mail para gerar o Pix.");
 
     const referencia = `venda-${loja.slug}-${randomUUID()}`;
-    const titulo = `${prod.nome} · ${loja.nome}`;
+    const titulo = `${itens.length === 1 ? prod.nome : `${itens.length} produtos`} · ${loja.nome}`;
     const webhookUrl = `${urlPublica}/webhook/mercadopago?loja=${encodeURIComponent(loja.id)}`;
     banco.d.pedidos ??= [];
     limparPedidosVencidos();
-    const pedido = { id: referencia, origem: "site", lojaId: loja.id, produtoId: prod.id, produtoNome: prod.nome, quantidade: qtd, valorTotal, taxaMarketplace, metodo, comprador, status: "criado", etapa: "novo", criadoEm: iso() };
+    const pedido = { id: referencia, origem: "site", lojaId: loja.id, ...resumo, taxaMarketplace, metodo, comprador, status: "criado", etapa: "novo", criadoEm: iso() };
     try {
       const tokenVendedor = await tokenDaLoja(loja);
       if (metodo === "pix") {
@@ -805,8 +842,12 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       }
       const pref = await mp.criarPreferenciaSplit({
         tokenVendedor, titulo, valor: valorTotal, referencia, taxaMarketplace, webhookUrl,
+        itens: itens.map((i) => ({ titulo: i.observacao ? `${i.nome} (${i.observacao})`.slice(0, 120) : i.nome, quantidade: i.quantidade, preco: i.preco })),
+        // Carrinho volta para /carrinho (e tira dele os itens desta loja); compra de um produto volta para a página dele.
         retornos: Object.fromEntries([["success", "aprovada"], ["pending", "pendente"], ["failure", "falhou"]]
-          .map(([k, v]) => [k, `${urlPublica}/p/${encodeURIComponent(prod.id)}?compra=${v}`])),
+          .map(([k, v]) => [k, carrinho
+            ? `${urlPublica}/carrinho?compra=${v}&loja=${encodeURIComponent(loja.id)}`
+            : `${urlPublica}/p/${encodeURIComponent(prod.id)}?compra=${v}`])),
       });
       banco.d.pedidos.push(pedido);
       banco.salvar();
@@ -823,8 +864,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const texto = [
       "🛍️ *Nova venda paga pelo CIT Shopping!*",
       "",
-      `📦 ${p.quantidade}x ${p.produtoNome ?? p.produtoId}`,
-      `💰 ${Number(p.valorTotal).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} (pagamento aprovado no Mercado Pago)`,
+      ...itensDo(p).map((i) => `📦 ${linhaItem(i)}`),
+      `💰 Total ${reais(p.valorTotal)} (pagamento aprovado no Mercado Pago)`,
       "",
       `👤 ${c.nome ?? "-"}`,
       c.whatsapp ? `📱 https://wa.me/${c.whatsapp}` : "",
@@ -1459,16 +1500,21 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       DESCONTO: x.precoAntigo > x.preco ? `<span class="pct">${Math.round((1 - x.preco / x.precoAntigo) * 100)}% OFF</span>` : "",
       BOTAO_COMPRA_ONLINE: x.compraOnline
         ? `<button type="button" class="buybtn product-buy" data-comprar="${attr(x.id)}" data-entrega="${attr(x.entrega ?? "")}">Comprar com Pix ou cartão</button>`
-        : "",
+        : x.soPeloSite ? `<p class="compra-em-breve">Compra pelo site disponível em breve.</p>` : "",
       CLASSE_COMPRA: x.compraOnline ? "zapbtn product-buy" : "buybtn product-buy",
       BOTAO_FAVORITO: `<button type="button" class="favbtn" data-favorito="${attr(x.id)}" aria-pressed="false"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg><span>Salvar nos favoritos</span></button>`,
       BOTAO_ALERTA: `<button type="button" class="alertabtn" data-alerta="${attr(x.id)}"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0"/></svg>Avisar quando baixar o preço</button>`,
-      ATTR_PEDIDO: local ? `data-pedir-zap="${attr(x.id)}" data-entrega="${attr(x.entrega ?? "")}"` : "",
+      BOTAO_CARRINHO: local && (x.compraOnline || !x.soPeloSite)
+        ? `<button type="button" class="favbtn carrinhobtn" data-carrinho="${attr(x.id)}" data-loja="${attr(x.lojaId)}"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.4 11h11L21 7H6.2M9 20a1 1 0 1 0 0-.1M18 20a1 1 0 1 0 0-.1"/></svg><span>Adicionar ao carrinho</span></button>`
+        : "",
+      ATTR_PEDIDO: x.soPeloSite ? "hidden" : local ? `data-pedir-zap="${attr(x.id)}" data-entrega="${attr(x.entrega ?? "")}"` : "",
       LINK_COMPRA: attr(destino), ALVO_COMPRA: local ? "_self" : "_blank",
       REL_COMPRA: local ? "" : "sponsored nofollow noopener",
       TEXTO_COMPRA: local ? "Pedir pelo WhatsApp da loja ↗" : `Comprar na ${NOME_LOJA[x.loja] ?? "loja parceira"} ↗`,
       AVISO_COMPRA: x.compraOnline
         ? `Pague aqui com Pix ou cartão pelo Mercado Pago. ${attr(x.lojaNome)} recebe o pedido e combina a entrega com você pelo WhatsApp.`
+        : x.soPeloSite
+        ? `${attr(x.lojaNome)} vende pelo CIT Shopping com Pix ou cartão. A loja está ativando os pagamentos.`
         : local
         ? `Vendido por ${attr(x.lojaNome)}, em ${attr(x.cidade)}. Combine pagamento, disponibilidade e entrega diretamente com a loja.`
         : `Você finaliza a compra no site da loja. Preço e frete são confirmados lá${x.atualizadoEm ? `; preço consultado em ${attr(new Date(x.atualizadoEm).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }))}` : ""}.`,

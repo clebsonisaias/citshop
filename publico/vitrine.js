@@ -173,9 +173,9 @@ import { filtrarCatalogo } from './catalogo.js';
     const cor = l.cor || '#036271';
     const botaoZap = (texto) => `<a class="btn lv-zap" href="${zap}" target="_blank" rel="noopener">${ICONE_ZAP}${texto}</a>`;
     showResults(`Produtos de ${l.nome}`, P.filter((x) => x.lojaSlug === slug),
-      window.CIT.cabecalhoLoja(l, `${botaoZap('Chamar no WhatsApp')}<button class="btn sec lv-share" type="button" data-compartilhar aria-label="Compartilhar loja" title="Compartilhar loja">${ICONE_COMPARTILHAR}</button>`), {
+      window.CIT.cabecalhoLoja(l, `${l.soPeloSite ? '' : botaoZap('Chamar no WhatsApp')}<button class="btn sec lv-share" type="button" data-compartilhar aria-label="Compartilhar loja" title="Compartilhar loja">${ICONE_COMPARTILHAR}</button>`), {
         naLoja: true,
-        rodape: `<aside class="lv-encomenda" style="--loja:${esc(cor)};--loja-ink:${window.CIT.textoSobre(cor)}">
+        rodape: l.soPeloSite ? '' : `<aside class="lv-encomenda" style="--loja:${esc(cor)};--loja-ink:${window.CIT.textoSobre(cor)}">
           <p><b>Não achou a cor ou o modelo?</b> Peça sob encomenda direto para a loja.</p>${botaoZap('Falar com a loja')}</aside>`,
       });
     // No celular, horário/área/prazo começam recolhidos para os produtos aparecerem mais cedo.
@@ -242,6 +242,10 @@ import { filtrarCatalogo } from './catalogo.js';
     $('malerta').dataset.alerta = x.id; // sino "baixou de preço" (alerta.js)
     $('mfavorito').dataset.favorito = x.id; // favoritos (favoritos.js)
     window.CITFavoritos?.pintar();
+    // Carrinho (comprar.js): só produtos das lojas locais; finaliza uma loja por vez em /carrinho.
+    // Loja que paga por venda (soPeloSite) vende só pelo Mercado Pago: sem pedido pelo WhatsApp.
+    $('mcarrinho').hidden = !local || (x.soPeloSite && !x.compraOnline);
+    if (local) Object.assign($('mcarrinho').dataset, { carrinho: x.id, loja: x.lojaId });
     $('mcomprar').hidden = !(local && x.compraOnline);
     $('mcomprar').dataset.comprar = x.id;
     $('mcomprar').dataset.entrega = x.entrega ?? '';
@@ -254,8 +258,9 @@ import { filtrarCatalogo } from './catalogo.js';
       $('mbuy').href = baseContato;
       $('mbuy').rel = 'noopener';
       $('mbuy').textContent = 'Pedir pelo WhatsApp da loja ↗';
+      $('mbuy').hidden = Boolean(x.soPeloSite);
       const disponibilidade = DISPONIBILIDADE[x.disponibilidade] ?? DISPONIBILIDADE.consulte;
-      $('mnote').textContent = `Vendido por ${x.lojaNome}, ${x.cidade}${x.entrega ? ` · ${window.CIT.textoEntrega(x.entrega)}` : ''} · ${disponibilidade}. ${x.compraOnline ? 'Pague aqui com Pix ou cartão; a loja combina a entrega com você pelo WhatsApp.' : 'Combine pagamento e entrega direto com a loja.'}`;
+      $('mnote').textContent = `Vendido por ${x.lojaNome}, ${x.cidade}${x.entrega ? ` · ${window.CIT.textoEntrega(x.entrega)}` : ''} · ${disponibilidade}. ${x.compraOnline ? 'Pague aqui com Pix ou cartão; a loja combina a entrega com você pelo WhatsApp.' : x.soPeloSite ? 'Compra pelo site com Pix ou cartão disponível em breve.' : 'Combine pagamento e entrega direto com a loja.'}`;
 
       const nomeLower = String(x.nome || '').toLowerCase();
       const ehCalcado = x.dept === 'calc' || /tenis|tênis|sapato|sandalia|sandália|chinelo|bota|chuteira/i.test(nomeLower);
@@ -322,6 +327,7 @@ import { filtrarCatalogo } from './catalogo.js';
     } else {
       $('mvariants').hidden = true;
       $('mvariants').innerHTML = '';
+      $('mbuy').hidden = false;
       $('mbuy').href = x.link;
       $('mbuy').rel = 'sponsored nofollow noopener';
       $('mbuy').textContent = `Comprar na ${STORE[x.loja]} ↗`;

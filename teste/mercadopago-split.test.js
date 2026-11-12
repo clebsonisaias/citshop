@@ -24,6 +24,7 @@ test("split: loja conecta o MP, cobrança sai com o token dela e o webhook de pa
     modeloCobranca: "comissao_fixa", comissaoPorVenda: 1, mpOauth: { state: "estado-1", em: agora },
   });
   banco.produtos.push({ id: "p1", lojaId: "loja-d", nome: "Laço", dept: "moda", preco: 9.5, fotos: ["/x.webp"], ativo: true, bloqueado: false, criadoEm: agora });
+  banco.produtos.push({ id: "p1b", lojaId: "loja-d", nome: "Tiara", dept: "moda", preco: 12, fotos: ["/x.webp"], ativo: true, bloqueado: false, criadoEm: agora });
   banco.salvar();
 
   const chamadas = [];
@@ -62,16 +63,35 @@ test("split: loja conecta o MP, cobrança sai com o token dela e o webhook de pa
   assert.equal((await post("/api/pagamento/split", { produtoId: "l-p1" })).status, 400, "sem dados do comprador");
   assert.equal((await post("/api/pagamento/split", { produtoId: "l-p1", comprador: { ...comprador, endereco: "" } })).status, 400, "entrega sem endereço");
 
+  // 2b. Loja que paga por venda vende só pelo Mercado Pago: sem pedido pelo WhatsApp e sem o número no site
+  assert.equal(vitrine.produtos.find((p) => p.id === "l-p1").whatsapp, null);
+  assert.equal(vitrine.lojas.find((l) => l.slug === "delly").whatsapp, null);
+  assert.equal((await post("/api/pedidos/whatsapp", { produtoId: "l-p1", comprador })).status, 409);
+  assert.equal((await fetch(`${base}/contato/l-p1`, { redirect: "manual" })).headers.get("location"), "/p/l-p1");
+  assert.equal((await fetch(`${base}/contato/loja/delly`, { redirect: "manual" })).headers.get("location"), "/delly");
+  const pagina = await (await fetch(`${base}/p/l-p1`)).text();
+  assert.ok(pagina.includes("data-comprar=") && !pagina.includes("data-pedir-zap="), "página do produto só com Pix ou cartão");
+
   // 3. Checkout Pro: token da loja, comissão da CIT, sem sponsor_id, volta para a página do produto
   const r1 = await (await post("/api/pagamento/split", { produtoId: "l-p1", quantidade: 2, comprador })).json();
   assert.equal(r1.initPoint, "https://mp.example/checkout");
   const pref = chamadas.find((c) => c.u.endsWith("/checkout/preferences"));
   assert.equal(pref.auth, autorizacaoDaLoja);
-  assert.equal(pref.corpo.marketplace_fee, 1);
-  assert.equal(pref.corpo.items[0].unit_price, 19);
+  assert.equal(pref.corpo.marketplace_fee, 2, "R$ 1 por unidade");
+  assert.deepEqual([pref.corpo.items[0].unit_price, pref.corpo.items[0].quantity], [9.5, 2]);
   assert.ok(!("sponsor_id" in pref.corpo));
   assert.equal(pref.corpo.back_urls.success, "https://shop.citmax.com.br/p/l-p1?compra=aprovada");
   assert.equal(b.d.pedidos[0].comprador.whatsapp, "5584988887777");
+
+  // 3b. Carrinho da loja: um pagamento com todos os itens, R$ 1 por unidade e volta para /carrinho
+  const rc = await post("/api/pagamento/split", { itens: [{ produtoId: "l-p1", quantidade: 2, observacao: "cor: Rosa", preco: 0.01 }, { produtoId: "l-p1b", quantidade: 1 }], comprador });
+  assert.equal(rc.status, 200);
+  const prefCarrinho = chamadas.filter((c) => c.u.endsWith("/checkout/preferences")).at(-1);
+  assert.deepEqual(prefCarrinho.corpo.items.map((i) => [i.title, i.quantity, i.unit_price]), [["Laço (cor: Rosa)", 2, 9.5], ["Tiara", 1, 12]], "preço do servidor, não do aparelho");
+  assert.equal(prefCarrinho.corpo.marketplace_fee, 3);
+  assert.equal(prefCarrinho.corpo.back_urls.success, "https://shop.citmax.com.br/carrinho?compra=aprovada&loja=loja-d");
+  const pedCarrinho = b.d.pedidos.at(-1);
+  assert.deepEqual([pedCarrinho.valorTotal, pedCarrinho.quantidade, pedCarrinho.itens.length], [31, 3, 2]);
 
   // 3. Pix exige e-mail e vai com chave de idempotência
   assert.equal((await post("/api/pagamento/split", { produtoId: "l-p1", metodo: "pix", comprador })).status, 400);

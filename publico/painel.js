@@ -78,7 +78,9 @@
       const doSite = p.origem !== 'whatsapp';
       return `<div class="venda">
         <div class="venda-selos"><span class="st">${doSite ? 'Pago no site' : 'Pedido no WhatsApp'}</span>${doSite ? `<span class="st ${esc(p.status)}">${esc(PAGAMENTO[p.status] ?? p.status)}</span>` : ''}<small>${esc(p.id.startsWith('P-') ? p.id : '')}</small></div>
-        <b>${esc(String(p.quantidade))}x ${esc(p.produtoNome ?? '')} · ${brl.format(p.valorTotal)}</b>
+        ${p.itens?.length > 1
+          ? `<b>${p.itens.length} produtos · ${brl.format(p.valorTotal)}</b><ul class="venda-itens">${p.itens.map((i) => `<li>${esc(String(i.quantidade))}x ${esc(i.nome)}${i.observacao ? ` <small>(${esc(i.observacao)})</small>` : ''} · ${brl.format(i.preco * i.quantidade)}</li>`).join('')}</ul>`
+          : `<b>${esc(String(p.quantidade))}x ${esc(p.produtoNome ?? '')} · ${brl.format(p.valorTotal)}</b>${p.itens?.[0]?.observacao ? `<span>${esc(p.itens[0].observacao)}</span>` : ''}`}
         <span>${esc(c.nome ?? '')}${c.whatsapp ? ` · <a href="https://wa.me/${esc(c.whatsapp)}" target="_blank" rel="noopener">WhatsApp do cliente</a>` : ''}</span>
         <span>${c.receber === 'entrega' ? `Entregar em: ${esc(c.endereco ?? '')}` : 'Vai retirar na loja'}${c.observacao ? ` · ${esc(c.observacao)}` : ''}</span>
         <div class="venda-rodape"><small>${new Date(p.criadoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</small>

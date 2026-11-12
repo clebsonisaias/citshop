@@ -44,11 +44,23 @@ test("pedidos: WhatsApp registra com código, loja vê só os dela, muda situaç
   const texto = decodeURIComponent(url.split("text=")[1]);
   assert.ok(texto.includes(pedido) && texto.includes("2x Laço a") && texto.includes("Rua A, 10"));
 
+  // Carrinho: vários produtos da mesma loja num pedido só; lojas diferentes são recusadas
+  b.produtos.push({ id: "pa2", lojaId: "loja-a", nome: "Tiara a", dept: "moda", preco: 12, fotos: ["/x.webp"], ativo: true, bloqueado: false, criadoEm: agora });
+  const comprador = { nome: "Bia", whatsapp: "84977776666" };
+  assert.equal((await post("/api/pedidos/whatsapp", { itens: [{ produtoId: "l-pa" }, { produtoId: "l-pb" }], comprador })).status, 400, "uma loja por pedido");
+  assert.equal((await post("/api/pedidos/whatsapp", { itens: [{ produtoId: "l-pa" }, { produtoId: "l-nao-existe" }], comprador })).status, 404);
+  assert.equal((await post("/api/pedidos/whatsapp", { itens: Array.from({ length: 21 }, () => ({ produtoId: "l-pa" })), comprador })).status, 400);
+  const rc = await (await post("/api/pedidos/whatsapp", { itens: [{ produtoId: "l-pa", quantidade: 3, observacao: "cor: Azul" }, { produtoId: "l-pa2", quantidade: 1 }], comprador })).json();
+  const textoCarrinho = decodeURIComponent(rc.url.split("text=")[1]);
+  assert.ok(textoCarrinho.includes("3x Laço a") && textoCarrinho.includes("cor: Azul") && textoCarrinho.includes("1x Tiara a") && /Total: R\$\s40,50/.test(textoCarrinho));
+  const pedidoCarrinho = b.d.pedidos.find((p) => p.id === rc.pedido);
+  assert.deepEqual([pedidoCarrinho.valorTotal, pedidoCarrinho.quantidade, pedidoCarrinho.itens.length], [40.5, 4, 2]);
+
   // A loja A vê o pedido (e não vê a compra no site sem pagamento); a loja B não vê nada
   const cookieA = await entrar("a@loja.com"), cookieB = await entrar("b@loja.com");
   const painelA = await (await fetch(`${base}/api/painel/eu`, { headers: { cookie: cookieA } })).json();
-  assert.deepEqual(painelA.pedidos.map((p) => p.id), [pedido]);
-  assert.equal(painelA.pedidos[0].comprador.whatsapp, "5584988887777");
+  assert.deepEqual(painelA.pedidos.map((p) => p.id).sort(), [pedido, rc.pedido].sort());
+  assert.equal(painelA.pedidos.find((p) => p.id === pedido).comprador.whatsapp, "5584988887777");
   const painelB = await (await fetch(`${base}/api/painel/eu`, { headers: { cookie: cookieB } })).json();
   assert.equal(painelB.pedidos.length, 0);
 
@@ -57,7 +69,7 @@ test("pedidos: WhatsApp registra com código, loja vê só os dela, muda situaç
   assert.equal((await patch(cookieB, "vendido")).status, 404);
   assert.equal((await patch(cookieA, "qualquer")).status, 400);
   const mudou = await (await patch(cookieA, "vendido")).json();
-  assert.equal(mudou.pedidos[0].etapa, "vendido");
+  assert.equal(mudou.pedidos.find((p) => p.id === pedido).etapa, "vendido");
 
   // Planilha da loja A
   const csv = await fetch(`${base}/api/painel/pedidos.csv`, { headers: { cookie: cookieA } });
@@ -65,5 +77,6 @@ test("pedidos: WhatsApp registra com código, loja vê só os dela, muda situaç
   const conteudo = await csv.text();
   assert.ok(conteudo.includes("Ana Cliente") && conteudo.includes("Pedido no WhatsApp") && conteudo.includes("Vendido"));
   assert.ok(!conteudo.includes("Desistiu"));
+  assert.equal(conteudo.split(rc.pedido).length - 1, 2, "uma linha por produto do carrinho");
   assert.equal((await fetch(`${base}/api/painel/pedidos.csv`)).status, 401);
 });

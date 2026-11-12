@@ -724,3 +724,40 @@ dialog.compra::backdrop { background: rgba(3, 48, 58, .55); }
 .cupom-codigo button { border: 0; border-radius: 10px; background: var(--deep); color: #fff; font: 700 14px var(--font); padding: 0 14px; min-height: 46px; cursor: pointer; }
 .cupom-rodape { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
 .cupom-rodape a { color: var(--deep); font-weight: 700; }
+
+/* ---------- carrinho (lojas locais) ---------- */
+.carrinhobtn .ic { stroke: var(--deep); fill: none; stroke-width: 2; }
+.carrinho-flutuante { position: fixed; right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); z-index: 40; display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 12px 18px; border-radius: 999px; background: var(--deep); color: var(--on-deep); font-weight: 800; text-decoration: none; box-shadow: 0 12px 28px -12px rgba(0,0,0,.45); }
+.carrinho-flutuante[hidden] { display: none; }
+.carrinho-flutuante .ic { stroke: var(--mint); fill: none; stroke-width: 2; }
+.carrinho-pg { max-width: 720px; padding-top: 24px; padding-bottom: 96px; }
+.carrinho-pg h1 { margin: 0 0 4px; font-size: 24px; }
+.carrinho-vazio { display: grid; gap: 8px; justify-items: start; padding: 24px 0; }
+.carrinho-vazio p { margin: 0; }
+.carrinho-vazio .buybtn { margin-top: 8px; }
+.carrinho-aviso { background: #FFF6E5; padding: 10px 12px; border-radius: 10px; }
+.carrinho-loja { border: 1px solid var(--line); border-radius: 16px; padding: 16px; margin-top: 16px; display: grid; gap: 10px; }
+.carrinho-loja-topo { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.carrinho-loja h2 { margin: 0; font-size: 17px; }
+.carrinho-loja h2 a { color: var(--ink); }
+.carrinho-loja small, .carrinho-item small { color: var(--muted); font-size: 12px; }
+.carrinho-loja ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.carrinho-item { display: grid; grid-template-columns: 64px 1fr auto; grid-template-areas: "foto info qtd" "foto info rem"; gap: 4px 12px; align-items: center; }
+.carrinho-item img, .carrinho-sem-foto { grid-area: foto; width: 64px; height: 64px; border-radius: 10px; object-fit: cover; background: #F1F6F5; }
+.carrinho-item-info { grid-area: info; display: grid; gap: 2px; min-width: 0; }
+.carrinho-item-info a { color: var(--ink); font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
+.carrinho-qtd { grid-area: qtd; display: flex; align-items: center; border: 1.5px solid var(--line); border-radius: 12px; }
+.carrinho-qtd button { min-width: 44px; min-height: 44px; border: 0; background: none; font: 700 18px var(--font); color: var(--ink); cursor: pointer; }
+.carrinho-qtd button:disabled { opacity: .4; cursor: default; }
+.carrinho-qtd span { min-width: 20px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+.carrinho-remover { grid-area: rem; justify-self: end; min-height: 32px; border: 0; background: none; color: var(--hot); font: 600 13px var(--font); cursor: pointer; text-decoration: underline; }
+.carrinho-total { display: flex; justify-content: space-between; margin: 4px 0 0; padding-top: 10px; border-top: 1px solid var(--line); font-size: 16px; }
+.carrinho-loja .buybtn { border: 0; }
+.carrinho-loja .buybtn, .carrinho-loja .zapbtn { width: 100%; font: 800 15px var(--font); cursor: pointer; }
+.carrinho-loja .zapbtn { margin-top: 0; background: #fff; }
+.carrinho-loja .note { margin: 0; }
+.venda-itens { margin: 2px 0; padding-left: 18px; font-size: 13px; }
+.compra-em-breve { margin: 0; padding: 14px; border-radius: 12px; background: #E9F3F2; color: var(--deep); font-weight: 700; text-align: center; }
+/* Na home o botão do Canal VIP fica no mesmo canto: o carrinho sobe para cima dele. */
+body:has(.canal-flutuante) .carrinho-flutuante { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 72px); }
+body.na-loja .carrinho-flutuante { bottom: max(16px, env(safe-area-inset-bottom)); }
