@@ -24,7 +24,8 @@
   <!-- Entrar / cadastrar -->
   <section id="vAuth" hidden>
     <h1>Venda na CIT Shopping</h1>
-    <p class="note" style="font-size:14px">Seus produtos na vitrine, na frente das grandes lojas. O cliente chama no seu WhatsApp. <b>30 dias grátis</b>, depois R$ 49,90 por mês.</p>
+    <p class="note" style="font-size:14px">Seus produtos na vitrine, na frente das grandes lojas. O cliente chama no seu WhatsApp. <b>30 dias grátis</b>, depois <span id="precoPlano">R$ 99,90</span> por mês.</p>
+    <div class="msg ok" id="campanhaCadastro" hidden role="status"></div>
     <div class="msg" id="avisoConvite" hidden role="status"></div>
     <div class="abas" role="group" aria-label="Acesso">
       <button id="abaCad" aria-pressed="true">Criar minha loja</button>
@@ -40,6 +41,10 @@
         <label>Cidade<input name="cidade" required maxlength="60" autocomplete="address-level2" placeholder="Parnamirim"></label>
       </div>
       <label>O que a loja vende <small>ex.: Moda feminina, Pet shop</small><input name="categoria" maxlength="60"></label>
+      <div class="dois">
+        <label>CNPJ <small>opcional</small><input name="cnpj" inputmode="numeric" maxlength="18" placeholder="00.000.000/0000-00" autocomplete="off"></label>
+        <label>Cupom <small>opcional</small><input name="cupom" maxlength="30" autocapitalize="characters" autocomplete="off" placeholder="Ex.: FUNDADOR50"></label>
+      </div>
       <div class="dois">
         <label>E-mail<input name="email" type="email" required autocomplete="email"></label>
         <label>Senha <small>mínimo 8 caracteres</small><input name="senha" type="password" required minlength="8" autocomplete="new-password"></label>
@@ -78,8 +83,14 @@
 
     <div class="box status">
       <div><span class="pill" id="pStatus"></span><p id="pStatusTxt" style="margin:8px 0 0"></p></div>
-      <button class="btn" id="assinar" hidden>Assinar R$ 49,90/mês</button>
+      <button class="btn" id="assinar" hidden>Assinar</button>
     </div>
+    <p class="msg ok" id="pBeneficio" hidden role="status"></p>
+    <form class="box form cupom-plano" id="fCupomPlano" hidden>
+      <label>Tem cupom de assinatura? <small id="cupomPlanoAjuda"></small><input name="codigo" maxlength="30" autocapitalize="characters" autocomplete="off" placeholder="FUNDADOR50"></label>
+      <div class="msg" id="mCupomPlano" hidden role="status"></div>
+      <button class="btn sec">Aplicar cupom</button>
+    </form>
 
     <!-- No celular vira a barra fixa embaixo (como num app); no computador fica no topo. -->
     <nav class="abas-app" id="abas" aria-label="Seções do painel">

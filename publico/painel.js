@@ -66,8 +66,10 @@
   const TEXTO = {
     parceira: () => 'Sua loja é parceira oficial da CIT Shopping! Sem mensalidade fixa, seus produtos estão ativos na vitrine com comissão de apenas R$ 1,00 por venda.',
     teste: (s) => `Teste grátis: faltam ${s.diasTeste} ${s.diasTeste === 1 ? 'dia' : 'dias'}. Seus produtos estão na vitrine. Assine agora e a primeira cobrança só acontece quando o teste acabar.`,
-    ativa: () => 'Assinatura ativa. Seus produtos aparecem na vitrine, na frente dos afiliados.',
-    vencida: (s) => s.loja.assinatura?.status === 'pendente'
+    ativa: (s) => `Assinatura ativa${s.plano?.precoContratado ? ` (${brl.format(s.plano.precoContratado)} por mês)` : ''}. Seus produtos aparecem na vitrine, na frente dos afiliados.`,
+    vencida: (s) => s.loja.assinatura?.status === 'pausada'
+      ? 'A cobrança da assinatura está pausada no Mercado Pago (pagamento em atraso). Regularize para voltar à vitrine; o seu benefício continua valendo.'
+      : s.loja.assinatura?.status === 'pendente'
       ? 'Estamos aguardando a confirmação do pagamento no Mercado Pago. Assim que confirmar, seus produtos voltam pra vitrine.'
       : 'Seu teste acabou e seus produtos saíram da vitrine. Assine para voltar a aparecer.',
     suspensa: () => 'Sua loja foi suspensa pela CIT Shopping. Fale com a gente pelo WhatsApp da CITmax.',
@@ -307,6 +309,12 @@
     $('pStatusTxt').textContent = (TEXTO[s.status] || TEXTO.teste)(s);
     $('assinar').hidden = s.status === 'ativa' || s.status === 'suspensa' || s.status === 'parceira';
     $('assinar').textContent = `Assinar ${brl.format(s.preco)}/mês`;
+    // Plano: cupom de assinatura (ex.: FUNDADOR50) para quem ainda não assinou, e o benefício já aplicado.
+    const pl = s.plano ?? {};
+    $('fCupomPlano').hidden = !(pl.campanha && !['ativa', 'suspensa', 'parceira'].includes(s.status));
+    if (pl.campanha) $('cupomPlanoAjuda').textContent = `${pl.campanha.codigo}: ${pl.campanha.percentual}% na mensalidade (${brl.format(pl.campanha.preco)}/mês) até ${new Date(pl.campanha.fim).toLocaleDateString('pt-BR')}`;
+    $('pBeneficio').hidden = !pl.beneficio;
+    $('pBeneficio').textContent = pl.beneficio ? `Benefício ${pl.beneficio.codigo}: ${pl.beneficio.percentual}% de desconto na mensalidade, a partir da primeira cobrança e enquanto a assinatura continuar ativa.` : '';
     const f = $('fLoja');
     for (const k of ['nome', 'responsavel', 'whatsapp', 'cidade', 'categoria', 'entrega', 'horario', 'bairrosAtendidos', 'prazoEntrega']) f[k].value = s.loja[k] ?? '';
     $('mpStatus').textContent = s.loja.mpConectado ? 'Conta Mercado Pago conectada: as vendas pelo site caem nela.' : 'Nenhuma conta conectada ainda.';
@@ -515,6 +523,18 @@
       catch (err) { mostrarMsg($('mSenha'), err.message); }
     });
   });
+  $('fCupomPlano').addEventListener('submit', (e) => {
+    e.preventDefault();
+    enviando(e.submitter, async () => {
+      try { mostrar(await api('/api/painel/cupom-assinatura', { metodo: 'POST', json: dados(e.target) })); e.target.reset(); }
+      catch (err) { mostrarMsg($('mCupomPlano'), err.message); }
+    });
+  });
+  // Preço e campanha vêm do servidor (o preço não fica escrito no HTML).
+  api('/api/planos').then((p) => {
+    $('precoPlano').textContent = brl.format(p.precoMensal);
+    if (p.campanha) mostrarMsg($('campanhaCadastro'), `Lojas fundadoras: com o cupom ${p.campanha.codigo} a mensalidade fica em ${brl.format(p.campanha.preco)} enquanto a assinatura continuar ativa. Vale para cadastros até ${new Date(p.campanha.fim).toLocaleDateString('pt-BR')}.`, 'ok');
+  }).catch(() => {});
   $('assinar').onclick = () => enviando($('assinar'), async () => {
     try { location.href = (await api('/api/painel/assinar', { metodo: 'POST' })).url; }
     catch (err) { alert(err.message); }

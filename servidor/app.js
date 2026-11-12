@@ -12,7 +12,11 @@ import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from
 import * as S from "./seguranca.js";
 import { Banco, DEPTS, DIAS_TESTE, SLUGS_RESERVADOS, lojaVisivel, ordenarVitrine, slugUnico, statusLoja, temEstoque } from "./dados.js";
 import { MAX_FOTOS, apagarFoto, receberFotos, receberLogo, salvarFoto } from "./uploads.js";
-import { cifrar, criarMercadoPago, decifrar, statusDoMp, webhookValido } from "./mercadopago.js";
+import { cifrar, criarMercadoPago, decifrar, webhookValido } from "./mercadopago.js";
+import {
+  aplicarCupomAssinatura, beneficioAtivo, cnpjNormalizado, cupomValendo, estadoAssinatura, garantirComercial, precoComDesconto,
+  precoMensalOficial, precoParaAssinar, registrarEstadoAssinatura, reais2, validarCupomAssinatura,
+} from "./planos.js";
 import { MARKETPLACE, criarClienteAmazon } from "./amazon.js";
 import { atualizarAfiliados } from "./afiliados.js";
 import { MonitoramentoMotor } from "./tarefas/monitoramento.js";
@@ -26,7 +30,6 @@ import { campanhaAtual, proximaCampanha } from "./campanha.js";
 import { ConectorTelegram } from "./integracoes/telegram/conector.js";
 
 export const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..");
-export const PRECO_PLANO = 49.9;
 const DIA = 86_400_000;
 const MAX_PRODUTOS = 200;
 const ENTREGAS = ["retirada", "entrega", "ambos"];
@@ -106,6 +109,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   const publico = join(RAIZ, "publico");
   const urlPublica = String(env.URL_PUBLICA ?? "http://localhost:3000").replace(/\/$/, "");
   const banco = new Banco(dadosDir);
+  if (garantirComercial(banco, agora())) banco.salvar(); // planos e campanha FUNDADOR50 (docs/MODELO_COMERCIAL.md)
   const monitoramentoMotor = new MonitoramentoMotor({ dadosDir, log });
   const agendadorOfertas = new AgendadorOfertas({ dadosDir, manualPath: join(RAIZ, "manual.json"), log });
   const conectorWaha = new ConectorWaha({
@@ -719,6 +723,16 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
         .filter((p) => p.cliques > 0).sort((x, y) => y.cliques - x.cliques).slice(0, 5),
     };
   }
+  // Plano da loja para o painel: preço oficial, preço com benefício, preço já contratado e a campanha em vigor.
+  function resumoPlano(loja) {
+    const c = (banco.d.comercial?.cupons ?? []).find((x) => cupomValendo(x, agora()));
+    return {
+      precoOficial: precoMensalOficial(banco), precoParaAssinar: precoParaAssinar(banco, loja),
+      precoContratado: loja.plano?.precoContratado ?? null, beneficio: beneficioAtivo(loja),
+      campanha: c && !loja.beneficio && loja.modeloCobranca !== "comissao_fixa"
+        ? { codigo: c.codigo, percentual: c.percentual, preco: precoComDesconto(precoMensalOficial(banco), c.percentual), fim: c.fim } : null,
+    };
+  }
   function painelDe(loja) {
     const t = agora();
     const { senhaHash, mpConta, mpOauth, ...dados } = loja;
@@ -730,7 +744,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       cupons: (banco.d.cupons ?? []).filter((c) => c.lojaId === loja.id).map(cupomPublico),
       status: statusLoja(loja, t),
       diasTeste: Math.max(0, Math.ceil((Date.parse(loja.testeAte) - t) / DIA)),
-      preco: PRECO_PLANO,
+      preco: precoParaAssinar(banco, loja), // quanto a loja pagaria assinando agora (com o benefício, se tiver)
+      plano: resumoPlano(loja),
       pagamentoConfigurado: mp.configurado,
       cliquesContatoLoja: banco.cliquesContato(`loja:${loja.id}`),
       produtos: banco.produtos.filter((p) => p.lojaId === loja.id).map((p) => ({
@@ -767,6 +782,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     if (!loja.whatsapp) return erro(res, 400, "Informe o WhatsApp com DDD.");
     if (!loja.cidade) return erro(res, 400, "Informe a cidade.");
     if (b.aceite !== true) return erro(res, 400, "Aceite os termos para continuar.");
+    if (b.cnpj && !cnpjNormalizado(b.cnpj)) return erro(res, 400, "CNPJ inválido. Confira os números ou deixe em branco.");
+    loja.cnpj = cnpjNormalizado(b.cnpj);
     // Convite de parceria: vale uma vez, para uma loja (e para o e-mail combinado, quando o convite trava um).
     const convite = b.convite ? conviteAberto(String(b.convite)) : null;
     if (b.convite && !convite) return erro(res, 400, MSG_CONVITE);
@@ -778,6 +795,14 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       criadaEm: new Date(t).toISOString(), testeAte: new Date(t + DIAS_TESTE * DIA).toISOString(),
       aceiteEm: new Date(t).toISOString(), assinatura: { status: "nenhuma" }, suspensa: false,
     });
+    // Cupom de assinatura (ex.: FUNDADOR50) informado no cadastro: validado aqui; se não valer, a loja não é criada.
+    let cupomAssinatura = null;
+    if (!convite && txt(b.cupom, 30)) {
+      const v = validarCupomAssinatura(banco, loja, b.cupom, t);
+      if (v.erro) return erro(res, 400, v.erro);
+      cupomAssinatura = v.cupom;
+    }
+    if (cupomAssinatura) aplicarCupomAssinatura(loja, cupomAssinatura, t);
     if (convite) {
       const pre = PREDEFINICOES[convite.predefinicao] ?? {};
       Object.assign(loja, { modeloCobranca: "comissao_fixa", comissaoPorVenda: 1.00, ...(pre.cor && { cor: pre.cor }), ...(pre.logo && { logo: pre.logo }), ...(pre.sobre && { sobre: pre.sobre }) });
@@ -810,7 +835,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     if (req.query.atualizar && loja.assinatura?.preapprovalId && mp.configurado) {
       try {
         const pa = await mp.consultarPreapproval(loja.assinatura.preapprovalId);
-        loja.assinatura = { ...loja.assinatura, status: statusDoMp(pa.status), atualizadaEm: iso() };
+        registrarEstadoAssinatura(loja, estadoAssinatura(pa.status), { agora: agora() });
         banco.salvar();
       } catch (e) { log.warn?.(`[mp] consulta falhou: ${e.message}`); }
     }
@@ -966,17 +991,39 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     res.json({ ok: true });
   }));
 
+  // ---------- planos e cupom de assinatura (docs/MODELO_COMERCIAL.md) ----------
+  // Público: preço oficial e campanha em vigor, para as telas mostrarem o valor certo sem ter o preço escrito no HTML.
+  app.get("/api/planos", (req, res) => {
+    const c = (banco.d.comercial?.cupons ?? []).find((x) => cupomValendo(x, agora()));
+    res.set("Cache-Control", "no-cache").json({
+      precoMensal: precoMensalOficial(banco), diasTeste: DIAS_TESTE,
+      campanha: c ? { codigo: c.codigo, percentual: c.percentual, preco: precoComDesconto(precoMensalOficial(banco), c.percentual), fim: c.fim } : null,
+    });
+  });
+  // A loja aplica o cupom (antes de assinar). O desconto entra no preço contratado na hora de assinar.
+  app.post("/api/painel/cupom-assinatura", exigirLoja, (req, res) => {
+    if (["authorized", "pausada"].includes(req.loja.assinatura?.status)) return erro(res, 409, "A assinatura já está ativa: o cupom vale para quem ainda vai assinar.");
+    const v = validarCupomAssinatura(banco, req.loja, req.body?.codigo, agora());
+    if (v.erro) return erro(res, 400, v.erro);
+    if (!v.jaAplicado) { aplicarCupomAssinatura(req.loja, v.cupom, agora()); banco.salvar(); }
+    res.json(painelDe(req.loja));
+  });
+
   // ---------- assinatura ----------
   app.post("/api/painel/assinar", exigirLoja, a(async (req, res) => {
     if (!mp.configurado) return erro(res, 503, "O pagamento ainda não está disponível. Fale com a CIT Shopping.");
     const loja = req.loja;
     // Assinando durante o teste, a primeira cobrança só acontece quando o teste acaba.
     const inicio = Math.max(agora() + 5 * 60_000, Date.parse(loja.testeAte));
+    if (loja.modeloCobranca === "comissao_fixa") return erro(res, 400, "Parceiros especiais não pagam mensalidade.");
+    // Preço calculado aqui (oficial ou com o benefício da loja); nunca vem do aparelho. Fica gravado como preço contratado.
+    const valor = precoParaAssinar(banco, loja);
     const pa = await mp.criarPreapproval({
-      referencia: loja.id, email: loja.email, motivo: "CIT Shopping · Plano Loja", valor: PRECO_PLANO,
+      referencia: loja.id, email: loja.email, motivo: beneficioAtivo(loja) ? `CIT Shopping · Plano Loja (${beneficioAtivo(loja).codigo})` : "CIT Shopping · Plano Loja", valor,
       inicio: new Date(inicio).toISOString(), retorno: `${urlPublica}/painel?assinatura=retorno`,
     });
-    loja.assinatura = { status: "pendente", preapprovalId: pa.id, atualizadaEm: iso() };
+    registrarEstadoAssinatura(loja, "pendente", { preapprovalId: pa.id, agora: agora() });
+    loja.plano = { codigo: "mensal", precoContratado: valor, precoOficial: precoMensalOficial(banco), beneficio: beneficioAtivo(loja)?.codigo ?? null, contratadoEm: iso(), preapprovalId: pa.id };
     banco.salvar();
     res.json({ url: pa.initPoint });
   }));
@@ -1159,8 +1206,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     let mudou = 0;
     for (const loja of banco.lojas.filter((l) => l.assinatura?.preapprovalId)) {
       try {
-        const status = statusDoMp((await mp.consultarPreapproval(loja.assinatura.preapprovalId)).status);
-        if (status !== loja.assinatura.status) { loja.assinatura = { ...loja.assinatura, status, atualizadaEm: iso() }; mudou++; }
+        const estado = estadoAssinatura((await mp.consultarPreapproval(loja.assinatura.preapprovalId)).status);
+        if (registrarEstadoAssinatura(loja, estado, { agora: agora() })) mudou++;
       } catch (e) { log.warn?.(`[mp] ${loja.slug}: ${e.message}`); }
     }
     if (mudou) banco.salvar();
@@ -1200,7 +1247,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       const pa = await mp.consultarPreapproval(dataId);
       const loja = banco.loja(pa.externalReference);
       if (loja) {
-        loja.assinatura = { status: statusDoMp(pa.status), preapprovalId: pa.id, atualizadaEm: iso() };
+        registrarEstadoAssinatura(loja, estadoAssinatura(pa.status), { preapprovalId: pa.id, agora: agora() });
         banco.salvar();
         log.info?.(`[mp] ${loja.slug}: ${pa.status}`);
       }
@@ -1209,6 +1256,11 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   }));
 
   // ---------- administração ----------
+  // Registro das ações administrativas (quem alterou o quê e quando). Só cresce; guarda as 2.000 últimas.
+  function auditar(acao, detalhe = {}) {
+    (banco.d.auditoria ??= []).push({ em: iso(), acao, detalhe });
+    if (banco.d.auditoria.length > 2000) banco.d.auditoria.splice(0, banco.d.auditoria.length - 2000);
+  }
   // Senha do admin: a trocada no /admin, enquanto o ADMIN_SENHA_HASH do Coolify for o mesmo de quando ela foi
   // trocada. Mudar o hash no Coolify (esqueci a senha) volta a valer a do Coolify.
   const hashAdmin = () => (banco.d.admin && banco.d.admin.base === (env.ADMIN_SENHA_HASH ?? null) ? banco.d.admin.hash : env.ADMIN_SENHA_HASH);
@@ -1274,6 +1326,56 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     banco.salvar();
     res.json({ ok: true, loja: req.loja });
   });
+  // ---------- comercial no admin: preço oficial, cupons de assinatura, beneficiários ----------
+  // Mudar o preço oficial só vale para quem assinar depois: o preço contratado de cada loja não muda.
+  const cupomAdmin = (c) => ({ ...c, usos: c.usos.length, valendo: cupomValendo(c, agora()) });
+  const comercialAdmin = () => ({
+    precoMensal: precoMensalOficial(banco),
+    cupons: (banco.d.comercial?.cupons ?? []).map(cupomAdmin),
+    beneficiarios: banco.lojas.filter((l) => l.beneficio).map((l) => ({
+      lojaId: l.id, nome: l.nome, slug: l.slug, cnpj: l.cnpj ?? null, whatsapp: l.whatsapp, ...l.beneficio,
+      precoContratado: l.plano?.precoContratado ?? null, assinatura: l.assinatura?.status ?? "nenhuma", status: statusLoja(l, agora()),
+    })),
+  });
+  app.get("/api/admin/comercial", exigirAdmin, (req, res) => res.json(comercialAdmin()));
+  app.put("/api/admin/comercial/preco", exigirAdmin, (req, res) => {
+    const novo = reais2(req.body?.precoMensal);
+    if (!(novo >= 1 && novo <= 10000)) return erro(res, 400, "Preço inválido.");
+    const antes = precoMensalOficial(banco);
+    banco.d.comercial.precoMensal = novo;
+    auditar("preco_mensal", { antes, depois: novo });
+    banco.salvar();
+    res.json(comercialAdmin());
+  });
+  app.post("/api/admin/comercial/cupons", exigirAdmin, (req, res) => {
+    const b = req.body ?? {};
+    const codigo = txt(b.codigo, 30).toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const percentual = Math.round(Number(b.percentual));
+    const inicio = Date.parse(b.inicio ?? new Date(agora()).toISOString()), fim = Date.parse(b.fim);
+    if (codigo.length < 4) return erro(res, 400, "Código com pelo menos 4 letras ou números.");
+    if (!(percentual >= 1 && percentual <= 90)) return erro(res, 400, "Desconto de 1% a 90%.");
+    if (!Number.isFinite(inicio) || !Number.isFinite(fim) || fim <= inicio) return erro(res, 400, "Confira as datas de início e fim.");
+    if ((banco.d.comercial.cupons ?? []).some((c) => c.codigo === codigo)) return erro(res, 409, "Já existe um cupom com esse código.");
+    const limite = b.limite === "" || b.limite == null ? null : Math.max(1, Math.floor(Number(b.limite)) || 1);
+    banco.d.comercial.cupons.push({ codigo, percentual, recorrente: true, permanente: true, ativo: true, limite, inicio: new Date(inicio).toISOString(), fim: new Date(fim).toISOString(), criadoEm: iso(), usos: [] });
+    auditar("cupom_criado", { codigo, percentual, fim: new Date(fim).toISOString(), limite });
+    banco.salvar();
+    res.status(201).json(comercialAdmin());
+  });
+  // Editar um cupom: fim da campanha, ativar/desativar e limite. Percentual e código não mudam (afetariam quem já usou).
+  app.patch("/api/admin/comercial/cupons/:codigo", exigirAdmin, (req, res) => {
+    const c = (banco.d.comercial.cupons ?? []).find((x) => x.codigo === req.params.codigo);
+    if (!c) return erro(res, 404, "Cupom não encontrado.");
+    const b = req.body ?? {}, antes = { fim: c.fim, ativo: c.ativo, limite: c.limite };
+    if (b.fim !== undefined) { const fim = Date.parse(b.fim); if (!Number.isFinite(fim) || fim <= Date.parse(c.inicio)) return erro(res, 400, "Data de fim inválida."); c.fim = new Date(fim).toISOString(); }
+    if (b.ativo !== undefined) c.ativo = b.ativo === true;
+    if (b.limite !== undefined) c.limite = b.limite === "" || b.limite === null ? null : Math.max(1, Math.floor(Number(b.limite)) || 1);
+    auditar("cupom_editado", { codigo: c.codigo, antes, depois: { fim: c.fim, ativo: c.ativo, limite: c.limite } });
+    banco.salvar();
+    res.json(comercialAdmin());
+  });
+  app.get("/api/admin/auditoria", exigirAdmin, (req, res) => res.json([...(banco.d.auditoria ?? [])].reverse().slice(0, 300)));
+
   const conviteAdmin = (c) => ({
     id: c.id, status: statusConvite(c), predefinicao: PREDEFINICOES[c.predefinicao]?.nome ?? null, email: c.email, whatsapp: c.whatsapp,
     criadoEm: c.criadoEm, expiraEm: c.expiraEm, usadoEm: c.usadoEm ?? null, lojaNome: c.lojaId ? banco.loja(c.lojaId)?.nome ?? "(loja excluída)" : null,

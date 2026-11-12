@@ -891,3 +891,12 @@ body.na-loja .rtools select { flex: 1 1 auto; width: auto; min-width: 0; }
 .pg-admin summary { display: flex; align-items: center; min-height: 44px; }
 .faq-item summary { min-height: 44px; } /* área de toque das perguntas frequentes */
 button.buybtn { border: 0; font: inherit; font-weight: 800; cursor: pointer; } /* sem a borda padrão do navegador */
+
+/* ---------- /admin: listas simples (planos, beneficiários, registro) ---------- */
+.sub-adm { font-size: 18px; font-weight: 800; margin: 24px 0 8px; }
+.lista-adm { display: grid; gap: 10px; }
+.item-adm { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; }
+.item-adm > div { flex: 1 1 220px; min-width: 0; overflow-wrap: break-word; }
+.item-adm label { display: grid; gap: 4px; font-size: 12px; font-weight: 700; color: var(--muted); }
+.item-adm input { min-height: 44px; border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.cupom-plano { margin-top: 12px; }

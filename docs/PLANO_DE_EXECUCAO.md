@@ -14,12 +14,13 @@ Regra: nada vai para `main` (que publica sozinho no Coolify) sem autorização e
 - [x] Plano de execução (este arquivo)
 
 ## Fase 2 · Modelo comercial
-- [ ] Catálogo central de planos (mensal R$ 99,90, parceiro R$ 0 + R$ 1/unidade)
-- [ ] Preço contratado gravado na loja; assinantes antigos mantêm R$ 49,90
-- [ ] Cupom FUNDADOR50 (50%, campanha de 90 dias configurável, um por loja, CNPJ/WhatsApp sem duplicidade, não volta após cancelamento definitivo)
-- [ ] Estado `pausada` separado de `cancelada` (atraso não tira o benefício)
-- [ ] Telas com o preço vindo do servidor (cadastro, painel, termos)
-- [ ] Testes: 99,90 · 49,95 · cupom expirado · duplicado · fim da campanha · renovação · cancelamento · recuperação · preço do aparelho ignorado
+- [x] Catálogo central de planos (mensal R$ 99,90, parceiro R$ 0 + R$ 1/unidade)
+- [x] Preço contratado gravado na loja; assinantes antigos mantêm R$ 49,90
+- [x] Cupom FUNDADOR50 (50%, campanha de 90 dias configurável, um por loja, CNPJ/WhatsApp sem duplicidade, não volta após cancelamento definitivo)
+- [x] Estado `pausada` separado de `cancelada` (atraso não tira o benefício)
+- [x] Telas com o preço vindo do servidor (cadastro, painel, termos)
+- [x] Testes: 99,90 · 49,95 · cupom expirado · duplicado · fim da campanha · renovação · cancelamento · recuperação · preço do aparelho ignorado
+- [x] Admin → Planos: preço oficial, cupons (criar, prorrogar, ativar, limite, usos), beneficiários, registro de alterações
 
 ## Fase 3 · Financeiro
 - [ ] Livro de lançamentos imutável (mensalidade, comissão, afiliado, reembolso, chargeback, ajuste)

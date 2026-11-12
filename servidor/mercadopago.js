@@ -117,10 +117,6 @@ export function criarMercadoPago({ token, clientId = null, clientSecret = null, 
 }
 
 /** authorized | pending | paused | cancelled do MP para o nosso status. Só "authorized" libera a vitrine. */
-export function statusDoMp(s) {
-  return s === "authorized" ? "authorized" : s === "pending" ? "pendente" : "cancelada";
-}
-
 /**
  * O MP não assina o corpo: assina o manifest "id:<data.id>;request-id:<x-request-id>;ts:<ts>;".
  * Ver atendehub/apps/api/src/routes/billing.ts.

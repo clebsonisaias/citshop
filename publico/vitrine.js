@@ -81,7 +81,7 @@ import { filtrarCatalogo } from './catalogo.js';
   const SLIDES = [
     { k: 'Black Friday', h: 'Black Friday CIT Shopping', p: 'Contagem regressiva e os produtos que mais baixaram de preço.', c: 'Ver ofertas →', a: 'bag', href: '/black-friday' },
     { k: 'Compre perto', h: 'As lojas da sua cidade estão aqui', p: 'Escolha, chame a loja no WhatsApp e receba rápido.', c: 'Ver lojas →', a: 'shop', show: 'local' },
-    { k: 'Venda na CIT Shopping', h: 'Sua loja na frente das gigantes', p: '30 dias grátis pra testar. Depois, R$ 49,90 por mês.', c: 'Cadastrar minha loja →', a: 'shop', href: '/painel' },
+    { k: 'Venda na CIT Shopping', h: 'Sua loja na frente das gigantes', p: '30 dias grátis pra testar. Depois, R$ 99,90 por mês.', c: 'Cadastrar minha loja →', a: 'shop', href: '/painel' },
   ];
   let cur = 0, timer;
   function renderSlides() {

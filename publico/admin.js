@@ -2,7 +2,7 @@
 (() => {
   const { esc, brl } = window.CIT;
   const $ = (id) => document.getElementById(id);
-  const ROTULO = { teste: 'Teste grátis', ativa: 'Pagante (R$ 49/mês)', vencida: 'Vencida', suspensa: 'Suspensa', parceira: 'Parceira (R$ 1/venda)' };
+  const ROTULO = { teste: 'Teste grátis', ativa: 'Assinante', vencida: 'Vencida', suspensa: 'Suspensa', parceira: 'Parceira (R$ 1/venda)' };
   const DISPONIBILIDADE = { disponivel: 'Disponível', 'sob-encomenda': 'Sob encomenda', consulte: 'Consultar disponibilidade' };
   let lojas = [];
 
@@ -20,7 +20,7 @@
     $('linhas').innerHTML = lojas.map((l) => `<tr>
       <td><b>${esc(l.nome)}</b><br><small class="note">${esc(l.cidade)} · desde ${data(l.criadaEm)}</small><br><a href="/${esc(l.slug)}" target="_blank">ver página /${esc(l.slug)}</a></td>
       <td>${esc(l.responsavel)}<br>${esc(l.email)}<br><a href="https://wa.me/${esc(l.whatsapp)}" target="_blank" rel="noopener">${esc(l.whatsapp)}</a></td>
-      <td><span class="pill ${l.status}">${ROTULO[l.status] || esc(l.status)}</span><br><small class="note">${l.modeloCobranca === 'comissao_fixa' ? 'Cobrança: R$ ' + (l.comissaoPorVenda || 1).toFixed(2) + ' por venda (Split MP)' : 'Cobrança: Mensalidade R$ 49/mês'}<br>teste até ${data(l.testeAte)}<br>MP: ${esc(l.assinatura?.status ?? 'nenhuma')}<br>${l.cliquesContatoLoja ?? 0} cliques no WhatsApp<br>${l.pedidos?.total ?? 0} pedidos (${l.pedidos?.pagos ?? 0} pagos no site, ${l.pedidos?.whatsapp ?? 0} pelo WhatsApp)${l.mpConectado ? '<br>Mercado Pago conectado' : ''}</small></td>
+      <td><span class="pill ${l.status}">${ROTULO[l.status] || esc(l.status)}</span><br><small class="note">${l.modeloCobranca === 'comissao_fixa' ? 'Cobrança: R$ ' + (l.comissaoPorVenda || 1).toFixed(2) + ' por venda (Split MP)' : `Cobrança: mensalidade${l.plano?.precoContratado ? ' ' + brl.format(l.plano.precoContratado) : ''}${l.beneficio ? ` · ${esc(l.beneficio.codigo)}${l.beneficio.encerradoEm ? ' (encerrado)' : ''}` : ''}`}<br>teste até ${data(l.testeAte)}<br>MP: ${esc(l.assinatura?.status ?? 'nenhuma')}<br>${l.cliquesContatoLoja ?? 0} cliques no WhatsApp<br>${l.pedidos?.total ?? 0} pedidos (${l.pedidos?.pagos ?? 0} pagos no site, ${l.pedidos?.whatsapp ?? 0} pelo WhatsApp)${l.mpConectado ? '<br>Mercado Pago conectado' : ''}</small></td>
       <td>${l.produtos.length ? `<details><summary>${l.produtos.length} ${l.produtos.length === 1 ? 'produto' : 'produtos'}</summary>` : ''}${l.produtos.map((p) => `<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
           <img src="${esc(p.foto)}" alt="" style="width:32px;height:32px;object-fit:cover;border-radius:6px">
           <span style="flex:1">${esc(p.nome)} · ${brl.format(p.preco)}<br><small class="note">${esc(DISPONIBILIDADE[p.disponibilidade] ?? DISPONIBILIDADE.consulte)} · ${p.cliquesContato ?? 0} cliques WhatsApp${p.ativo ? '' : ' · pausado'}</small></span>
@@ -32,7 +32,52 @@
         <button class="btn sec" data-acesso="${l.id}">Definir acesso</button>
         <button class="btn perigo" data-excluir="${l.id}">Excluir loja</button></td></tr>`).join('');
   }
-  async function carregar() { lojas = await api('/api/admin/lojas'); render(); carregarCupons(); carregarConvites(); }
+  async function carregar() { lojas = await api('/api/admin/lojas'); render(); carregarCupons(); carregarConvites(); carregarComercial(); }
+  // ---------- planos e cupons de assinatura ----------
+  const dataIso = (iso) => new Date(iso).toLocaleDateString('sv-SE', { timeZone: 'America/Fortaleza' }); // AAAA-MM-DD para o campo de data
+  const fimDoDia = (d) => `${d}T23:59:59-03:00`;
+  async function carregarComercial() {
+    const c = await api('/api/admin/comercial').catch(() => null);
+    if (!c) return;
+    $('fPrecoPlano').precoMensal.value = Number(c.precoMensal).toFixed(2).replace('.', ',');
+    $('listaCuponsPlano').innerHTML = c.cupons.length ? c.cupons.map((x) => `<div class="item-adm">
+        <div><b>${esc(x.codigo)}</b> · ${x.percentual}% · ${x.valendo ? '<span class="pill ativa">valendo</span>' : '<span class="pill vencida">fora do período</span>'}
+          <br><small class="note">${x.usos} ${x.usos === 1 ? 'loja usou' : 'lojas usaram'}${x.limite ? ` de ${x.limite}` : ''} · começou em ${data(x.inicio)}</small></div>
+        <label>Termina em<input type="date" value="${dataIso(x.fim)}" data-fim-cupom="${esc(x.codigo)}"></label>
+        <button class="btn sec" type="button" data-ativo-cupom="${esc(x.codigo)}" data-v="${!x.ativo}">${x.ativo ? 'Desativar' : 'Ativar'}</button>
+      </div>`).join('') : '<p class="note">Nenhum cupom de assinatura.</p>';
+    $('listaBeneficiarios').innerHTML = c.beneficiarios.length ? c.beneficiarios.map((x) => `<div class="item-adm"><div><b>${esc(x.nome)}</b> · ${esc(x.codigo)} (${x.percentual}%)
+        <br><small class="note">${x.cnpj ? `CNPJ ${esc(x.cnpj)} · ` : ''}WhatsApp ${esc(x.whatsapp)} · aplicado em ${data(x.aplicadoEm)} · assinatura: ${esc(x.assinatura)}${x.precoContratado ? ` · ${brl.format(x.precoContratado)}/mês` : ''}${x.encerradoEm ? ` · <b>encerrado em ${data(x.encerradoEm)}</b>` : ''}</small></div></div>`).join('') : '<p class="note">Nenhuma loja com benefício ainda.</p>';
+    const aud = await api('/api/admin/auditoria').catch(() => []);
+    $('listaAuditoria').innerHTML = aud.length ? aud.slice(0, 40).map((x) => `<p class="note">${new Date(x.em).toLocaleString('pt-BR')} · <b>${esc(x.acao)}</b> ${esc(JSON.stringify(x.detalhe))}</p>`).join('') : '<p class="note">Nada registrado ainda.</p>';
+  }
+  $('fPrecoPlano').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const m = $('mPrecoPlano'), valor = Number(String(e.target.precoMensal.value).replace(/\./g, '').replace(',', '.'));
+    if (!confirm(`Mudar a mensalidade oficial para ${brl.format(valor)}? Quem já assina continua com o preço contratado.`)) return;
+    try { await api('/api/admin/comercial/preco', 'PUT', { precoMensal: valor }); m.className = 'msg ok'; m.textContent = 'Preço salvo. Vale para novas assinaturas.'; m.hidden = false; carregarComercial(); }
+    catch (err) { m.className = 'msg'; m.textContent = err.message; m.hidden = false; }
+  });
+  $('fNovoCupomPlano').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target, m = $('mNovoCupomPlano');
+    try {
+      await api('/api/admin/comercial/cupons', 'POST', { codigo: f.codigo.value, percentual: f.percentual.value, inicio: `${f.inicio.value}T00:00:00-03:00`, fim: fimDoDia(f.fim.value), limite: f.limite.value });
+      f.reset(); m.className = 'msg ok'; m.textContent = 'Cupom criado.'; m.hidden = false; carregarComercial();
+    } catch (err) { m.className = 'msg'; m.textContent = err.message; m.hidden = false; }
+  });
+  $('listaCuponsPlano').addEventListener('change', async (e) => {
+    const campo = e.target.closest('[data-fim-cupom]');
+    if (!campo || !campo.value) return;
+    try { await api(`/api/admin/comercial/cupons/${encodeURIComponent(campo.dataset.fimCupom)}`, 'PATCH', { fim: fimDoDia(campo.value) }); carregarComercial(); }
+    catch (err) { alert(err.message); }
+  });
+  $('listaCuponsPlano').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-ativo-cupom]');
+    if (!b) return;
+    try { await api(`/api/admin/comercial/cupons/${encodeURIComponent(b.dataset.ativoCupom)}`, 'PATCH', { ativo: b.dataset.v === 'true' }); carregarComercial(); }
+    catch (err) { alert(err.message); }
+  });
   // Convites de parceria: o link só aparece enquanto o convite está aberto.
   const STATUS_CONVITE = { aberto: 'Aberto', usado: 'Usado', expirado: 'Expirado', cancelado: 'Cancelado' };
   async function carregarConvites() {

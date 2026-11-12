@@ -27,6 +27,7 @@
   <section id="vAdm" hidden>
     <nav id="abas" aria-label="Seções da administração">
       <a href="#lojas">Lojas</a>
+      <a href="#planos">Planos</a>
       <a href="#convites">Convites</a>
       <a href="#cupons">Cupons</a>
       <a href="#afiliados">Afiliados</a>
@@ -327,6 +328,43 @@
     </div>
 
     </div>
+    <div data-aba="planos" hidden>
+      <h1 style="margin-top:20px">Planos e cupons de assinatura</h1>
+      <div class="box form">
+        <p class="note">O preço oficial vale para quem assinar daqui em diante. Quem já assina continua pagando o preço que contratou.</p>
+        <form class="form" id="fPrecoPlano">
+          <label>Mensalidade oficial (R$)<input name="precoMensal" inputmode="decimal" required></label>
+          <div class="msg" id="mPrecoPlano" hidden role="status"></div>
+          <button class="btn">Salvar preço</button>
+        </form>
+      </div>
+      <h2 class="sub-adm">Cupons de assinatura</h2>
+      <div class="box form">
+        <p class="note">O cupom é aplicado na mensalidade e vale enquanto a assinatura da loja continuar ativa. Mude a data de fim para encerrar ou prorrogar a campanha.</p>
+        <div id="listaCuponsPlano" class="lista-adm"></div>
+        <details style="margin-top:12px">
+          <summary style="font-weight:800;cursor:pointer">Criar cupom de assinatura</summary>
+          <form class="form" id="fNovoCupomPlano" style="margin-top:12px">
+            <div class="dois">
+              <label>Código<input name="codigo" required maxlength="30" autocapitalize="characters" placeholder="EX.: VERAO30"></label>
+              <label>Desconto (%)<input name="percentual" required inputmode="numeric" placeholder="30"></label>
+            </div>
+            <div class="dois">
+              <label>Começa em<input name="inicio" type="date" required></label>
+              <label>Termina em<input name="fim" type="date" required></label>
+            </div>
+            <label>Limite de lojas <small>opcional</small><input name="limite" inputmode="numeric" placeholder="sem limite"></label>
+            <div class="msg" id="mNovoCupomPlano" hidden role="status"></div>
+            <button class="btn">Criar cupom</button>
+          </form>
+        </details>
+      </div>
+      <h2 class="sub-adm">Lojas com benefício</h2>
+      <div class="box"><div id="listaBeneficiarios" class="lista-adm"></div></div>
+      <h2 class="sub-adm">Registro de alterações</h2>
+      <div class="box"><div id="listaAuditoria" class="lista-adm"></div></div>
+    </div>
+
     <div data-aba="conta" hidden>
     <details class="box" open style="margin-top:20px">
       <summary style="font-weight:800;cursor:pointer;min-height:44px">Trocar senha do admin</summary>
