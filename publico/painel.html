@@ -113,6 +113,20 @@
       <div class="lista" id="lista"></div>
     </div>
 
+    <div class="box" id="blocoPagamento">
+      <h2>Recebimento de vendas (Mercado Pago / Pix)</h2>
+      <p class="note" style="font-size:13px;margin:-4px 0 14px">Informe sua conta do Mercado Pago para receber o valor das vendas realizadas no site.</p>
+      <form class="form" id="fPagamento">
+        <div class="dois">
+          <label>E-mail da conta Mercado Pago<input name="mpEmail" id="mpEmail" type="email" placeholder="exemplo@gmail.com"></label>
+          <label>Chave Pix do Mercado Pago <small>opcional</small><input name="mpChavePix" id="mpChavePix" placeholder="CPF, e-mail, telefone ou chave aleatória"></label>
+        </div>
+        <p class="note" style="font-size:12px;margin:4px 0 12px">💡 O valor da venda cai direto na sua conta do Mercado Pago. Em lojas parceiras, é descontada apenas a taxa fixa de R$ 1,00 por venda da CIT Shopping.</p>
+        <div class="msg" id="mPagamento" hidden role="status"></div>
+        <button class="btn">Salvar conta Mercado Pago</button>
+      </form>
+    </div>
+
     <details class="box">
       <summary style="font-weight:800;cursor:pointer;min-height:32px">Dados da loja</summary>
       <form class="form" id="fLoja" style="margin-top:12px">

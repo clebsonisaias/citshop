@@ -394,6 +394,9 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       horario: b.horario === undefined ? req.loja.horario ?? "" : txt(b.horario, 120),
       bairrosAtendidos: b.bairrosAtendidos === undefined ? req.loja.bairrosAtendidos ?? "" : txt(b.bairrosAtendidos, 300),
       prazoEntrega: b.prazoEntrega === undefined ? req.loja.prazoEntrega ?? "" : txt(b.prazoEntrega, 120),
+      mpEmail: b.mpEmail === undefined ? req.loja.mpEmail ?? null : (txt(b.mpEmail, 120).toLowerCase() || null),
+      mpChavePix: b.mpChavePix === undefined ? req.loja.mpChavePix ?? null : (txt(b.mpChavePix, 120) || null),
+      mpCollectorId: b.mpCollectorId === undefined ? req.loja.mpCollectorId ?? null : (txt(b.mpCollectorId, 60) || null),
       // Sem o campo (ex.: formulário de aparência), mantém o que já estava.
       entrega: b.entrega === undefined ? req.loja.entrega ?? null : ENTREGAS.includes(b.entrega) ? b.entrega : null,
     });
