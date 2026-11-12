@@ -28,6 +28,7 @@
     <nav id="abas" aria-label="Seções da administração">
       <a href="#inicio">Início</a>
       <a href="#lojas">Lojas</a>
+      <a href="#food">Food</a>
       <a href="#planos">Planos</a>
       <a href="#financeiro">Financeiro</a>
       <a href="#convites">Convites</a>
@@ -348,7 +349,8 @@
       <div class="box form">
         <p class="note">O preço oficial vale para quem assinar daqui em diante. Quem já assina continua pagando o preço que contratou.</p>
         <form class="form" id="fPrecoPlano">
-          <label>Mensalidade oficial (R$)<input name="precoMensal" inputmode="decimal" required></label>
+          <div class="dois"><label>Plano Loja (R$/mês)<input name="precoMensal" inputmode="decimal" required></label>
+          <label>FOOD PRO, restaurantes (R$/mês)<input name="precoFood" inputmode="decimal" required></label></div>
           <div class="msg" id="mPrecoPlano" hidden role="status"></div>
           <button class="btn">Salvar preço</button>
         </form>
@@ -368,6 +370,7 @@
               <label>Começa em<input name="inicio" type="date" required></label>
               <label>Termina em<input name="fim" type="date" required></label>
             </div>
+            <label>Vale para<select name="segmento"><option value="loja">Lojas</option><option value="food">Restaurantes (FOOD PRO)</option></select></label>
             <label>Limite de lojas <small>opcional</small><input name="limite" inputmode="numeric" placeholder="sem limite"></label>
             <div class="msg" id="mNovoCupomPlano" hidden role="status"></div>
             <button class="btn">Criar cupom</button>
@@ -378,6 +381,14 @@
       <div class="box"><div id="listaBeneficiarios" class="lista-adm"></div></div>
       <h2 class="sub-adm">Registro de alterações</h2>
       <div class="box"><div id="listaAuditoria" class="lista-adm"></div></div>
+    </div>
+
+    <div data-aba="food" hidden>
+      <h1 style="margin-top:20px">CITshop Food</h1>
+      <p class="note">Restaurantes (plano FOOD PRO, sem comissão), aparelhos vinculados (cozinha, atendimento, impressora) e falhas de impressão. Preço e cupom FOODFUNDADOR50 ficam em Planos. Suspender um restaurante: aba Lojas.</p>
+      <h2>Restaurantes</h2><div id="foodRest" class="lista-adm"></div>
+      <h2>Aparelhos vinculados</h2><div id="foodAcessos" class="lista-adm"></div>
+      <h2>Falhas de impressão recentes</h2><div id="foodFalhas" class="lista-adm"></div>
     </div>
 
     <div data-aba="financeiro" hidden>

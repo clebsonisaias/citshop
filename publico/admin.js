@@ -36,7 +36,7 @@
         <button class="btn sec" data-acesso="${l.id}">Definir acesso</button>
         <button class="btn perigo" data-excluir="${l.id}">Excluir loja</button></td></tr>`).join('') : '<tr><td colspan="5" class="note">Nenhuma loja com esse filtro.</td></tr>';
   }
-  async function carregar() { lojas = await api('/api/admin/lojas'); render(); carregarCupons(); carregarConvites(); carregarComercial(); carregarDashboard(); carregarFinanceiro(); carregarAvaliacoes(); }
+  async function carregar() { lojas = await api('/api/admin/lojas'); render(); carregarCupons(); carregarConvites(); carregarComercial(); carregarDashboard(); carregarFinanceiro(); carregarAvaliacoes(); carregarFood(); }
   ['fStatusLoja', 'fBuscaLoja'].forEach((id) => $(id).addEventListener('input', render));
   // ---------- visão geral (dados reais) ----------
   const cartao = (rotulo, valor, sub = '') => `<div class="cartao"><span>${esc(rotulo)}</span><b>${valor}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</div>`;
@@ -73,6 +73,7 @@
     const c = await api('/api/admin/comercial').catch(() => null);
     if (!c) return;
     $('fPrecoPlano').precoMensal.value = Number(c.precoMensal).toFixed(2).replace('.', ',');
+    $('fPrecoPlano').precoFood.value = Number(c.precoFood ?? 299.9).toFixed(2).replace('.', ',');
     $('listaCuponsPlano').innerHTML = c.cupons.length ? c.cupons.map((x) => `<div class="item-adm">
         <div><b>${esc(x.codigo)}</b> · ${x.percentual}% · ${x.valendo ? '<span class="pill ativa">valendo</span>' : '<span class="pill vencida">fora do período</span>'}
           <br><small class="note">${x.usos} ${x.usos === 1 ? 'loja usou' : 'lojas usaram'}${x.limite ? ` de ${x.limite}` : ''} · começou em ${data(x.inicio)}</small></div>
@@ -86,16 +87,17 @@
   }
   $('fPrecoPlano').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const m = $('mPrecoPlano'), valor = Number(String(e.target.precoMensal.value).replace(/\./g, '').replace(',', '.'));
-    if (!confirm(`Mudar a mensalidade oficial para ${brl.format(valor)}? Quem já assina continua com o preço contratado.`)) return;
-    try { await api('/api/admin/comercial/preco', 'PUT', { precoMensal: valor }); m.className = 'msg ok'; m.textContent = 'Preço salvo. Vale para novas assinaturas.'; m.hidden = false; carregarComercial(); }
+    const m = $('mPrecoPlano'), num = (v) => Number(String(v).replace(/\./g, '').replace(',', '.'));
+    const valor = num(e.target.precoMensal.value), food = num(e.target.precoFood.value);
+    if (!confirm(`Plano Loja ${brl.format(valor)} e FOOD PRO ${brl.format(food)}? Quem já assina continua com o preço contratado.`)) return;
+    try { await api('/api/admin/comercial/preco', 'PUT', { precoMensal: valor }); await api('/api/admin/comercial/preco', 'PUT', { precoFood: food }); m.className = 'msg ok'; m.textContent = 'Preço salvo. Vale para novas assinaturas.'; m.hidden = false; carregarComercial(); }
     catch (err) { m.className = 'msg'; m.textContent = err.message; m.hidden = false; }
   });
   $('fNovoCupomPlano').addEventListener('submit', async (e) => {
     e.preventDefault();
     const f = e.target, m = $('mNovoCupomPlano');
     try {
-      await api('/api/admin/comercial/cupons', 'POST', { codigo: f.codigo.value, percentual: f.percentual.value, inicio: `${f.inicio.value}T00:00:00-03:00`, fim: fimDoDia(f.fim.value), limite: f.limite.value });
+      await api('/api/admin/comercial/cupons', 'POST', { codigo: f.codigo.value, percentual: f.percentual.value, inicio: `${f.inicio.value}T00:00:00-03:00`, fim: fimDoDia(f.fim.value), limite: f.limite.value, segmento: f.segmento.value });
       f.reset(); m.className = 'msg ok'; m.textContent = 'Cupom criado.'; m.hidden = false; carregarComercial();
     } catch (err) { m.className = 'msg'; m.textContent = err.message; m.hidden = false; }
   });
@@ -136,6 +138,20 @@
     if (!cancelar || !confirm('Cancelar este convite? O link deixa de funcionar.')) return;
     await api(`/api/admin/convites/${encodeURIComponent(cancelar.dataset.cancelarConv)}`, 'DELETE').catch((err) => alert(err.message));
     carregarConvites();
+  });
+  async function carregarFood() {
+    const d = await api('/api/admin/food').catch(() => null);
+    if (!d) return;
+    const PAPEL = { cozinha: 'Cozinha', atendente: 'Atendimento', impressora: 'Impressora' };
+    $('foodRest').innerHTML = d.restaurantes.length ? d.restaurantes.map((r) => `<div class="item-adm"><p><b>${esc(r.nome)}</b> · ${esc(r.situacao)} · ${r.itens} itens · ${r.pedidos} pedidos${r.suspensa ? ' · <b>suspenso</b>' : ''} · <a href="/alimentacao/${esc(r.slug)}" target="_blank" rel="noopener">ver</a></p></div>`).join('') : '<p class="note">Nenhum restaurante cadastrado.</p>';
+    $('foodAcessos').innerHTML = d.acessos.length ? d.acessos.map((a) => `<div class="item-adm"><p><b>${esc(PAPEL[a.papel])}</b> · ${esc(a.lojaNome)} · ${esc(a.nome)}${a.dispositivo?.impressora ? ` · ${esc(a.dispositivo.impressora)}` : ''}${a.vistoEm ? ` · visto ${new Date(a.vistoEm).toLocaleString('pt-BR')}` : ''}</p><button class="btn sec" type="button" data-revogar-food="${esc(a.id)}">Revogar</button></div>`).join('') : '<p class="note">Nenhum aparelho vinculado.</p>';
+    $('foodFalhas').innerHTML = d.falhasImpressao.length ? d.falhasImpressao.map((j) => `<p class="note">${new Date(j.criadoEm).toLocaleString('pt-BR')} · ${esc(j.erro)} · ${j.tentativas} tentativas</p>`).join('') : '<p class="note">Nenhuma falha.</p>';
+  }
+  $('foodAcessos').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-revogar-food]');
+    if (!b || !confirm('Revogar este aparelho? Ele perde o acesso na hora.')) return;
+    await api(`/api/admin/food/acessos/${encodeURIComponent(b.dataset.revogarFood)}`, 'DELETE').catch(() => {});
+    carregarFood();
   });
   async function carregarAvaliacoes() {
     const l = await api('/api/admin/avaliacoes').catch(() => []);

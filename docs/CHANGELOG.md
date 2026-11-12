@@ -1,5 +1,21 @@
 # Changelog
 
+## CITshop Food (branch `citshop-food`, ainda não publicado)
+
+### Food
+- Plano FOOD PRO (R$ 299,90) e cupom FOODFUNDADOR50.
+- Praça `/alimentacao`.
+- Painel `/restaurante`.
+- Tela da cozinha `/cozinha`.
+- Fila de impressão.
+
+### CITshop Print
+- App Windows em `citshop-print/`.
+
+### Admin
+- Aba Food.
+- Preço FOOD PRO e cupom por segmento.
+
 ## 2.0 (branch `citshop-2.0`, ainda não publicado)
 
 ### Fase 2 · Modelo comercial

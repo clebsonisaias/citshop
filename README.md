@@ -23,6 +23,9 @@ O mínimo no `.env` é `SESSAO_SEGREDO` (32 caracteres ou mais), `ADMIN_SENHA_HA
 | `/avaliar?p=&t=` | Avaliação da compra (link assinado enviado pela loja) |
 | `/painel` | Painel do lojista |
 | `/admin` | Administração |
+| `/alimentacao`, `/alimentacao/<slug>` | CITshop Food: restaurantes, cardápio e acompanhamento do pedido |
+| `/restaurante` | Painel do restaurante |
+| `/cozinha` | Tela da cozinha (KDS) |
 | `/saude` | Health check |
 
 ## Documentação
@@ -37,3 +40,6 @@ O mínimo no `.env` é `SESSAO_SEGREDO` (32 caracteres ou mais), `ADMIN_SENHA_HA
 - [CHANGELOG](docs/CHANGELOG.md)
 - [PLANO_DE_EXECUCAO](docs/PLANO_DE_EXECUCAO.md)
 - [PROPOSTA_POSTGRESQL](docs/PROPOSTA_POSTGRESQL.md)
+- [FOOD_PLANO](docs/FOOD_PLANO.md)
+- [CITSHOP_PRINT](docs/CITSHOP_PRINT.md)
+- [MANUAL_RESTAURANTE](docs/MANUAL_RESTAURANTE.md)

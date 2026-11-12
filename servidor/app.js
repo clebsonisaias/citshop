@@ -1761,6 +1761,12 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   for (const rota of ["/alimentacao", "/alimentacao/:slug"]) app.get(rota, (req, res) => { semCache(res); res.sendFile(join(publico, "alimentacao.html")); });
   app.get("/restaurante", (req, res) => { semCache(res); res.sendFile(join(publico, "restaurante.html")); });
   app.get("/cozinha", (req, res) => { semCache(res); res.sendFile(join(publico, "cozinha.html")); });
+  // Instalador do CITshop Print: o arquivo é publicado no volume (DADOS_DIR/downloads), não fica no repositório.
+  app.get("/downloads/citshop-print", (req, res) => {
+    const arquivo = join(dadosDir, "downloads", "citshop-print.exe");
+    if (existsSync(arquivo)) return res.download(arquivo, "CITshopPrint.exe");
+    res.status(404).type("html").send('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CITshop Print</title><body style="font:16px system-ui;max-width:640px;margin:40px auto;padding:0 16px"><h1>CITshop Print</h1><p>O instalador para Windows ainda não foi publicado. Fale com a CIT Shopping pelo WhatsApp para receber o programa.</p><p>Enquanto isso, os pedidos aparecem normalmente na <a href="/cozinha">tela da cozinha</a>.</p></body>');
+  });
 
   // ---------- Instagram @shopcitmax ----------
   app.get("/bio", (req, res) => { semCache(res); res.sendFile(join(publico, "bio.html")); });

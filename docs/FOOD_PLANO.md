@@ -40,3 +40,52 @@ O sistema atual está descrito em `ARQUITETURA.md` e `AUDITORIA_INICIAL.md`.
 As licenças estão avaliadas em `REFERENCIAS_TECNICAS.md`.
 - enatega e beepbite servem só como referência visual e de fluxo.
 - Nenhum código copiado.
+
+## Situação (branch `citshop-food`)
+
+### Feito e testado
+`teste/food*.test.js` e `teste/print.test.js`, suíte 110/110, mais a prévia em 375 e 1280 px.
+- Plano FOOD PRO e FOODFUNDADOR50:
+  - configuráveis no admin;
+  - cupom separado por segmento;
+  - nenhuma comissão.
+- Restaurante como conta própria: mesmo e-mail para loja e restaurante; fora da vitrine de produtos.
+- Cardápio com grupos de opções (mínimo e máximo), foto, estação e disponibilidade.
+- Horários (inclusive depois da meia-noite), feriados, pausa, fechamento, pedido mínimo e limite de pedidos em andamento.
+- Pedido:
+  - preço do servidor e retrato do pedido;
+  - entrega por km ou taxa fixa, ou retirada;
+  - pagamento na entrega ou online (Mercado Pago), com webhook idempotente.
+- Cozinha (KDS):
+  - atualização a cada 4 s e som de pedido novo;
+  - atraso destacado, estações, tela cheia;
+  - papéis: cozinha não cancela nem vê telefone;
+  - isolamento entre restaurantes;
+  - links revogáveis.
+- Avisos no WhatsApp (uma vez por pedido e situação): restaurante e cliente.
+- Acompanhamento do pedido pelo cliente, com link assinado.
+- CITshop Print:
+  - vínculo por código;
+  - token com escopo de impressão, troca diária e revogação;
+  - fila local persistente;
+  - sem duplicidade, inclusive em queda entre imprimir e avisar;
+  - novas tentativas com intervalo crescente;
+  - comanda ESC/POS em 58/80 mm, nas vias completa, cozinha e cliente;
+  - impressão de teste e reimpressão manual;
+  - tela local protegida.
+- Admin: aba Food (restaurantes, aparelhos com revogação, falhas de impressão); preço FOOD PRO e cupom por segmento em Planos.
+
+### Precisa de validação real
+- Impressora física e Windows: spooler RAW, USB e drivers. Só a rede foi testada, com impressora simulada.
+- Executável `.exe` (Node SEA) e assinatura de código: gerar no Windows.
+- Pagamento online Food com conta Mercado Pago de teste.
+
+### Não feito nesta etapa
+- Pedido agendado.
+- Promoções e cupons do restaurante.
+- Combos com preço especial: hoje o combo é um item com grupos.
+- Clientes e relatórios do restaurante.
+- Funcionários com login: hoje são links por papel.
+- Entregadores independentes.
+- Impressora por estação: o modelo já está pronto.
+- Carrinho com vários restaurantes.

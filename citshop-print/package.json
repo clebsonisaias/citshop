@@ -1,0 +1,12 @@
+{
+  "name": "citshop-print",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "CITshop Print: impressão automática dos pedidos do CITshop Food em impressoras térmicas ESC/POS.",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node src/app.js",
+    "build:win": "node build/sea.mjs"
+  }
+}
