@@ -41,6 +41,18 @@ export class ConectorInstagram {
   }
 
   /**
+   * Obtém os dados do perfil conectado no Instagram Graph API.
+   */
+  async obterPerfil() {
+    if (!this.estaConfigurado()) throw new Error("Instagram não configurado (accountId ou accessToken ausentes).");
+    const url = `${GRAPH_API}/${this.accountId}?fields=id,username,name,biography,profile_picture_url&access_token=${this.accessToken}`;
+    const res = await this.fetchImpl(url);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error?.message || `Erro HTTP ${res.status}`);
+    return data;
+  }
+
+  /**
    * Legenda do post. Texto simples: o Instagram não interpreta *negrito* nem ~riscado~ do WhatsApp.
    * A chamada QUERO é respondida no direct com o link do próprio produto (webhook em app.js).
    */

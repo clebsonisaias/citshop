@@ -931,10 +931,22 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
 
   app.get("/api/admin/instagram/status", exigirAdmin, a(async (req, res) => {
     const cfg = await monitoramentoMotor.obterConfiguracao();
+    let perfilDetalhes = null;
+    let conexaoErro = null;
+    if (conectorInstagram.estaConfigurado()) {
+      try {
+        perfilDetalhes = await conectorInstagram.obterPerfil();
+      } catch (e) {
+        conexaoErro = e.message;
+      }
+    }
     res.json({
       configurado: conectorInstagram.estaConfigurado(),
+      conectado: Boolean(perfilDetalhes && !conexaoErro),
       accountId: conectorInstagram.accountId || cfg.instagram?.accountId || null,
-      perfil: "@citshopping",
+      perfil: perfilDetalhes?.username ? `@${perfilDetalhes.username}` : "@citshopping",
+      perfilDetalhes,
+      conexaoErro,
       linkBio: `${urlPublica}/bio`,
       postarAutomatico: Boolean(cfg.instagram?.postarAutomatico ?? cfg.radar?.postarInstagram),
     });
