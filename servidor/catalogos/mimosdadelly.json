@@ -1,0 +1,259 @@
+{
+ "loja": "mimosdadelly",
+ "versao": "2026-11-12-catalogo-black-friday",
+ "fonte": "Catálogo Black Friday em PDF enviado pela loja",
+ "produtos": [
+  {
+   "id": "delly-faixa-laco-cruzado-xadrez-amarelo",
+   "nome": "Faixa laço cruzado xadrez amarelo",
+   "descricao": "Faixa de bebê com laço cruzado em fita listrada amarela e branca.",
+   "dept": "bebe",
+   "disponibilidade": "consulte",
+   "preco": 4.9,
+   "precoAntigo": 5.9,
+   "fotos": [
+    "/delly/faixa-laco-cruzado-xadrez-amarelo.webp"
+   ]
+  },
+  {
+   "id": "delly-faixa-laco-cruzado-gravatinha-lilas",
+   "nome": "Faixa laço cruzado + gravatinha lilás",
+   "descricao": "Faixa de bebê lilás com laço cruzado e gravatinha em gorgurão.",
+   "dept": "bebe",
+   "disponibilidade": "consulte",
+   "preco": 4.9,
+   "precoAntigo": 5.9,
+   "fotos": [
+    "/delly/faixa-laco-cruzado-gravatinha-lilas.webp"
+   ]
+  },
+  {
+   "id": "delly-faixa-laco-cruzado-gravatinha-mostarda",
+   "nome": "Faixa laço cruzado + gravatinha mostarda",
+   "descricao": "Faixa de bebê caramelo com laço cruzado e gravatinha em gorgurão mostarda.",
+   "dept": "bebe",
+   "disponibilidade": "consulte",
+   "preco": 4.9,
+   "precoAntigo": 5.9,
+   "fotos": [
+    "/delly/faixa-laco-cruzado-gravatinha-mostarda.webp"
+   ]
+  },
+  {
+   "id": "delly-faixa-florzinhas-perolas-azul",
+   "nome": "Faixa florzinhas bordadas com pérolas azul",
+   "descricao": "Faixa de bebê azul com florzinhas bordadas e pérola no centro de cada flor.",
+   "dept": "bebe",
+   "disponibilidade": "consulte",
+   "preco": 6.9,
+   "precoAntigo": 7.9,
+   "fotos": [
+    "/delly/faixa-florzinhas-perolas-azul.webp"
+   ]
+  },
+  {
+   "id": "delly-faixa-laco-gravatinha-duplo-branco",
+   "nome": "Faixa laço gravatinha duplo branco com pérolas",
+   "descricao": "Faixa de bebê branca com laço gravatinha duplo e centro de pérolas.",
+   "dept": "bebe",
+   "disponibilidade": "consulte",
+   "preco": 5.9,
+   "precoAntigo": 6.9,
+   "fotos": [
+    "/delly/faixa-laco-gravatinha-duplo-branco.webp"
+   ]
+  },
+  {
+   "id": "delly-faixa-laco-simples-marrom",
+   "nome": "Faixa bebê laço simples marrom com pérolas",
+   "descricao": "Faixa de bebê caramelo com laço marrom e centro de pérolas.",
+   "dept": "bebe",
+   "disponibilidade": "consulte",
+   "preco": 5.9,
+   "precoAntigo": 6.9,
+   "fotos": [
+    "/delly/faixa-laco-simples-marrom.webp"
+   ]
+  },
+  {
+   "id": "delly-faixa-laco-cetim-verde",
+   "nome": "Faixa laço de cetim verde-água com pérolas",
+   "descricao": "Faixa de bebê verde-água com laço de cetim e centro de pérolas.",
+   "dept": "bebe",
+   "disponibilidade": "consulte",
+   "preco": 5.9,
+   "precoAntigo": 6.9,
+   "fotos": [
+    "/delly/faixa-laco-cetim-verde.webp"
+   ]
+  },
+  {
+   "id": "delly-faixa-laco-gravatinha-florzinha",
+   "nome": "Faixa laço gravatinha + florzinha",
+   "descricao": "Faixa de bebê com laço gravatinha e florzinha com pérola. Cores da foto: rosa, azul royal, azul-claro e amarelo. Leve as 4 por R$ 15,90.",
+   "dept": "bebe",
+   "disponibilidade": "consulte",
+   "preco": 4.9,
+   "precoAntigo": 5.9,
+   "fotos": [
+    "/delly/faixa-laco-gravatinha-florzinha.webp"
+   ]
+  },
+  {
+   "id": "delly-par-bico-de-pato-chanel-verde-agua",
+   "nome": "Par bico de pato laço chanel + strass verde-água",
+   "descricao": "Par de presilhas bico de pato: uma com laço chanel e outra com strass, em verde-água.",
+   "dept": "moda",
+   "disponibilidade": "consulte",
+   "preco": 5.5,
+   "precoAntigo": 6.9,
+   "fotos": [
+    "/delly/par-bico-de-pato-chanel-verde-agua.webp"
+   ]
+  },
+  {
+   "id": "delly-par-bico-de-pato-chanel-coral",
+   "nome": "Par bico de pato laço chanel + strass coral",
+   "descricao": "Par de presilhas bico de pato: uma com laço chanel e outra com strass, em coral.",
+   "dept": "moda",
+   "disponibilidade": "consulte",
+   "preco": 5.5,
+   "precoAntigo": 6.9,
+   "fotos": [
+    "/delly/par-bico-de-pato-chanel-coral.webp"
+   ]
+  },
+  {
+   "id": "delly-tiara-laco-verde",
+   "nome": "Tiara laço verde",
+   "descricao": "Tiara encapada com laço verde.",
+   "dept": "moda",
+   "disponibilidade": "consulte",
+   "preco": 12.9,
+   "precoAntigo": 15.9,
+   "fotos": [
+    "/delly/tiara-laco-verde.webp"
+   ]
+  },
+  {
+   "id": "delly-tiara-laco-rosa",
+   "nome": "Tiara laço rosa",
+   "descricao": "Tiara com laço rosa e fita estampada de corações.",
+   "dept": "moda",
+   "disponibilidade": "consulte",
+   "preco": 10.9,
+   "precoAntigo": 12.9,
+   "fotos": [
+    "/delly/tiara-laco-rosa.webp"
+   ]
+  },
+  {
+   "id": "delly-laco-duplo-ponta-strass-rose",
+   "nome": "Laço bico de pato duplo com ponta strass rosê",
+   "descricao": "Laço duplo com pontas compridas, em rosê com aplicação de strass. Presilha bico de pato.",
+   "dept": "moda",
+   "disponibilidade": "consulte",
+   "preco": 10.9,
+   "precoAntigo": 12.9,
+   "fotos": [
+    "/delly/laco-duplo-ponta-strass-rose.webp"
+   ]
+  },
+  {
+   "id": "delly-laco-duplo-ponta-foil-off-white",
+   "nome": "Laço bico de pato duplo com ponta foil off-white",
+   "descricao": "Laço duplo com pontas compridas, off-white com estampa em foil. Presilha bico de pato.",
+   "dept": "moda",
+   "disponibilidade": "consulte",
+   "preco": 8.9,
+   "precoAntigo": 10.9,
+   "fotos": [
+    "/delly/laco-duplo-ponta-foil-off-white.webp"
+   ]
+  },
+  {
+   "id": "delly-laco-cruzado-organza-strass-vermelho",
+   "nome": "Laço bico de pato cruzado organza com strass vermelho",
+   "descricao": "Laço cruzado em organza vermelha com strass e centro de pérolas. Presilha bico de pato.",
+   "dept": "moda",
+   "disponibilidade": "consulte",
+   "preco": 10.9,
+   "precoAntigo": 12.9,
+   "fotos": [
+    "/delly/laco-cruzado-organza-strass-vermelho.webp"
+   ]
+  },
+  {
+   "id": "delly-laco-cruzado-organza-strass-rosa",
+   "nome": "Laço bico de pato cruzado organza com strass rosa",
+   "descricao": "Laço cruzado em organza rosa com strass, flor e pérolas no centro. Presilha bico de pato.",
+   "dept": "moda",
+   "disponibilidade": "consulte",
+   "preco": 10.9,
+   "precoAntigo": 12.9,
+   "fotos": [
+    "/delly/laco-cruzado-organza-strass-rosa.webp"
+   ]
+  },
+  {
+   "id": "delly-laco-coracao-rosa",
+   "nome": "Laço bico de pato coração rosa",
+   "descricao": "Laço duplo em dois tons de rosa com coração de strass no centro. Presilha bico de pato.",
+   "dept": "moda",
+   "disponibilidade": "consulte",
+   "preco": 6.9,
+   "precoAntigo": 8.9,
+   "fotos": [
+    "/delly/laco-coracao-rosa.webp"
+   ]
+  },
+  {
+   "id": "delly-laco-coracao-branco",
+   "nome": "Laço bico de pato coração branco",
+   "descricao": "Laço branco com coração de strass no centro. Presilha bico de pato.",
+   "dept": "moda",
+   "disponibilidade": "consulte",
+   "preco": 6.9,
+   "precoAntigo": 8.9,
+   "fotos": [
+    "/delly/laco-coracao-branco.webp"
+   ]
+  },
+  {
+   "id": "delly-laco-color-duo-lilas",
+   "nome": "Laço bico de pato color duo lilás",
+   "descricao": "Laço em rosa e lilás com florzinha no centro. Presilha bico de pato.",
+   "dept": "moda",
+   "disponibilidade": "consulte",
+   "preco": 9.5,
+   "precoAntigo": 10.9,
+   "fotos": [
+    "/delly/laco-color-duo-lilas.webp"
+   ]
+  },
+  {
+   "id": "delly-laco-color-duo-amarelo",
+   "nome": "Laço bico de pato color duo amarelo",
+   "descricao": "Laço em rosa e amarelo com florzinha no centro. Presilha bico de pato.",
+   "dept": "moda",
+   "disponibilidade": "consulte",
+   "preco": 9.5,
+   "precoAntigo": 10.9,
+   "fotos": [
+    "/delly/laco-color-duo-amarelo.webp"
+   ]
+  },
+  {
+   "id": "delly-laco-color-duo-azul",
+   "nome": "Laço bico de pato color duo azul",
+   "descricao": "Laço em rosa e azul com florzinha no centro. Presilha bico de pato.",
+   "dept": "moda",
+   "disponibilidade": "consulte",
+   "preco": 9.5,
+   "precoAntigo": 10.9,
+   "fotos": [
+    "/delly/laco-color-duo-azul.webp"
+   ]
+  }
+ ]
+}

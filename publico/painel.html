@@ -114,17 +114,12 @@
     </div>
 
     <div class="box" id="blocoPagamento">
-      <h2>Recebimento de vendas (Mercado Pago / Pix)</h2>
-      <p class="note" style="font-size:13px;margin:-4px 0 14px">Informe sua conta do Mercado Pago para receber o valor das vendas realizadas no site.</p>
-      <form class="form" id="fPagamento">
-        <div class="dois">
-          <label>E-mail da conta Mercado Pago<input name="mpEmail" id="mpEmail" type="email" placeholder="exemplo@gmail.com"></label>
-          <label>Chave Pix do Mercado Pago <small>opcional</small><input name="mpChavePix" id="mpChavePix" placeholder="CPF, e-mail, telefone ou chave aleatória"></label>
-        </div>
-        <p class="note" style="font-size:12px;margin:4px 0 12px">💡 O valor da venda cai direto na sua conta do Mercado Pago. Em lojas parceiras, é descontada apenas a taxa fixa de R$ 1,00 por venda da CIT Shopping.</p>
-        <div class="msg" id="mPagamento" hidden role="status"></div>
-        <button class="btn">Salvar conta Mercado Pago</button>
-      </form>
+      <h2>Receber vendas pelo Mercado Pago</h2>
+      <p class="note" style="font-size:13px;margin:-4px 0 14px">Conecte a conta Mercado Pago da loja. O valor de cada venda feita no site cai direto nela; a CIT Shopping recebe só a taxa combinada.</p>
+      <p id="mpStatus" role="status"></p>
+      <div class="msg" id="mPagamento" hidden role="status"></div>
+      <a class="btn" id="mpConectar" href="/api/painel/mercadopago/conectar">Conectar Mercado Pago</a>
+      <button class="btn sec" id="mpDesconectar" type="button" hidden>Desconectar</button>
     </div>
 
     <details class="box">

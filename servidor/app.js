@@ -8,11 +8,11 @@ import { existsSync, readFileSync, renameSync, statSync, writeFileSync } from "n
 import { basename, dirname, join } from "node:path";
 import sharp from "sharp";
 import { fileURLToPath } from "node:url";
-import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import * as S from "./seguranca.js";
 import { Banco, DEPTS, DIAS_TESTE, lojaVisivel, ordenarVitrine, slugUnico, statusLoja } from "./dados.js";
 import { MAX_FOTOS, apagarFoto, receberFotos, receberLogo, salvarFoto } from "./uploads.js";
-import { criarMercadoPago, statusDoMp, webhookValido } from "./mercadopago.js";
+import { cifrar, criarMercadoPago, decifrar, statusDoMp, webhookValido } from "./mercadopago.js";
 import { MARKETPLACE, criarClienteAmazon } from "./amazon.js";
 import { atualizarAfiliados } from "./afiliados.js";
 import { MonitoramentoMotor } from "./tarefas/monitoramento.js";
@@ -21,6 +21,7 @@ import { ConectorWaha } from "./integracoes/whatsapp/waha.js";
 import { RadarOfertas } from "./motor-ofertas/radar.js";
 import { ConectorInstagram } from "./integracoes/instagram/conector.js";
 import { GeradorCardInstagram } from "./integracoes/instagram/gerador-card.js";
+import { aplicarCatalogo } from "./catalogo-loja.js";
 import { ConectorTelegram } from "./integracoes/telegram/conector.js";
 
 export const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -78,6 +79,13 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   const conectorInstagram = new ConectorInstagram({
     accountId: env.INSTAGRAM_ACCOUNT_ID,
     accessToken: env.INSTAGRAM_ACCESS_TOKEN,
+    pageAccessToken: env.INSTAGRAM_PAGE_ACCESS_TOKEN,
+    // Post do Feed -> produto, para o QUERO responder com o link do produto certo.
+    aoPublicar: ({ mediaId, produtoId }) => {
+      banco.d.instagramPosts ??= {};
+      banco.d.instagramPosts[mediaId] = { produtoId, em: new Date(agora()).toISOString() };
+      banco.salvar();
+    },
     fetchImpl,
   });
   const conectorTelegram = new ConectorTelegram({
@@ -97,17 +105,19 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   // Carrega credenciais salvas em motor-config.json no volume persistente
   monitoramentoMotor.obterConfiguracao().then((cfg) => {
     if (cfg?.instagram?.accountId && !conectorInstagram.accountId) conectorInstagram.accountId = cfg.instagram.accountId;
-    if (cfg?.instagram?.accessToken && !conectorInstagram.accessToken) {
-      conectorInstagram.accessToken = cfg.instagram.pageAccessToken || cfg.instagram.accessToken;
-    }
+    if (cfg?.instagram?.accessToken && !conectorInstagram.accessToken) conectorInstagram.accessToken = cfg.instagram.accessToken;
+    if (cfg?.instagram?.pageAccessToken && !conectorInstagram.pageAccessToken) conectorInstagram.pageAccessToken = cfg.instagram.pageAccessToken;
     if (cfg?.telegram?.botToken && !conectorTelegram.botToken) conectorTelegram.botToken = cfg.telegram.botToken;
     if (cfg?.telegram?.chatId && !conectorTelegram.chatId) conectorTelegram.chatId = cfg.telegram.chatId;
   }).catch(() => {});
   const geradorCardInstagram = new GeradorCardInstagram({ publicoDir: publico, dadosDir, fetchImpl });
-  const mp = criarMercadoPago({ token: env.MP_ACCESS_TOKEN, fetchImpl });
+  const mp = criarMercadoPago({ token: env.MP_ACCESS_TOKEN, clientId: env.MP_CLIENT_ID, clientSecret: env.MP_CLIENT_SECRET, fetchImpl });
+  const limitePagamento = new S.Limitador({ maximo: 10, janelaMs: 10 * 60_000 });
   const limiteLogin = new S.Limitador({ maximo: 8, janelaMs: 10 * 60_000 });
   const limiteCadastro = new S.Limitador({ maximo: 5, janelaMs: 60 * 60_000 });
   const iso = () => new Date(agora()).toISOString();
+  // Catálogo da Mimos da Delly versionado no repo (aplicado uma vez por versão).
+  aplicarCatalogo(banco, JSON.parse(readFileSync(join(RAIZ, "servidor", "catalogos", "mimosdadelly.json"), "utf8")), iso());
 
   const app = express();
   app.set("trust proxy", 1);
@@ -154,7 +164,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       res.status(500).json({ erro: "Falha ao gravar a coleta." });
     }
   });
-  app.use(express.json({ limit: "50kb" }));
+  // Guarda o corpo cru: a assinatura do webhook da Meta (X-Hub-Signature-256) é calculada sobre ele.
+  app.use(express.json({ limit: "50kb", verify: (req, _res, buf) => { req.corpoBruto = buf; } }));
   // Toda escrita na API precisa vir da própria página (junto com SameSite=Lax nos cookies).
   app.use("/api", (req, res, next) => (req.method !== "GET" && !S.origemConfiavel(req) ? erro(res, 403, "Origem não permitida.") : next()));
 
@@ -310,9 +321,9 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   // ---------- painel da loja ----------
   function painelDe(loja) {
     const t = agora();
-    const { senhaHash, ...dados } = loja;
+    const { senhaHash, mpConta, mpOauth, ...dados } = loja;
     return {
-      loja: dados,
+      loja: { ...dados, mpConectado: Boolean(mpConta) },
       status: statusLoja(loja, t),
       diasTeste: Math.max(0, Math.ceil((Date.parse(loja.testeAte) - t) / DIA)),
       preco: PRECO_PLANO,
@@ -396,7 +407,6 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       prazoEntrega: b.prazoEntrega === undefined ? req.loja.prazoEntrega ?? "" : txt(b.prazoEntrega, 120),
       mpEmail: b.mpEmail === undefined ? req.loja.mpEmail ?? null : (txt(b.mpEmail, 120).toLowerCase() || null),
       mpChavePix: b.mpChavePix === undefined ? req.loja.mpChavePix ?? null : (txt(b.mpChavePix, 120) || null),
-      mpCollectorId: b.mpCollectorId === undefined ? req.loja.mpCollectorId ?? null : (txt(b.mpCollectorId, 60) || null),
       // Sem o campo (ex.: formulário de aparência), mantém o que já estava.
       entrega: b.entrega === undefined ? req.loja.entrega ?? null : ENTREGAS.includes(b.entrega) ? b.entrega : null,
     });
@@ -492,60 +502,91 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     res.json({ url: pa.initPoint });
   }));
 
-  // Pagamento com Split Mercado Pago (para lojas parceiras com taxa fixa de R$ 1,00 para CIT Shopping)
+  // ---------- conta Mercado Pago da loja (OAuth) ----------
+  // A loja autoriza o aplicativo de marketplace da CIT; com o token dela as vendas caem na conta dela.
+  const retornoMp = `${urlPublica}/mercadopago/retorno`;
+  function guardarContaMp(loja, c) {
+    loja.mpConta = {
+      userId: c.userId, token: cifrar(c.accessToken, segredo), refresh: cifrar(c.refreshToken, segredo),
+      expiraEm: new Date(agora() + c.expiraEmSeg * 1000).toISOString(), conectadaEm: loja.mpConta?.conectadaEm ?? iso(),
+    };
+  }
+  // Token da loja, renovado quando faltam menos de 7 dias (o do MP vale ~180).
+  async function tokenDaLoja(loja) {
+    if (!loja.mpConta) return null;
+    if (Date.parse(loja.mpConta.expiraEm) - agora() < 7 * DIA) {
+      try { guardarContaMp(loja, await mp.renovarToken(decifrar(loja.mpConta.refresh, segredo))); banco.salvar(); }
+      catch (e) { log.warn?.(`[mp] ${loja.slug}: renovação do token falhou: ${e.message}`); }
+    }
+    return decifrar(loja.mpConta.token, segredo);
+  }
+  app.get("/api/painel/mercadopago/conectar", exigirLoja, (req, res) => {
+    if (!mp.oauthConfigurado) return erro(res, 503, "Conexão com o Mercado Pago ainda não configurada pela CIT.");
+    req.loja.mpOauth = { state: randomBytes(16).toString("hex"), em: iso() };
+    banco.salvar();
+    res.redirect(mp.urlAutorizacao({ state: req.loja.mpOauth.state, redirectUri: retornoMp }));
+  });
+  app.get("/mercadopago/retorno", a(async (req, res) => {
+    const state = String(req.query.state ?? "");
+    const loja = state && banco.lojas.find((l) => l.mpOauth?.state === state && agora() - Date.parse(l.mpOauth.em) < 15 * 60_000);
+    if (!loja || !req.query.code) return res.redirect("/painel?mp=erro");
+    try {
+      guardarContaMp(loja, await mp.trocarCodigo({ code: String(req.query.code), redirectUri: retornoMp }));
+      delete loja.mpOauth;
+      banco.salvar();
+      log.info?.(`[mp] ${loja.slug}: conta Mercado Pago conectada`);
+      res.redirect("/painel?mp=conectado");
+    } catch (e) {
+      log.warn?.(`[mp] ${loja.slug}: troca do código OAuth falhou: ${e.message}`);
+      res.redirect("/painel?mp=erro");
+    }
+  }));
+  app.post("/api/painel/mercadopago/desconectar", exigirLoja, (req, res) => {
+    delete req.loja.mpConta;
+    banco.salvar();
+    res.json(painelDe(req.loja));
+  });
+
+  // Venda com split: cobrança criada com o token da loja; a CIT recebe a comissão (marketplace_fee/application_fee).
   app.post("/api/pagamento/split", express.json(), a(async (req, res) => {
-    const { produtoId, quantidade = 1, emailComprador, metodo = "checkout_pro" } = req.body;
-    const prod = vitrine().produtos.find((p) => p.id === produtoId);
+    if (!limitePagamento.registrar(`pag|${S.ipDe(req)}`).permitido) return erro(res, 429, "Muitas tentativas. Espere alguns minutos.");
+    const { produtoId, quantidade = 1, emailComprador, metodo = "checkout_pro" } = req.body ?? {};
+    const prod = produtoId && produtoPorId(String(produtoId));
     if (!prod || prod.loja !== "local") return erro(res, 404, "Produto não encontrado.");
     const loja = banco.loja(prod.lojaId);
     if (!loja) return erro(res, 404, "Loja não encontrada.");
+    if (!mp.oauthConfigurado || !loja.mpConta) return erro(res, 409, "Esta loja ainda não recebe pagamentos pelo site. Peça pelo WhatsApp.");
 
-    const valorUnitario = Number(prod.preco);
-    const qtd = Math.max(1, Number(quantidade) || 1);
-    const valorTotal = Math.round(valorUnitario * qtd * 100) / 100;
-    const taxaMarketplace = loja.modeloCobranca === "comissao_fixa" ? (loja.comissaoPorVenda ?? 1.00) : 0;
+    const qtd = Math.min(50, Math.max(1, Math.floor(Number(quantidade)) || 1));
+    const valorTotal = Math.round(Number(prod.preco) * qtd * 100) / 100;
+    const taxaMarketplace = loja.modeloCobranca === "comissao_fixa" ? Number(loja.comissaoPorVenda ?? 1) : 0;
+    if (!(taxaMarketplace < valorTotal)) return erro(res, 400, "Valor da compra menor que a taxa da plataforma.");
+    const email = String(emailComprador ?? "").trim().toLowerCase();
+    if (metodo === "pix" && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return erro(res, 400, "Informe seu e-mail para gerar o Pix.");
 
-    const referencia = `venda-${loja.slug}-${Date.now()}`;
+    const referencia = `venda-${loja.slug}-${randomUUID()}`;
     const titulo = `${prod.nome} · ${loja.nome}`;
-
-    if (!mp.configurado) {
-      return res.json({
-        ok: true,
-        mock: true,
-        initPoint: `https://mp.test/checkout-split?ref=${referencia}&fee=${taxaMarketplace}`,
-        referencia,
-        taxaMarketplace,
-        valorTotal,
-      });
-    }
-
+    const webhookUrl = `${urlPublica}/webhook/mercadopago?loja=${encodeURIComponent(loja.id)}`;
+    banco.d.pedidos ??= [];
+    const pedido = { id: referencia, lojaId: loja.id, produtoId: prod.id, quantidade: qtd, valorTotal, taxaMarketplace, metodo, status: "criado", criadoEm: iso() };
     try {
+      const tokenVendedor = await tokenDaLoja(loja);
       if (metodo === "pix") {
-        const pix = await mp.criarPixSplit({
-          titulo,
-          valor: valorTotal,
-          referencia,
-          taxaMarketplace,
-          emailComprador,
-          webhookUrl: `${urlPublica}/webhook/mercadopago`,
-          sellerCollectorId: loja.mpCollectorId,
-        });
+        const pix = await mp.criarPixSplit({ tokenVendedor, titulo, valor: valorTotal, referencia, taxaMarketplace, emailComprador: email, webhookUrl });
+        banco.d.pedidos.push({ ...pedido, mpPagamentoId: pix.id, status: pix.status ?? "pending" });
+        banco.salvar();
         return res.json({ ok: true, pix, taxaMarketplace, valorTotal });
       }
-
       const pref = await mp.criarPreferenciaSplit({
-        titulo,
-        valor: valorTotal,
-        referencia,
-        taxaMarketplace,
+        tokenVendedor, titulo, valor: valorTotal, referencia, taxaMarketplace, webhookUrl,
         retorno: `${urlPublica}/${loja.slug}?compra=sucesso`,
-        webhookUrl: `${urlPublica}/webhook/mercadopago`,
-        sellerCollectorId: loja.mpCollectorId,
       });
+      banco.d.pedidos.push(pedido);
+      banco.salvar();
       res.json({ ok: true, initPoint: pref.initPoint, taxaMarketplace, valorTotal });
     } catch (e) {
-      log.error?.(`[split-mp] Falha ao criar split: ${e.message}`);
-      erro(res, 500, `Falha ao gerar pagamento com split: ${e.message}`);
+      log.error?.(`[split-mp] ${loja.slug}: falha ao criar pagamento: ${e.message}`);
+      erro(res, 502, "Não foi possível gerar o pagamento agora. Tente de novo em instantes.");
     }
   }));
 
@@ -567,10 +608,28 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   // O webhook só avisa que algo mudou; o status real é relido na API do Mercado Pago.
   app.post("/webhook/mercadopago", a(async (req, res) => {
     const dataId = String(req.query["data.id"] ?? req.body?.data?.id ?? "");
-    if (env.MP_WEBHOOK_SECRET && !webhookValido({
+    // Sem segredo configurado não há como provar que veio do Mercado Pago: recusa (falha fechada).
+    if (!env.MP_WEBHOOK_SECRET || !webhookValido({
       segredo: env.MP_WEBHOOK_SECRET, assinatura: req.headers["x-signature"], requestId: req.headers["x-request-id"], dataId,
-    })) return res.status(401).json({ erro: "assinatura inválida" });
+    })) {
+      if (!env.MP_WEBHOOK_SECRET) log.warn?.("[mp] webhook recusado: MP_WEBHOOK_SECRET não configurado");
+      return res.status(401).json({ erro: "assinatura inválida" });
+    }
     const tipo = String(req.body?.type ?? req.query.type ?? "");
+    // Pagamento de venda: relido na API com o token da loja (o pagamento é da conta dela).
+    if (tipo === "payment" && dataId) {
+      const loja = banco.loja(String(req.query.loja ?? ""));
+      const token = loja && await tokenDaLoja(loja);
+      if (token) {
+        const pg = await mp.consultarPagamento(dataId, token);
+        const pedido = banco.d.pedidos?.find((p) => p.id === pg.externalReference && p.lojaId === loja.id);
+        if (pedido) {
+          Object.assign(pedido, { status: pg.status, mpPagamentoId: pg.id, atualizadoEm: iso() });
+          banco.salvar();
+          log.info?.(`[mp] venda ${pedido.id}: ${pg.status}`);
+        }
+      }
+    }
     if (tipo.includes("preapproval") && dataId && mp.configurado) {
       const pa = await mp.consultarPreapproval(dataId);
       const loja = banco.loja(pa.externalReference);
@@ -606,8 +665,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
 
   app.get("/api/admin/lojas", exigirAdmin, (req, res) => {
     const t = agora();
-    res.json(banco.lojas.map(({ senhaHash, ...l }) => ({
-      ...l, status: statusLoja(l, t),
+    res.json(banco.lojas.map(({ senhaHash, mpConta, mpOauth, ...l }) => ({
+      ...l, status: statusLoja(l, t), mpConectado: Boolean(mpConta),
       cliquesContatoLoja: banco.cliquesContato(`loja:${l.id}`),
       produtos: banco.produtos.filter((p) => p.lojaId === l.id).map((p) => ({
         id: p.id, nome: p.nome, preco: p.preco, foto: p.fotos[0], ativo: p.ativo, bloqueado: p.bloqueado,
@@ -629,10 +688,9 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     res.json({ senha });
   });
   app.put("/api/admin/lojas/:id/modelo-cobranca", exigirAdmin, lojaAdmin, express.json(), (req, res) => {
-    const { modeloCobranca, comissaoPorVenda, mpCollectorId } = req.body || {};
+    const { modeloCobranca, comissaoPorVenda } = req.body || {};
     req.loja.modeloCobranca = modeloCobranca === "comissao_fixa" ? "comissao_fixa" : "mensalidade";
     if (comissaoPorVenda !== undefined) req.loja.comissaoPorVenda = Number(comissaoPorVenda) || 1.00;
-    if (mpCollectorId !== undefined) req.loja.mpCollectorId = String(mpCollectorId || "").trim() || null;
     req.loja.atualizadaEm = iso();
     banco.salvar();
     res.json({ ok: true, loja: req.loja });
@@ -788,6 +846,12 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   app.get("/instagram", (req, res) => { semCache(res); res.sendFile(join(publico, "bio.html")); });
   app.get("/links", (req, res) => { semCache(res); res.sendFile(join(publico, "bio.html")); });
 
+  // Produtos postados no Feed, do mais recente ao mais antigo: a /bio mostra esses primeiro.
+  app.get("/api/instagram/feed", (req, res) => {
+    const posts = Object.values(banco.d.instagramPosts ?? {}).sort((x, y) => String(y.em).localeCompare(String(x.em)));
+    res.set("Cache-Control", "no-cache").json({ ids: [...new Set(posts.map((x) => x.produtoId))] });
+  });
+
   app.get("/api/instagram/card/:id", a(async (req, res) => {
     const x = produtoPorId(req.params.id);
     if (!x) return res.status(404).json({ erro: "Produto não encontrado." });
@@ -810,34 +874,51 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     }
   }));
 
-  // Webhook da Meta / Instagram para resposta automática ao "EU QUERO"
-  const IG_VERIFY_TOKEN = env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN || "citshop-ig-secret";
+  // Webhook da Meta / Instagram: quem comenta QUERO recebe no direct o link do produto do post.
+  // Sem INSTAGRAM_WEBHOOK_VERIFY_TOKEN não há handshake; sem INSTAGRAM_APP_SECRET nenhum evento é aceito.
   app.get("/api/webhook/instagram", (req, res) => {
-    const mode = req.query["hub.mode"];
-    const token = req.query["hub.verify_token"];
-    const challenge = req.query["hub.challenge"];
-    if (mode === "subscribe" && token === IG_VERIFY_TOKEN) {
-      return res.status(200).send(challenge);
+    const token = env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN;
+    if (token && req.query["hub.mode"] === "subscribe" && req.query["hub.verify_token"] === token) {
+      return res.status(200).send(req.query["hub.challenge"]);
     }
     return res.status(403).send("Forbidden");
   });
 
-  app.post("/api/webhook/instagram", express.json(), a(async (req, res) => {
+  const assinaturaMetaValida = (req) => {
+    const segredo = env.INSTAGRAM_APP_SECRET;
+    const recebida = String(req.headers["x-hub-signature-256"] ?? "");
+    if (!segredo || !req.corpoBruto || !recebida.startsWith("sha256=")) return false;
+    const esperada = Buffer.from(`sha256=${createHmac("sha256", segredo).update(req.corpoBruto).digest("hex")}`);
+    const veio = Buffer.from(recebida);
+    return veio.length === esperada.length && timingSafeEqual(veio, esperada);
+  };
+  // "quero" ou "link" como palavra, sem "não quero".
+  const pedeLink = (texto) => /(^|[^\p{L}])(quero|link)([^\p{L}]|$)/iu.test(texto) && !/n[ãa]o\s+quero/i.test(texto);
+
+  app.post("/api/webhook/instagram", a(async (req, res) => {
+    if (!assinaturaMetaValida(req)) {
+      log.warn?.("[webhook-instagram] evento recusado: assinatura ausente ou inválida (confira INSTAGRAM_APP_SECRET)");
+      return res.sendStatus(401);
+    }
     res.status(200).send("EVENT_RECEIVED");
-    try {
-      const entry = req.body?.entry?.[0];
-      const change = entry?.changes?.[0];
-      const val = change?.value;
-      if (change?.field === "comments" && val?.id && val?.text) {
-        const texto = String(val.text).toLowerCase();
-        if (/quero|link|preço|preco|comprar|valor|onde|site/i.test(texto)) {
-          const commentId = val.id;
-          const resposta = `Olá! 🛍️ Aqui está o seu link com desconto no CIT Shopping: ${urlPublica}/bio\n\nOu no nosso canal VIP: https://whatsapp.com/channel/0029VbDyNjvIyPtZGJ6HTs3i`;
-          await conectorInstagram.responderComentarioDirect({ commentId, texto: resposta }).catch(() => {});
+    // A Meta agrupa vários eventos num mesmo POST: todos os entries e changes.
+    for (const entry of req.body?.entry ?? []) {
+      for (const change of entry.changes ?? []) {
+        const val = change.value;
+        if (change.field !== "comments" || !val?.id || !val.text || !pedeLink(String(val.text))) continue;
+        if (val.from?.id && val.from.id === conectorInstagram.accountId) continue; // comentário da própria conta
+        const vinculo = banco.d.instagramPosts?.[val.media?.id];
+        const x = vinculo && produtoPorId(vinculo.produtoId);
+        const texto = x
+          ? `Oi! Aqui está o link de ${x.nome} por ${Number(x.preco).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}: ${urlPublica}/p/${encodeURIComponent(x.id)}`
+          : `Oi! As ofertas do CIT Shopping estão aqui: ${urlPublica}/bio`;
+        try {
+          await conectorInstagram.responderComentarioDirect({ commentId: val.id, texto });
+          log.info?.(`[webhook-instagram] direct enviado (comentário ${val.id}, ${x ? `produto ${x.id}` : "sem produto ligado ao post"})`);
+        } catch (e) {
+          log.warn?.(`[webhook-instagram] falha ao enviar direct do comentário ${val.id}: ${e.message}`);
         }
       }
-    } catch (e) {
-      log.error?.("[webhook-instagram] Erro ao processar comentário:", e.message);
     }
   }));
 
@@ -876,6 +957,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     };
     if (req.body?.accountId) conectorInstagram.accountId = req.body.accountId;
     if (req.body?.accessToken) conectorInstagram.accessToken = req.body.accessToken;
+    if (req.body?.pageAccessToken) conectorInstagram.pageAccessToken = req.body.pageAccessToken;
     await monitoramentoMotor.salvarConfiguracao(novaCfg);
     res.json({ ok: true, instagram: novaCfg.instagram });
   }));
@@ -889,7 +971,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const legenda = req.body?.legenda || conectorInstagram.formatarLegenda(x, { urlPublica });
 
     try {
-      const resPub = await conectorInstagram.publicarFeed({ urlImagem: urlCard, legenda });
+      const resPub = await conectorInstagram.publicarFeed({ urlImagem: urlCard, legenda, produtoId: x.id });
       res.json({ ok: true, publicacao: resPub });
     } catch (e) {
       res.status(500).json({ ok: false, erro: e.message });

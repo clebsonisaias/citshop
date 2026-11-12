@@ -54,21 +54,31 @@ window.CIT = (() => {
   // Como a loja local entrega, informado por ela no painel. Sem informação, não prometemos nada.
   const ENTREGA = { retirada: 'Retirada na loja', entrega: 'Entrega', ambos: 'Entrega ou retirada' };
   const textoEntrega = (e) => ENTREGA[e] ?? 'Loja';
+  // Vitrine do anunciante: capa na cor da loja, logo sobreposto, nome como título, ações e informações práticas.
+  // A raiz começa com class="sellerhead": o painel troca esse trecho para pôr o id da pré-visualização.
   function cabecalhoLoja(l, extra = '') {
     const cor = l.cor || '#036271';
     const avatar = l.logo ? `<img src="${esc(l.logo)}" alt="Logo ${esc(l.nome)}">` : esc(iniciais(l.nome));
-    const detalhes = [
+    const info = [
       l.horario && ['Horário', l.horario],
       l.bairrosAtendidos && ['Atende', l.bairrosAtendidos],
       l.prazoEntrega && ['Prazo', l.prazoEntrega],
-    ].filter(Boolean).map(([rotulo, valor]) => `<span class="store-detail"><b>${rotulo}</b>${esc(valor)}</span>`).join('');
+    ].filter(Boolean).map(([rotulo, valor]) => `<div><dt>${rotulo}</dt><dd>${esc(valor)}</dd></div>`).join('');
     const entrega = ENTREGA[l.entrega];
-    return `<section class="sellerhead loja-cor" aria-label="Perfil da loja" style="--loja:${cor};--loja-ink:${textoSobre(cor)}">
-      <span class="avatar grande">${avatar}</span>
-      <div class="info store-copy"><span class="store-kicker">Loja da região</span><h3>${esc(l.nome)}</h3>
-        <div class="store-meta"><span>${esc(l.categoria || 'Loja local')}</span><span>${esc(l.cidade)}</span>${entrega ? `<span>${entrega}</span>` : ''}</div>
-        ${detalhes ? `<div class="store-details">${detalhes}</div>` : ''}${l.sobre ? `<p>${esc(l.sobre)}</p>` : ''}</div>
-      ${extra ? `<div class="store-action">${extra}</div>` : ''}</section>`;
+    return `<section class="sellerhead loja-vitrine" aria-label="Sobre a loja" style="--loja:${cor};--loja-ink:${textoSobre(cor)}">
+      <div class="lv-capa" aria-hidden="true"></div>
+      <div class="lv-corpo">
+        <span class="avatar lv-logo">${avatar}</span>
+        <div class="lv-id">
+          <h2 class="lv-nome">${esc(l.nome)}</h2>
+          <p class="lv-meta">${esc(l.categoria || 'Loja local')} em ${esc(l.cidade)}</p>
+          ${entrega ? `<span class="lv-chip">${entrega}</span>` : ''}
+          ${l.sobre ? `<p class="lv-sobre">${esc(l.sobre)}</p>` : ''}
+          ${extra ? `<div class="lv-acoes">${extra}</div>` : ''}
+        </div>
+        ${info ? `<details class="lv-info" open><summary>Horário, área e prazo</summary><dl>${info}</dl></details>` : ''}
+      </div>
+    </section>`;
   }
   return { ICON, DEPTS, D, esc, brl, svg, textoSobre, iniciais, cabecalhoLoja, textoEntrega };
 })();

@@ -274,14 +274,14 @@ export class RadarOfertas {
       try {
         const urlCard = `${this.urlPublica}/api/instagram/card/${encodeURIComponent(topOferta.id)}`;
         const legenda = this.instagram.formatarLegenda(topOferta, { urlPublica: this.urlPublica });
-        postInstagram = await this.instagram.publicarFeed({ urlImagem: urlCard, legenda });
+        postInstagram = await this.instagram.publicarFeed({ urlImagem: urlCard, legenda, produtoId: topOferta.id });
         sucessos.push({
           id: topOferta.id,
           nome: topOferta.nome,
           preco: topOferta.preco,
           tipo: "instagram",
           enviadoEm: new Date().toISOString(),
-          postId: postInstagram.id || postInstagram.postId,
+          postId: postInstagram.mediaId,
         });
       } catch (errInsta) {
         console.error(`[radar] Falha ao postar no Instagram: ${errInsta.message}`);

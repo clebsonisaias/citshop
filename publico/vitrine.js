@@ -52,6 +52,14 @@ import { filtrarCatalogo } from './catalogo.js';
     if (temCupom) tags.push('<span class="tag-cupom">🎟️ Cupom Ativo</span>');
     const tagsHtml = tags.length ? `<div class="tags-row">${tags.join('')}</div>` : '';
 
+    // Na página da própria loja o card fica enxuto: quem vende e como entrega já estão no cabeçalho.
+    if (document.body.classList.contains('na-loja') && x.loja === 'local') {
+      const encomenda = x.disponibilidade === 'sob-encomenda';
+      const estoque = x.disponibilidade === 'disponivel' ? 'Pronta entrega' : encomenda ? 'Sob encomenda' : 'Consulte disponibilidade';
+      return `<button class="card" data-p="${esc(x.id)}">${shot(x)}</div>
+      <div class="body"><h3>${esc(x.nome)}</h3>${nota}${off(x) ? `<div class="old">${brl.format(x.precoAntigo)}</div>` : ''}
+      <div class="price">${preco(x)}</div><div class="lv-estoque${encomenda ? ' encomenda' : ''}">${estoque}</div></div></button>`;
+    }
     return `<button class="card" data-p="${esc(x.id)}">${shot(x)}</div>
       <div class="body"><h3>${esc(x.nome)}</h3>${nota}${off(x) ? `<div class="old">${brl.format(x.precoAntigo)}</div>` : ''}
       <div class="price">${preco(x)}</div>${tagsHtml}${ship}${stock}${selo}<div class="vendido">Vendido por ${esc(label(x))}</div></div></button>`;
@@ -102,7 +110,9 @@ import { filtrarCatalogo } from './catalogo.js';
   let voltar = '/'; // endereço (com a query, ex.: utm) para onde a janela do produto devolve ao fechar
   let empurrou = false; // abrir o produto criou uma entrada no histórico: o Voltar só fecha a janela
   let tituloAntes = TITULO;
-  function showResults(title, list, head = '', filtros = {}) {
+  function showResults(title, list, head = '', { naLoja = false, rodape = '', ...filtros } = {}) {
+    document.body.classList.toggle('na-loja', naLoja);
+    $('rfoot').innerHTML = rodape;
     Object.assign(view, { list, ordem: 'relevancia', cidade: '', sub: '', origem: '', precoMin: '', precoMax: '', q: '', dept: '' }, filtros);
     $('rsort').value = view.ordem;
     $('rcidade').value = '';
@@ -135,6 +145,7 @@ import { filtrarCatalogo } from './catalogo.js';
   }
   function goHome() {
     document.title = TITULO;
+    document.body.classList.remove('na-loja');
     $('resultsview').hidden = true;
     $('homeview').hidden = false;
     $('q').value = '';
@@ -142,12 +153,31 @@ import { filtrarCatalogo } from './catalogo.js';
     scrollTo({ top: 0 });
   }
   const byDept = (k) => showResults(D[k].n, P.filter((x) => x.dept === k), '', { dept: k });
+  const ICONE_ZAP = '<svg class="ic" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width:2"><path d="M4 20l1.3-4A8 8 0 1 1 8 19z"/></svg>';
+  const ICONE_COMPARTILHAR = '<svg class="ic" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width:2"><path d="M12 15V3m0 0L7.5 7.5M12 3l4.5 4.5M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>';
+  // Compartilhar a loja: menu nativo do celular; sem ele, copia o link.
+  async function compartilhar(botao) {
+    const url = location.origin + location.pathname;
+    try {
+      if (navigator.share) return await navigator.share({ title: document.title, url });
+      await navigator.clipboard.writeText(url);
+      botao.textContent = 'Copiado';
+    } catch { /* compartilhamento cancelado */ }
+  }
   function bySeller(slug) {
     const l = LOJAS.find((x) => x.slug === slug);
     if (!l) return showResults('Loja não encontrada', []);
     const zap = `/contato/loja/${encodeURIComponent(l.slug)}`;
-    showResults('Produtos da loja', P.filter((x) => x.lojaSlug === slug),
-      window.CIT.cabecalhoLoja(l, `<a class="btn" href="${zap}" target="_blank" rel="noopener">Falar no WhatsApp</a>`));
+    const cor = l.cor || '#036271';
+    const botaoZap = (texto) => `<a class="btn lv-zap" href="${zap}" target="_blank" rel="noopener">${ICONE_ZAP}${texto}</a>`;
+    showResults(`Produtos de ${l.nome}`, P.filter((x) => x.lojaSlug === slug),
+      window.CIT.cabecalhoLoja(l, `${botaoZap('Chamar no WhatsApp')}<button class="btn sec lv-share" type="button" data-compartilhar aria-label="Compartilhar loja" title="Compartilhar loja">${ICONE_COMPARTILHAR}</button>`), {
+        naLoja: true,
+        rodape: `<aside class="lv-encomenda" style="--loja:${esc(cor)};--loja-ink:${window.CIT.textoSobre(cor)}">
+          <p><b>Não achou a cor ou o modelo?</b> Peça sob encomenda direto para a loja.</p>${botaoZap('Falar com a loja')}</aside>`,
+      });
+    // No celular, horário/área/prazo começam recolhidos para os produtos aparecerem mais cedo.
+    if (matchMedia('(max-width: 900px)').matches) document.querySelector('#rhead .lv-info')?.removeAttribute('open');
     document.title = `${l.nome} · CIT Shopping`;
     const targetUrl = location.pathname === `/${slug}` ? `/${slug}` : `/loja/${slug}`;
     if (location.pathname !== targetUrl) history.pushState(null, '', targetUrl);
@@ -351,6 +381,7 @@ import { filtrarCatalogo } from './catalogo.js';
 
   document.addEventListener('click', (e) => {
     const t = e.target;
+    const sh = t.closest('[data-compartilhar]'); if (sh) return compartilhar(sh);
     const p = t.closest('[data-p]'); if (p) return openProduct(P.find((x) => x.id === p.dataset.p));
     const sl = t.closest('[data-seller]'); if (sl) { e.preventDefault(); return bySeller(sl.dataset.seller); }
     const d = t.closest('[data-dept]'); if (d) { e.preventDefault(); return byDept(d.dataset.dept); }
@@ -391,6 +422,8 @@ import { filtrarCatalogo } from './catalogo.js';
 
   fetch('/api/vitrine')
     .then((r) => r.json())
-    .then((d) => { P = d.produtos.map((x) => ({ ...x, categoriaNome: D[x.dept]?.n ?? x.dept })); LOJAS = d.lojas; montarHome(); rota(); })
+    .then((d) => { P = d.produtos.map((x) => ({ ...x, categoriaNome: D[x.dept]?.n ?? x.dept })); LOJAS = d.lojas; montarHome(); rota();
+      // Link /#sellers (ex.: da /bio): a faixa só existe depois do fetch, então rola até ela aqui.
+      if (location.hash === '#sellers') $('sellers').closest('section').scrollIntoView(); })
     .catch(() => { $('sellers').innerHTML = '<p class="empty">Não foi possível carregar as ofertas. Recarregue a página.</p>'; });
 })();

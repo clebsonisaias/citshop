@@ -77,8 +77,9 @@
     $('assinar').textContent = `Assinar ${brl.format(s.preco)}/mês`;
     const f = $('fLoja');
     for (const k of ['nome', 'responsavel', 'whatsapp', 'cidade', 'categoria', 'entrega', 'horario', 'bairrosAtendidos', 'prazoEntrega']) f[k].value = s.loja[k] ?? '';
-    if ($('mpEmail')) $('mpEmail').value = s.loja.mpEmail ?? '';
-    if ($('mpChavePix')) $('mpChavePix').value = s.loja.mpChavePix ?? '';
+    $('mpStatus').textContent = s.loja.mpConectado ? 'Conta Mercado Pago conectada: as vendas pelo site caem nela.' : 'Nenhuma conta conectada ainda.';
+    $('mpConectar').textContent = s.loja.mpConectado ? 'Conectar outra conta' : 'Conectar Mercado Pago';
+    $('mpDesconectar').hidden = !s.loja.mpConectado;
     $('vCor').value = s.loja.cor || '#036271';
     $('vSobre').value = s.loja.sobre ?? '';
     $('tirarLogo').hidden = !s.loja.logo;
@@ -209,22 +210,17 @@
       catch (err) { mostrarMsg($('mLoja'), err.message); }
     });
   });
-  if ($('fPagamento')) {
-    $('fPagamento').addEventListener('submit', (e) => {
-      e.preventDefault();
-      enviando(e.submitter, async () => {
-        try {
-          const { nome, responsavel, whatsapp, cidade, categoria } = estado.loja;
-          const mpEmail = $('mpEmail').value.trim();
-          const mpChavePix = $('mpChavePix').value.trim();
-          mostrar(await api('/api/painel/loja', {
-            metodo: 'PUT',
-            json: { nome, responsavel, whatsapp, cidade, categoria, mpEmail, mpChavePix }
-          }));
-          mostrarMsg($('mPagamento'), 'Conta do Mercado Pago salva com sucesso!', 'ok');
-        } catch (err) { mostrarMsg($('mPagamento'), err.message); }
-      });
+  $('mpDesconectar').addEventListener('click', (e) => {
+    enviando(e.currentTarget, async () => {
+      try { mostrar(await api('/api/painel/mercadopago/desconectar', { metodo: 'POST' })); mostrarMsg($('mPagamento'), 'Conta desconectada.', 'ok'); }
+      catch (err) { mostrarMsg($('mPagamento'), err.message); }
     });
+  });
+  // Volta da autorização no Mercado Pago (/mercadopago/retorno redireciona com ?mp=conectado|erro).
+  const voltaMp = new URLSearchParams(location.search).get('mp');
+  if (voltaMp) {
+    mostrarMsg($('mPagamento'), voltaMp === 'conectado' ? 'Conta Mercado Pago conectada.' : 'Não foi possível conectar a conta. Tente de novo.', voltaMp === 'conectado' ? 'ok' : undefined);
+    history.replaceState(null, '', location.pathname);
   }
   $('fSenha').addEventListener('submit', (e) => {
     e.preventDefault();

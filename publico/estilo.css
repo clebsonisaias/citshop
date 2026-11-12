@@ -141,37 +141,55 @@ section.block { padding-block: 18px; }
 .sellerhead { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
 .sellerhead .info { flex: 1; min-width: 180px; }
 .sellerhead small { color: var(--muted); }
-/* Página da loja com a cor e o logo dela; --loja-ink é preto ou branco, calculado pelo contraste */
-.sellerhead.loja-cor { position: relative; isolation: isolate; overflow: hidden; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 18px; align-items: center; margin-bottom: 20px; padding: clamp(18px, 3vw, 28px); background: var(--loja, #036271); color: var(--loja-ink, #FFFFFF); border: 0; border-radius: 20px; }
-.sellerhead.loja-cor::after { content: ""; position: absolute; z-index: -1; width: 240px; aspect-ratio: 1; right: -72px; bottom: -164px; border: 1px solid color-mix(in srgb, var(--loja-ink) 18%, transparent); border-radius: 50%; box-shadow: 0 0 0 24px color-mix(in srgb, var(--loja-ink) 5%, transparent), 0 0 0 48px color-mix(in srgb, var(--loja-ink) 4%, transparent); pointer-events: none; }
-.sellerhead.loja-cor .avatar.grande { width: 92px; height: 92px; border-radius: 22px; background: color-mix(in srgb, var(--loja-ink) 14%, transparent); border-color: color-mix(in srgb, var(--loja-ink) 30%, transparent); }
-.store-copy { min-width: 0; }
-.store-kicker { display: block; margin-bottom: 4px; color: inherit; opacity: .76; font-size: 10px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
-.sellerhead.loja-cor .store-copy h3 { font-size: clamp(21px, 2.5vw, 28px); font-weight: 800; line-height: 1.1; letter-spacing: -.03em; overflow-wrap: anywhere; }
-.store-meta { display: flex; flex-wrap: wrap; gap: 5px 10px; margin-top: 9px; color: inherit; font-size: 12px; font-weight: 600; opacity: .88; }
-.store-meta span + span::before { content: "·"; margin-right: 10px; opacity: .7; }
-.store-details { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
-.store-detail { display: grid; gap: 2px; max-width: 100%; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--loja-ink) 17%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--loja-ink) 8%, transparent); color: inherit; font-size: 11px; line-height: 1.35; overflow-wrap: anywhere; }
-.store-detail b { color: inherit; font-size: 9px; letter-spacing: .06em; opacity: .74; text-transform: uppercase; }
-.sellerhead.loja-cor p { margin: 12px 0 0; max-width: 60ch; color: inherit; font-size: 13px; line-height: 1.6; opacity: .9; }
-.store-action { position: relative; z-index: 1; }
-.sellerhead.loja-cor .store-action .btn { min-height: 48px; padding-inline: 18px; background: var(--loja-ink); color: var(--loja); white-space: nowrap; }
+/* Página do anunciante: a cor e o logo da loja dão a identidade (capa suave na cor dela);
+   o resto fica branco e limpo, com os produtos logo abaixo. --loja-ink é preto ou branco pelo contraste. */
+.sellerhead.loja-vitrine { display: block; margin: 0 0 20px; padding: 0; background: none; border: 0; border-radius: 0; }
+.lv-capa { height: 120px; border-radius: 20px; background:
+  radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--loja) 30%, transparent) 1.3px, transparent 1.8px) 0 0 / 18px 18px,
+  linear-gradient(115deg, color-mix(in srgb, var(--loja) 26%, #FFFFFF), color-mix(in srgb, var(--loja) 9%, #FFFFFF)); }
+.lv-corpo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 320px); gap: 0 40px; padding: 0 clamp(4px, 2vw, 24px); }
+.lv-logo { grid-column: 1; width: 108px; height: 108px; margin-top: -54px; border-radius: 28px; border: 4px solid #FFFFFF; background: var(--loja); color: var(--loja-ink); font-size: 32px; box-shadow: 0 12px 28px -16px rgba(3, 24, 28, .5); }
+.lv-id { grid-column: 1; min-width: 0; }
+.lv-nome { margin: 12px 0 4px; font-size: clamp(26px, 4vw, 40px); font-weight: 800; line-height: 1.08; letter-spacing: -.03em; color: var(--ink); overflow-wrap: anywhere; }
+.lv-meta { margin: 0; font-size: 15px; color: var(--muted); }
+.lv-chip { display: inline-flex; align-items: center; margin-top: 12px; padding: 6px 12px; border-radius: 99px; font-size: 13px; font-weight: 700; color: var(--ink); background: color-mix(in srgb, var(--loja) 13%, #FFFFFF); border: 1px solid color-mix(in srgb, var(--loja) 34%, #FFFFFF); }
+.lv-sobre { margin: 14px 0 0; max-width: 62ch; font-size: 15px; line-height: 1.6; color: var(--ink); }
+.lv-acoes { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.btn.lv-zap { flex: 1 1 auto; background: var(--loja); color: var(--loja-ink); white-space: nowrap; }
+.btn.lv-share { flex: 0 0 auto; min-width: 48px; padding: 0 14px; }
+.lv-info { grid-column: 2; grid-row: 1 / span 2; align-self: start; margin: 24px 0 0; padding: 4px 20px 18px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }
+.lv-info summary { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; font-weight: 700; color: var(--ink); cursor: pointer; list-style: none; }
+.lv-info summary::-webkit-details-marker { display: none; }
+.lv-info summary::after { content: ""; margin-left: auto; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg) translateY(-2px); transition: transform .2s; }
+.lv-info[open] summary::after { transform: rotate(-135deg) translateY(-2px); }
+body.na-loja .rtools label { display: flex; align-items: center; gap: 10px; }
+.lv-info dl { display: grid; gap: 14px; margin: 4px 0 0; }
+.lv-info div { display: grid; gap: 2px; }
+.lv-info dt { font-size: 12px; font-weight: 700; color: var(--muted); }
+.lv-info dd { margin: 0; font-size: 14px; line-height: 1.45; color: var(--ink); }
+.lv-estoque { margin-top: 2px; font-size: 12px; font-weight: 700; color: var(--good); }
+.lv-estoque.encomenda { color: var(--deep); }
+.lv-encomenda { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 20px; margin-top: 28px; padding: 20px 22px; border-radius: 18px; background: color-mix(in srgb, var(--loja) 10%, #FFFFFF); border: 1px solid color-mix(in srgb, var(--loja) 28%, #FFFFFF); }
+.lv-encomenda p { margin: 0; max-width: 52ch; font-size: 15px; line-height: 1.5; color: var(--ink); }
+/* Na página da loja: sem título genérico, sem filtros de marketplace/preço e sem o botão flutuante por cima dos produtos. */
+body.na-loja #resultsview > .head, body.na-loja #rreset, body.na-loja .canal-flutuante,
+body.na-loja .rtools label:has(#rorigem), body.na-loja .rtools label:has(#rmin), body.na-loja .rtools label:has(#rmax) { display: none; }
 .avatar { overflow: hidden; }
 .avatar img { width: 100%; height: 100%; object-fit: cover; }
 .avatar.grande { width: 84px; height: 84px; border-radius: 18px; font-size: 26px; background: rgba(255,255,255,.18); color: inherit; border: 2px solid rgba(255,255,255,.35); }
 
-@media (max-width: 760px) {
-  .sellerhead.loja-cor { grid-template-columns: auto minmax(0, 1fr); gap: 14px; }
-  .store-action { grid-column: 1 / -1; }
-  .sellerhead.loja-cor .store-action .btn { width: 100%; }
-}
-@media (max-width: 480px) {
-  .sellerhead.loja-cor { gap: 12px; padding: 16px; border-radius: 16px; }
-  .sellerhead.loja-cor .avatar.grande { width: 66px; height: 66px; border-radius: 17px; font-size: 20px; }
-  .store-meta { gap: 4px 7px; font-size: 11px; }
-  .store-meta span + span::before { margin-right: 7px; }
-  .store-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 11px; }
-  .store-detail { padding: 7px 8px; font-size: 10px; }
+@media (max-width: 900px) {
+  .lv-capa { height: 84px; border-radius: 16px; }
+  .lv-corpo { grid-template-columns: minmax(0, 1fr); padding: 0 2px; }
+  .lv-logo { width: 84px; height: 84px; margin-top: -42px; border-radius: 22px; font-size: 26px; }
+  .lv-nome { margin-top: 10px; }
+  .lv-sobre { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .lv-info { grid-column: 1; grid-row: auto; margin-top: 14px; padding: 0 14px; }
+  .lv-info[open] { padding-bottom: 12px; }
+  .lv-info dl { gap: 8px; }
+  .lv-info div { grid-template-columns: 64px minmax(0, 1fr); gap: 10px; align-items: baseline; }
+  .lv-encomenda { padding: 16px; }
+  .lv-encomenda .btn { width: 100%; }
 }
 
 .modal { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 16px; background: rgba(3, 24, 28, .62); }
