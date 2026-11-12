@@ -3,11 +3,17 @@
 // - Loja fundadora: cupom FUNDADOR50 (50%) aplicado durante a campanha; o preço contratado fica gravado na loja
 //   e vale em todas as renovações enquanto a assinatura não for cancelada de vez.
 // - Parceiro especial (convite): sem mensalidade, R$ 1 por unidade vendida pelo checkout do CITshop.
+// - CITshop Food (restaurante, loja.segmento === "food"): plano único FOOD PRO, mensalidade fixa, nenhuma comissão;
+//   cupom FOODFUNDADOR50 (50%, 90 dias). Cupom de um segmento não vale no outro.
 // Os valores configuráveis (preço oficial, campanha) ficam em banco.d.comercial; o preço já contratado nunca muda.
 
 export const PRECO_MENSAL_PADRAO = 99.9;
 export const PRECO_LEGADO = 49.9; // assinaturas feitas antes do CITshop 2.0 seguem com este valor no Mercado Pago
 export const COMISSAO_PARCEIRO_POR_UNIDADE = 1.0;
+export const PRECO_FOOD_PADRAO = 299.9;
+/** "food" (restaurante) ou "loja" (loja convencional/parceira). */
+export const segmentoDe = (loja) => (loja?.segmento === "food" ? "food" : "loja");
+const segmentoCupom = (c) => c?.segmento ?? "loja";
 const DIA = 24 * 60 * 60 * 1000;
 
 export const reais2 = (n) => Math.round(Number(n) * 100) / 100;
@@ -28,7 +34,7 @@ export function cnpjNormalizado(v) {
 
 /** Cria a configuração comercial na primeira subida do 2.0: preço oficial e a campanha FUNDADOR50 por 90 dias a partir de hoje. */
 export function garantirComercial(banco, agora) {
-  if (banco.d.comercial) return false;
+  if (banco.d.comercial) return garantirFood(banco, agora);
   banco.d.comercial = {
     precoMensal: PRECO_MENSAL_PADRAO,
     cupons: [{
@@ -41,10 +47,24 @@ export function garantirComercial(banco, agora) {
   for (const l of banco.lojas) {
     if (l.assinatura?.preapprovalId && !l.plano) l.plano = { codigo: "mensal", precoContratado: PRECO_LEGADO, legado: true };
   }
+  garantirFood(banco, agora);
+  return true;
+}
+/** Acrescenta o FOOD PRO (preço e campanha FOODFUNDADOR50 por 90 dias a partir da primeira subida) sem mexer no resto. */
+function garantirFood(banco, agora) {
+  if (banco.d.comercial.precoFood != null) return false;
+  banco.d.comercial.precoFood = PRECO_FOOD_PADRAO;
+  if (!banco.d.comercial.cupons.some((c) => c.codigo === "FOODFUNDADOR50")) banco.d.comercial.cupons.push({
+    codigo: "FOODFUNDADOR50", segmento: "food", percentual: 50, recorrente: true, permanente: true, ativo: true, limite: null,
+    inicio: new Date(agora).toISOString(), fim: new Date(agora + 90 * DIA).toISOString(), criadoEm: new Date(agora).toISOString(), usos: [],
+  });
   return true;
 }
 
-export const precoMensalOficial = (banco) => reais2(banco.d.comercial?.precoMensal ?? PRECO_MENSAL_PADRAO);
+export const precoMensalOficial = (banco, segmento = "loja") => reais2(segmento === "food"
+  ? banco.d.comercial?.precoFood ?? PRECO_FOOD_PADRAO : banco.d.comercial?.precoMensal ?? PRECO_MENSAL_PADRAO);
+/** Campanha de cupom em vigor para o segmento (a primeira que estiver valendo), ou null. */
+export const campanhaValendo = (banco, segmento, agora) => (banco.d.comercial?.cupons ?? []).find((c) => segmentoCupom(c) === segmento && cupomValendo(c, agora)) ?? null;
 const cupomPorCodigo = (banco, codigo) => (banco.d.comercial?.cupons ?? []).find((c) => c.codigo === String(codigo ?? "").trim().toUpperCase());
 export const cupomValendo = (c, agora) => Boolean(c?.ativo && agora >= Date.parse(c.inicio) && agora <= Date.parse(c.fim) && (c.limite == null || c.usos.length < c.limite));
 
@@ -53,7 +73,7 @@ export const beneficioAtivo = (loja) => (loja.beneficio && !loja.beneficio.encer
 
 /** Quanto a loja pagaria se assinasse agora: preço oficial com o benefício, se tiver. */
 export function precoParaAssinar(banco, loja) {
-  const oficial = precoMensalOficial(banco);
+  const oficial = precoMensalOficial(banco, segmentoDe(loja));
   const b = beneficioAtivo(loja);
   return b ? precoComDesconto(oficial, b.percentual) : oficial;
 }
@@ -66,6 +86,7 @@ export function validarCupomAssinatura(banco, loja, codigo, agora) {
   const c = cupomPorCodigo(banco, codigo);
   if (!c) return { erro: "Cupom não encontrado." };
   if (loja.modeloCobranca === "comissao_fixa") return { erro: "Parceiros especiais não pagam mensalidade: o cupom não se aplica." };
+  if (segmentoCupom(c) !== segmentoDe(loja)) return { erro: segmentoDe(loja) === "food" ? "Este cupom é das lojas. Para restaurantes, use o cupom do CITshop Food." : "Este cupom é do CITshop Food (restaurantes)." };
   if (loja.beneficio?.encerradoEm) return { erro: "O benefício desta loja foi encerrado com o cancelamento da assinatura e não pode ser aplicado de novo." };
   if (loja.beneficio) return loja.beneficio.codigo === c.codigo ? { cupom: c, jaAplicado: true } : { erro: "A loja já tem um benefício. Os cupons não se acumulam." };
   if (!cupomValendo(c, agora)) return { erro: Date.parse(c.fim) < agora ? "A campanha deste cupom já terminou." : "Este cupom não está valendo agora." };

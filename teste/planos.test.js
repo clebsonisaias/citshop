@@ -142,3 +142,27 @@ test("modelo comercial: R$ 99,90, FUNDADOR50 a R$ 49,95 para sempre, campanha de
   assert.ok(comercial.beneficiarios.some((x) => x.lojaId === idFund && x.encerradoEm));
   assert.equal(comercial.beneficiarios.filter((x) => !x.encerradoEm).length, 2);
 });
+
+test("FOOD PRO: R$ 299,90, FOODFUNDADOR50 = R$ 149,95, cupom de um segmento não vale no outro, sem comissão", async () => {
+  const { garantirComercial, precoParaAssinar, validarCupomAssinatura, aplicarCupomAssinatura, precoMensalOficial } = await import("../servidor/planos.js");
+  const { retratoFinanceiro } = await import("../servidor/financeiro.js");
+  const agora = Date.parse("2026-11-12T12:00:00Z");
+  // Banco que já tinha o comercial do 2.0: o Food entra sem mexer no resto
+  const banco = { lojas: [], d: { comercial: { precoMensal: 99.9, cupons: [{ codigo: "FUNDADOR50", percentual: 50, ativo: true, limite: null, inicio: new Date(agora).toISOString(), fim: new Date(agora + 90 * 864e5).toISOString(), usos: [] }] } } };
+  assert.equal(garantirComercial(banco, agora), true);
+  assert.equal(garantirComercial(banco, agora), false, "idempotente");
+  assert.deepEqual([precoMensalOficial(banco), precoMensalOficial(banco, "food")], [99.9, 299.9]);
+  const rest = { id: "r", segmento: "food", whatsapp: "5584911112222" }, loja = { id: "l", whatsapp: "5584933334444" };
+  banco.lojas.push(rest, loja);
+  assert.equal(precoParaAssinar(banco, rest), 299.9);
+  assert.match(validarCupomAssinatura(banco, rest, "FUNDADOR50", agora).erro, /lojas/);
+  assert.match(validarCupomAssinatura(banco, loja, "FOODFUNDADOR50", agora).erro, /Food/);
+  const v = validarCupomAssinatura(banco, rest, "foodfundador50", agora);
+  aplicarCupomAssinatura(rest, v.cupom, agora);
+  assert.equal(precoParaAssinar(banco, rest), 149.95);
+  assert.equal(validarCupomAssinatura(banco, rest, "FOODFUNDADOR50", agora + 91 * 864e5).jaAplicado, true, "já aplicado continua valendo depois da campanha");
+  const outro = { id: "r2", segmento: "food", whatsapp: "5584911112222" };
+  assert.match(validarCupomAssinatura(banco, outro, "FOODFUNDADOR50", agora).erro, /WhatsApp/);
+  assert.match(validarCupomAssinatura(banco, { id: "r3", segmento: "food" }, "FOODFUNDADOR50", agora + 91 * 864e5).erro, /terminou/);
+  for (const u of [1, 50, 10000]) assert.equal(retratoFinanceiro({ loja: rest, unidades: u, valorProdutos: 100 * u }).comissaoTotal, 0, "Food nunca paga comissão");
+});

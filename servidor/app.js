@@ -15,7 +15,7 @@ import { MAX_FOTOS, apagarFoto, receberFotos, receberLogo, salvarFoto } from "./
 import { cifrar, criarMercadoPago, decifrar, webhookValido } from "./mercadopago.js";
 import {
   PRECO_LEGADO, aplicarCupomAssinatura, beneficioAtivo, cnpjNormalizado, cupomValendo, estadoAssinatura, garantirComercial, precoComDesconto,
-  precoMensalOficial, precoParaAssinar, registrarEstadoAssinatura, reais2, validarCupomAssinatura,
+  precoMensalOficial, precoParaAssinar, registrarEstadoAssinatura, reais2, validarCupomAssinatura, campanhaValendo, segmentoDe,
 } from "./planos.js";
 import { TIPOS_LANCAMENTO, estornarComissao, lancar, lancarComissao, registrarEvento, resumoLivro, retratoFinanceiro } from "./financeiro.js";
 import { MARKETPLACE, criarClienteAmazon } from "./amazon.js";
@@ -759,12 +759,13 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   }
   // Plano da loja para o painel: preço oficial, preço com benefício, preço já contratado e a campanha em vigor.
   function resumoPlano(loja) {
-    const c = (banco.d.comercial?.cupons ?? []).find((x) => cupomValendo(x, agora()));
+    const seg = segmentoDe(loja), c = campanhaValendo(banco, seg, agora()), oficial = precoMensalOficial(banco, seg);
     return {
-      precoOficial: precoMensalOficial(banco), precoParaAssinar: precoParaAssinar(banco, loja),
+      segmento: seg, nome: seg === "food" ? "FOOD PRO" : "Plano Loja",
+      precoOficial: oficial, precoParaAssinar: precoParaAssinar(banco, loja),
       precoContratado: loja.plano?.precoContratado ?? null, beneficio: beneficioAtivo(loja),
       campanha: c && !loja.beneficio && loja.modeloCobranca !== "comissao_fixa"
-        ? { codigo: c.codigo, percentual: c.percentual, preco: precoComDesconto(precoMensalOficial(banco), c.percentual), fim: c.fim } : null,
+        ? { codigo: c.codigo, percentual: c.percentual, preco: precoComDesconto(oficial, c.percentual), fim: c.fim } : null,
     };
   }
   // Financeiro do mês para a loja: o que vendeu, o que entrou pelo site (Mercado Pago, direto na conta dela),
@@ -1049,11 +1050,12 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   // ---------- planos e cupom de assinatura (docs/MODELO_COMERCIAL.md) ----------
   // Público: preço oficial e campanha em vigor, para as telas mostrarem o valor certo sem ter o preço escrito no HTML.
   app.get("/api/planos", (req, res) => {
-    const c = (banco.d.comercial?.cupons ?? []).find((x) => cupomValendo(x, agora()));
-    res.set("Cache-Control", "no-cache").json({
-      precoMensal: precoMensalOficial(banco), diasTeste: DIAS_TESTE,
-      campanha: c ? { codigo: c.codigo, percentual: c.percentual, preco: precoComDesconto(precoMensalOficial(banco), c.percentual), fim: c.fim } : null,
-    });
+    const plano = (seg) => {
+      const c = campanhaValendo(banco, seg, agora()), preco = precoMensalOficial(banco, seg);
+      return { precoMensal: preco, campanha: c ? { codigo: c.codigo, percentual: c.percentual, preco: precoComDesconto(preco, c.percentual), fim: c.fim } : null };
+    };
+    // Raiz = plano das lojas (compatível com as telas atuais); "food" = FOOD PRO dos restaurantes.
+    res.set("Cache-Control", "no-cache").json({ ...plano("loja"), diasTeste: DIAS_TESTE, food: { nome: "FOOD PRO", ...plano("food") } });
   });
   // A loja aplica o cupom (antes de assinar). O desconto entra no preço contratado na hora de assinar.
   app.post("/api/painel/cupom-assinatura", exigirLoja, (req, res) => {
@@ -1074,11 +1076,11 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     // Preço calculado aqui (oficial ou com o benefício da loja); nunca vem do aparelho. Fica gravado como preço contratado.
     const valor = precoParaAssinar(banco, loja);
     const pa = await mp.criarPreapproval({
-      referencia: loja.id, email: loja.email, motivo: beneficioAtivo(loja) ? `CIT Shopping · Plano Loja (${beneficioAtivo(loja).codigo})` : "CIT Shopping · Plano Loja", valor,
+      referencia: loja.id, email: loja.email, motivo: `CIT Shopping · ${segmentoDe(loja) === "food" ? "Food PRO" : "Plano Loja"}${beneficioAtivo(loja) ? ` (${beneficioAtivo(loja).codigo})` : ""}`, valor,
       inicio: new Date(inicio).toISOString(), retorno: `${urlPublica}/painel?assinatura=retorno`,
     });
     registrarEstadoAssinatura(loja, "pendente", { preapprovalId: pa.id, agora: agora() });
-    loja.plano = { codigo: "mensal", precoContratado: valor, precoOficial: precoMensalOficial(banco), beneficio: beneficioAtivo(loja)?.codigo ?? null, contratadoEm: iso(), preapprovalId: pa.id };
+    loja.plano = { codigo: segmentoDe(loja) === "food" ? "food_pro" : "mensal", precoContratado: valor, precoOficial: precoMensalOficial(banco, segmentoDe(loja)), beneficio: beneficioAtivo(loja)?.codigo ?? null, contratadoEm: iso(), preapprovalId: pa.id };
     banco.salvar();
     res.json({ url: pa.initPoint });
   }));
@@ -1413,7 +1415,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   // Mudar o preço oficial só vale para quem assinar depois: o preço contratado de cada loja não muda.
   const cupomAdmin = (c) => ({ ...c, usos: c.usos.length, valendo: cupomValendo(c, agora()) });
   const comercialAdmin = () => ({
-    precoMensal: precoMensalOficial(banco),
+    precoMensal: precoMensalOficial(banco), precoFood: precoMensalOficial(banco, "food"),
     cupons: (banco.d.comercial?.cupons ?? []).map(cupomAdmin),
     beneficiarios: banco.lojas.filter((l) => l.beneficio).map((l) => ({
       lojaId: l.id, nome: l.nome, slug: l.slug, cnpj: l.cnpj ?? null, whatsapp: l.whatsapp, ...l.beneficio,
@@ -1422,11 +1424,12 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   });
   app.get("/api/admin/comercial", exigirAdmin, (req, res) => res.json(comercialAdmin()));
   app.put("/api/admin/comercial/preco", exigirAdmin, (req, res) => {
-    const novo = reais2(req.body?.precoMensal);
+    // { precoMensal } muda o plano das lojas; { precoFood } muda o FOOD PRO.
+    const food = req.body?.precoFood != null, novo = reais2(food ? req.body.precoFood : req.body?.precoMensal);
     if (!(novo >= 1 && novo <= 10000)) return erro(res, 400, "Preço inválido.");
-    const antes = precoMensalOficial(banco);
-    banco.d.comercial.precoMensal = novo;
-    auditar("preco_mensal", { antes, depois: novo });
+    const antes = precoMensalOficial(banco, food ? "food" : "loja");
+    banco.d.comercial[food ? "precoFood" : "precoMensal"] = novo;
+    auditar(food ? "preco_food" : "preco_mensal", { antes, depois: novo });
     banco.salvar();
     res.json(comercialAdmin());
   });
@@ -1440,7 +1443,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     if (!Number.isFinite(inicio) || !Number.isFinite(fim) || fim <= inicio) return erro(res, 400, "Confira as datas de início e fim.");
     if ((banco.d.comercial.cupons ?? []).some((c) => c.codigo === codigo)) return erro(res, 409, "Já existe um cupom com esse código.");
     const limite = b.limite === "" || b.limite == null ? null : Math.max(1, Math.floor(Number(b.limite)) || 1);
-    banco.d.comercial.cupons.push({ codigo, percentual, recorrente: true, permanente: true, ativo: true, limite, inicio: new Date(inicio).toISOString(), fim: new Date(fim).toISOString(), criadoEm: iso(), usos: [] });
+    banco.d.comercial.cupons.push({ codigo, segmento: b.segmento === "food" ? "food" : "loja", percentual, recorrente: true, permanente: true, ativo: true, limite, inicio: new Date(inicio).toISOString(), fim: new Date(fim).toISOString(), criadoEm: iso(), usos: [] });
     auditar("cupom_criado", { codigo, percentual, fim: new Date(fim).toISOString(), limite });
     banco.salvar();
     res.status(201).json(comercialAdmin());
