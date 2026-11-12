@@ -31,11 +31,12 @@ Regra: nada vai para `main` (que publica sozinho no Coolify) sem autorização e
 - [ ] Validar `authorized_payments` com credenciais de teste do Mercado Pago (depende de conta de teste)
 
 ## Fase 4 · Painel administrativo
-- [ ] Dashboard com dados reais (lojas por situação, MRR, comissões, pedidos, produtos sem estoque, conversão do teste)
-- [ ] Planos e cupons de assinatura (configurar campanha, beneficiários, usos)
-- [ ] Assinaturas e financeiro (livro, filtros)
-- [ ] Registro de auditoria das ações do admin
-- [ ] Usuários e permissões (avaliar; hoje é senha única)
+- [x] Dashboard com dados reais (lojas por situação, MRR pelo preço contratado, receita do mês pelo livro, pedidos de 30 dias, produtos sem estoque, conversão do teste)
+- [x] Planos e cupons de assinatura (configurar campanha, beneficiários, usos) — feito na Fase 2
+- [x] Financeiro: livro com filtros por tipo e loja e resumo do recorte
+- [x] Registro de auditoria de todas as ações do admin (lojas, convites, cupons, planos, produtos)
+- [x] Lojas: filtro por situação (inclui fundadoras) e busca
+- [ ] Usuários e permissões: **decisão pendente** — hoje há uma senha de admin; múltiplos usuários exigem cadastro de operadores e papéis (proposta em ARQUITETURA.md)
 
 ## Fase 5 · Painel do lojista
 - [ ] Aba financeira (vendas, recebimentos, reembolsos, comissões só para parceiros)

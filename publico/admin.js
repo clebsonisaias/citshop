@@ -17,7 +17,11 @@
   function render() {
     const conta = (s) => lojas.filter((l) => l.status === s).length;
     $('resumo').textContent = `${lojas.length} lojas · ${conta('parceira')} parceiras · ${conta('ativa')} pagantes · ${conta('teste')} em teste · ${conta('vencida')} vencidas · ${conta('suspensa')} suspensas`;
-    $('linhas').innerHTML = lojas.map((l) => `<tr>
+    // Filtro por situação e busca (nome, cidade, e-mail, WhatsApp).
+    const sit = $('fStatusLoja').value, q = $('fBuscaLoja').value.trim().toLowerCase();
+    const vis = lojas.filter((l) => (!sit || (sit === 'fundadora' ? l.beneficio && !l.beneficio.encerradoEm : l.status === sit))
+      && (!q || [l.nome, l.cidade, l.email, l.whatsapp, l.slug].some((v) => String(v ?? '').toLowerCase().includes(q))));
+    $('linhas').innerHTML = vis.length ? vis.map((l) => `<tr>
       <td><b>${esc(l.nome)}</b><br><small class="note">${esc(l.cidade)} · desde ${data(l.criadaEm)}</small><br><a href="/${esc(l.slug)}" target="_blank">ver página /${esc(l.slug)}</a></td>
       <td>${esc(l.responsavel)}<br>${esc(l.email)}<br><a href="https://wa.me/${esc(l.whatsapp)}" target="_blank" rel="noopener">${esc(l.whatsapp)}</a></td>
       <td><span class="pill ${l.status}">${ROTULO[l.status] || esc(l.status)}</span><br><small class="note">${l.modeloCobranca === 'comissao_fixa' ? 'Cobrança: R$ ' + (l.comissaoPorVenda || 1).toFixed(2) + ' por venda (Split MP)' : `Cobrança: mensalidade${l.plano?.precoContratado ? ' ' + brl.format(l.plano.precoContratado) : ''}${l.beneficio ? ` · ${esc(l.beneficio.codigo)}${l.beneficio.encerradoEm ? ' (encerrado)' : ''}` : ''}`}<br>teste até ${data(l.testeAte)}<br>MP: ${esc(l.assinatura?.status ?? 'nenhuma')}<br>${l.cliquesContatoLoja ?? 0} cliques no WhatsApp<br>${l.pedidos?.total ?? 0} pedidos (${l.pedidos?.pagos ?? 0} pagos no site, ${l.pedidos?.whatsapp ?? 0} pelo WhatsApp)${l.mpConectado ? '<br>Mercado Pago conectado' : ''}</small></td>
@@ -30,9 +34,38 @@
         <button class="btn sec" data-susp="${l.id}" data-v="${!l.suspensa}">${l.suspensa ? 'Reativar' : 'Suspender'}</button>
         <button class="btn sec" data-senha="${l.id}">Senha provisória</button>
         <button class="btn sec" data-acesso="${l.id}">Definir acesso</button>
-        <button class="btn perigo" data-excluir="${l.id}">Excluir loja</button></td></tr>`).join('');
+        <button class="btn perigo" data-excluir="${l.id}">Excluir loja</button></td></tr>`).join('') : '<tr><td colspan="5" class="note">Nenhuma loja com esse filtro.</td></tr>';
   }
-  async function carregar() { lojas = await api('/api/admin/lojas'); render(); carregarCupons(); carregarConvites(); carregarComercial(); }
+  async function carregar() { lojas = await api('/api/admin/lojas'); render(); carregarCupons(); carregarConvites(); carregarComercial(); carregarDashboard(); carregarFinanceiro(); }
+  ['fStatusLoja', 'fBuscaLoja'].forEach((id) => $(id).addEventListener('input', render));
+  // ---------- visão geral (dados reais) ----------
+  const cartao = (rotulo, valor, sub = '') => `<div class="cartao"><span>${esc(rotulo)}</span><b>${valor}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</div>`;
+  async function carregarDashboard() {
+    const d = await api('/api/admin/dashboard').catch(() => null);
+    if (!d) return;
+    const L = d.lojas, m = d.receitaMes;
+    $('dash').innerHTML = `
+      <h2 class="sub-adm">Receita do CITshop</h2>
+      <div class="cartoes">${cartao('MRR (mensalidades ativas)', brl.format(d.mrr), `${L.ativas} assinantes`)}${cartao('Recebido no mês', brl.format(m.liquido), 'mensalidades + comissões − estornos')}${cartao('Mensalidades no mês', brl.format(m.mensalidade))}${cartao('Comissões no mês', brl.format(m.comissao), `estornos ${brl.format(m.reembolso + m.chargeback)}`)}</div>
+      <h2 class="sub-adm">Lojas</h2>
+      <div class="cartoes">${cartao('Cadastradas', L.total)}${cartao('Assinantes', L.ativas)}${cartao('Em teste', L.teste)}${cartao('Fundadoras', L.fundadoras)}${cartao('Parceiras', L.parceiras)}${cartao('Vencidas', L.vencidas, `${L.pausadas} com pagamento em atraso`)}${cartao('Canceladas', L.canceladas)}${cartao('Suspensas', L.suspensas)}</div>
+      <h2 class="sub-adm">Pedidos e catálogo (30 dias)</h2>
+      <div class="cartoes">${cartao('Pedidos', d.pedidos30.total)}${cartao('Vendas concluídas', d.pedidos30.aprovados, `${brl.format(d.pedidos30.vendasLojas)} vendidos pelas lojas`)}${cartao('Reembolsos', d.pedidos30.reembolsados)}${cartao('Produtos ativos', d.produtos.ativos, `${d.produtos.semEstoque} sem estoque`)}${cartao('Teste → assinatura', d.conversaoTeste.percentual == null ? '—' : `${d.conversaoTeste.percentual}%`, `${d.conversaoTeste.assinaram} de ${d.conversaoTeste.base} lojas com teste encerrado`)}</div>`;
+  }
+  // ---------- financeiro: livro de lançamentos ----------
+  const TIPO_LANC = { mensalidade: 'Mensalidade', comissao: 'Comissão', reembolso: 'Reembolso', chargeback: 'Chargeback', ajuste: 'Ajuste', afiliado: 'Afiliado' };
+  async function carregarFinanceiro() {
+    const sel = $('fLojaLanc'), atual = sel.value;
+    sel.innerHTML = '<option value="">Todas</option>' + lojas.map((l) => `<option value="${esc(l.id)}">${esc(l.nome)}</option>`).join('');
+    sel.value = atual;
+    const q = new URLSearchParams({ ...($('fTipoLanc').value && { tipo: $('fTipoLanc').value }), ...(sel.value && { lojaId: sel.value }) });
+    const f = await api(`/api/admin/financeiro?${q}`).catch(() => null);
+    if (!f) return;
+    const r = f.resumo;
+    $('resumoLivro').innerHTML = cartao('Líquido', brl.format(r.liquido), `${f.total} lançamentos`) + cartao('Mensalidades', brl.format(r.mensalidade)) + cartao('Comissões', brl.format(r.comissao)) + cartao('Estornos', brl.format(r.reembolso + r.chargeback));
+    $('linhasLivro').innerHTML = f.lancamentos.length ? f.lancamentos.map((l) => `<tr><td>${new Date(l.em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</td><td>${esc(TIPO_LANC[l.tipo] ?? l.tipo)}</td><td>${esc(l.lojaNome ?? '—')}</td><td>${esc(l.pedidoId ?? l.referencia ?? '—')}</td><td class="${l.valor < 0 ? 'neg' : ''}">${brl.format(l.valor)}</td></tr>`).join('') : '<tr><td colspan="5" class="note">Nenhum lançamento ainda.</td></tr>';
+  }
+  ['fTipoLanc', 'fLojaLanc'].forEach((id) => $(id).addEventListener('change', carregarFinanceiro));
   // ---------- planos e cupons de assinatura ----------
   const dataIso = (iso) => new Date(iso).toLocaleDateString('sv-SE', { timeZone: 'America/Fortaleza' }); // AAAA-MM-DD para o campo de data
   const fimDoDia = (d) => `${d}T23:59:59-03:00`;
@@ -598,7 +631,7 @@
   // Abas (#lojas, #convites, #cupons, #afiliados, #canais, #conta): uma seção por vez, o endereço guarda a aba.
   function irPara() {
     const nome = location.hash.slice(1);
-    const aba = document.querySelector(`[data-aba="${nome}"]`) ? nome : 'lojas';
+    const aba = document.querySelector(`[data-aba="${nome}"]`) ? nome : 'inicio';
     document.querySelectorAll('[data-aba]').forEach((el) => { el.hidden = el.dataset.aba !== aba; });
     document.querySelectorAll('#abas a').forEach((a) => a.toggleAttribute('aria-current', a.getAttribute('href') === `#${aba}`));
   }

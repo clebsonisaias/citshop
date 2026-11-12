@@ -14,10 +14,10 @@ import { Banco, DEPTS, DIAS_TESTE, SLUGS_RESERVADOS, lojaVisivel, ordenarVitrine
 import { MAX_FOTOS, apagarFoto, receberFotos, receberLogo, salvarFoto } from "./uploads.js";
 import { cifrar, criarMercadoPago, decifrar, webhookValido } from "./mercadopago.js";
 import {
-  aplicarCupomAssinatura, beneficioAtivo, cnpjNormalizado, cupomValendo, estadoAssinatura, garantirComercial, precoComDesconto,
+  PRECO_LEGADO, aplicarCupomAssinatura, beneficioAtivo, cnpjNormalizado, cupomValendo, estadoAssinatura, garantirComercial, precoComDesconto,
   precoMensalOficial, precoParaAssinar, registrarEstadoAssinatura, reais2, validarCupomAssinatura,
 } from "./planos.js";
-import { estornarComissao, lancar, lancarComissao, registrarEvento, retratoFinanceiro } from "./financeiro.js";
+import { TIPOS_LANCAMENTO, estornarComissao, lancar, lancarComissao, registrarEvento, resumoLivro, retratoFinanceiro } from "./financeiro.js";
 import { MARKETPLACE, criarClienteAmazon } from "./amazon.js";
 import { atualizarAfiliados } from "./afiliados.js";
 import { MonitoramentoMotor } from "./tarefas/monitoramento.js";
@@ -1313,6 +1313,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   const lojaAdmin = (req, res, next) => (req.loja = banco.loja(req.params.id)) ? next() : erro(res, 404, "Loja não encontrada.");
   app.post("/api/admin/lojas/:id/suspensa", exigirAdmin, lojaAdmin, (req, res) => {
     req.loja.suspensa = Boolean(req.body?.suspensa);
+    auditar("loja_suspensa", { lojaId: req.loja.id, loja: req.loja.nome, suspensa: req.loja.suspensa });
     banco.salvar();
     res.json({ ok: true });
   });
@@ -1320,6 +1321,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const senha = randomBytes(6).toString("base64url");
     req.loja.senhaHash = S.gerarHashSenha(senha);
     req.loja.trocarSenha = true; // provisória: a loja escolhe a própria senha no primeiro acesso
+    auditar("loja_senha_provisoria", { lojaId: req.loja.id, loja: req.loja.nome });
     banco.salvar();
     res.json({ senha });
   });
@@ -1331,6 +1333,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const outra = banco.lojaPorEmail(email);
     if (outra && outra.id !== req.loja.id) return erro(res, 409, "Já existe outra loja com este e-mail.");
     Object.assign(req.loja, { email, senhaHash: S.gerarHashSenha(senha), trocarSenha: true, atualizadaEm: iso() });
+    auditar("loja_acesso_definido", { lojaId: req.loja.id, loja: req.loja.nome, email });
     banco.salvar();
     res.json({ ok: true });
   });
@@ -1339,6 +1342,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     req.loja.modeloCobranca = modeloCobranca === "comissao_fixa" ? "comissao_fixa" : "mensalidade";
     if (comissaoPorVenda !== undefined) req.loja.comissaoPorVenda = Number(comissaoPorVenda) || 1.00;
     req.loja.atualizadaEm = iso();
+    auditar("loja_modelo_cobranca", { lojaId: req.loja.id, loja: req.loja.nome, modelo: req.loja.modeloCobranca, comissaoPorVenda: req.loja.comissaoPorVenda ?? null });
     banco.salvar();
     res.json({ ok: true, loja: req.loja });
   });
@@ -1390,6 +1394,43 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     banco.salvar();
     res.json(comercialAdmin());
   });
+  // ---------- painel do admin: números reais (nada inventado para encher gráfico) ----------
+  app.get("/api/admin/dashboard", exigirAdmin, (req, res) => {
+    const t = agora(), lojas = banco.lojas;
+    const st = (s) => lojas.filter((l) => statusLoja(l, t) === s).length;
+    const assinantes = lojas.filter((l) => l.modeloCobranca !== "comissao_fixa" && l.assinatura?.status === "authorized");
+    const br = new Date(t - 3 * 60 * 60 * 1000);
+    const inicioMes = Date.UTC(br.getUTCFullYear(), br.getUTCMonth(), 1) + 3 * 60 * 60 * 1000; // dia 1 à meia-noite de Brasília
+    const livro = banco.d.lancamentos ?? [];
+    const pedidos30 = (banco.d.pedidos ?? []).filter((p) => Date.parse(p.criadoEm) >= t - 30 * DIA && !(p.origem !== "whatsapp" && p.status === "criado"));
+    const aprovados = pedidos30.filter((p) => (p.origem === "whatsapp" ? p.etapa === "vendido" : p.status === "approved"));
+    const visiveis = new Map(lojas.filter((l) => lojaVisivel(l, t)).map((l) => [l.id, l]));
+    const ativos = banco.produtos.filter((p) => p.ativo && !p.bloqueado && visiveis.has(p.lojaId));
+    // Conversão: das lojas convencionais cujo teste já acabou, quantas chegaram a assinar.
+    const testeAcabou = lojas.filter((l) => l.modeloCobranca !== "comissao_fixa" && Date.parse(l.testeAte) < t);
+    const assinaram = testeAcabou.filter((l) => l.assinatura?.jaAutorizada || l.assinatura?.status === "authorized");
+    res.json({
+      lojas: {
+        total: lojas.length, ativas: st("ativa"), teste: st("teste"), vencidas: st("vencida"), parceiras: st("parceira"), suspensas: st("suspensa"),
+        fundadoras: lojas.filter((l) => beneficioAtivo(l)).length,
+        pausadas: lojas.filter((l) => l.assinatura?.status === "pausada").length, canceladas: lojas.filter((l) => l.assinatura?.status === "cancelada").length,
+      },
+      mrr: reais2(assinantes.reduce((s, l) => s + (l.plano?.precoContratado ?? PRECO_LEGADO), 0)),
+      receitaMes: resumoLivro(livro, { desde: inicioMes }), receitaTotal: resumoLivro(livro),
+      pedidos30: { total: pedidos30.length, aprovados: aprovados.length, reembolsados: pedidos30.filter((p) => ["refunded", "charged_back"].includes(p.status)).length, vendasLojas: reais2(aprovados.reduce((s, p) => s + (p.valorTotal || 0), 0)) },
+      produtos: { ativos: ativos.length, semEstoque: ativos.filter((p) => !temEstoque(p, visiveis.get(p.lojaId))).length },
+      conversaoTeste: { base: testeAcabou.length, assinaram: assinaram.length, percentual: testeAcabou.length ? Math.round((assinaram.length * 100) / testeAcabou.length) : null },
+    });
+  });
+  // Livro financeiro com filtros (tipo, loja, desde) e o resumo do recorte.
+  app.get("/api/admin/financeiro", exigirAdmin, (req, res) => {
+    const tipo = TIPOS_LANCAMENTO.includes(req.query.tipo) ? req.query.tipo : null;
+    const lojaId = req.query.lojaId ? String(req.query.lojaId) : null;
+    const desde = req.query.desde ? Date.parse(String(req.query.desde)) : null;
+    const lista = (banco.d.lancamentos ?? []).filter((l) => (!tipo || l.tipo === tipo) && (!lojaId || l.lojaId === lojaId) && (!desde || Date.parse(l.em) >= desde));
+    const nomes = Object.fromEntries(banco.lojas.map((l) => [l.id, l.nome]));
+    res.json({ resumo: resumoLivro(lista), total: lista.length, lancamentos: lista.slice(-500).reverse().map((l) => ({ ...l, lojaNome: nomes[l.lojaId] ?? null })) });
+  });
   app.get("/api/admin/auditoria", exigirAdmin, (req, res) => res.json([...(banco.d.auditoria ?? [])].reverse().slice(0, 300)));
 
   const conviteAdmin = (c) => ({
@@ -1410,6 +1451,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       criadoEm: new Date(t).toISOString(), expiraEm: new Date(t + DIAS_CONVITE * DIA).toISOString(), usadoEm: null, lojaId: null,
     };
     (banco.d.convites ??= []).push(convite);
+    auditar("convite_criado", { conviteId: convite.id, predefinicao, email: convite.email });
     banco.salvar();
     res.status(201).json(conviteAdmin(convite));
   });
@@ -1418,6 +1460,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     if (!c) return erro(res, 404, "Convite não encontrado.");
     if (c.usadoEm) return erro(res, 409, "Este convite já foi usado.");
     c.revogadoEm = c.revogadoEm ?? iso();
+    auditar("convite_cancelado", { conviteId: c.id });
     banco.salvar();
     res.json(conviteAdmin(c));
   });
@@ -1428,6 +1471,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     if (req.loja.logo) await apagarFoto(req.loja.logo, uploadsDir);
     banco.d.produtos = banco.produtos.filter((p) => p.lojaId !== req.loja.id);
     banco.d.lojas = banco.lojas.filter((l) => l !== req.loja);
+    auditar("loja_excluida", { lojaId: req.loja.id, loja: req.loja.nome, produtos: dela.length });
     banco.salvar();
     log.info?.(`[loja] excluída ${req.loja.slug}`);
     res.json({ ok: true });
@@ -1438,11 +1482,13 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const { cupom, erro: msg } = lerCupom(req.body);
     if (msg) return erro(res, 400, msg);
     (banco.d.cupons ??= []).push({ id: randomUUID(), ...cupom, loja: req.body.loja, criadoEm: iso() });
+    auditar("cupom_vitrine_criado", { codigo: req.body?.codigo ?? null, loja: req.body?.loja ?? null });
     banco.salvar();
     res.status(201).json({ ok: true });
   });
   app.delete("/api/admin/cupons/:id", exigirAdmin, (req, res) => {
     banco.d.cupons = (banco.d.cupons ?? []).filter((c) => c.id !== req.params.id);
+    auditar("cupom_vitrine_apagado", { id: req.params.id });
     banco.salvar();
     res.json({ ok: true });
   });
@@ -1450,6 +1496,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const p = banco.produto(req.params.id);
     if (!p) return erro(res, 404, "Produto não encontrado.");
     p.bloqueado = Boolean(req.body?.bloqueado);
+    auditar("produto_bloqueado", { produtoId: p.id, produto: p.nome, bloqueado: p.bloqueado });
     banco.salvar();
     res.json({ ok: true });
   });

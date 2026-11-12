@@ -900,3 +900,8 @@ button.buybtn { border: 0; font: inherit; font-weight: 800; cursor: pointer; } /
 .item-adm label { display: grid; gap: 4px; font-size: 12px; font-weight: 700; color: var(--muted); }
 .item-adm input { min-height: 44px; border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px; }
 .cupom-plano { margin-top: 12px; }
+.filtros-adm { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 10px; margin: 12px 0; }
+.filtros-adm label { min-width: 0; }
+.filtros-adm label { display: grid; gap: 4px; font-size: 13px; font-weight: 700; color: var(--muted); }
+.filtros-adm select, .filtros-adm input { width: 100%; max-width: 100%; min-width: 0; min-height: 44px; border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--surface); }
+.pg-admin .tabela td.neg { color: var(--hot); font-weight: 700; }

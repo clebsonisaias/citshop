@@ -26,17 +26,29 @@
   </form>
   <section id="vAdm" hidden>
     <nav id="abas" aria-label="Seções da administração">
+      <a href="#inicio">Início</a>
       <a href="#lojas">Lojas</a>
       <a href="#planos">Planos</a>
+      <a href="#financeiro">Financeiro</a>
       <a href="#convites">Convites</a>
       <a href="#cupons">Cupons</a>
       <a href="#afiliados">Afiliados</a>
       <a href="#canais">Canais</a>
       <a href="#conta">Conta</a>
     </nav>
-    <div data-aba="lojas">
+    <div data-aba="inicio">
+      <h1 style="margin-top:20px">Visão geral</h1>
+      <p class="note">Números calculados a partir dos dados reais. Receita do CITshop = mensalidades + comissões − estornos (o volume que as lojas vendem não é receita).</p>
+      <div id="dash" aria-live="polite"><p class="note">Carregando…</p></div>
+    </div>
+
+    <div data-aba="lojas" hidden>
     <h1>Lojas</h1>
     <p class="note" id="resumo"></p>
+    <div class="filtros-adm">
+      <label>Situação<select id="fStatusLoja"><option value="">Todas</option><option value="ativa">Assinantes</option><option value="teste">Em teste</option><option value="vencida">Vencidas</option><option value="parceira">Parceiras</option><option value="suspensa">Suspensas</option><option value="fundadora">Fundadoras</option></select></label>
+      <label>Buscar<input id="fBuscaLoja" type="search" placeholder="Nome, cidade, e-mail ou WhatsApp"></label>
+    </div>
     <div class="msg ok" id="aviso" hidden role="status"></div>
     <div class="box rolar">
       <table class="tabela">
@@ -363,6 +375,22 @@
       <div class="box"><div id="listaBeneficiarios" class="lista-adm"></div></div>
       <h2 class="sub-adm">Registro de alterações</h2>
       <div class="box"><div id="listaAuditoria" class="lista-adm"></div></div>
+    </div>
+
+    <div data-aba="financeiro" hidden>
+      <h1 style="margin-top:20px">Financeiro</h1>
+      <p class="note">Livro de lançamentos do CITshop: só cresce. Estornos e chargebacks aparecem como lançamentos negativos, sem apagar o original.</p>
+      <div class="filtros-adm">
+        <label>Tipo<select id="fTipoLanc"><option value="">Todos</option><option value="mensalidade">Mensalidades</option><option value="comissao">Comissões</option><option value="reembolso">Reembolsos</option><option value="chargeback">Chargebacks</option><option value="ajuste">Ajustes</option><option value="afiliado">Afiliados</option></select></label>
+        <label>Loja<select id="fLojaLanc"><option value="">Todas</option></select></label>
+      </div>
+      <div class="cartoes" id="resumoLivro"></div>
+      <div class="box rolar" style="margin-top:16px">
+        <table class="tabela">
+          <thead><tr><th>Data</th><th>Tipo</th><th>Loja</th><th>Pedido / referência</th><th>Valor</th></tr></thead>
+          <tbody id="linhasLivro"></tbody>
+        </table>
+      </div>
     </div>
 
     <div data-aba="conta" hidden>
