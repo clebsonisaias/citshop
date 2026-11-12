@@ -20,6 +20,7 @@ import {
 import { TIPOS_LANCAMENTO, estornarComissao, lancar, lancarComissao, registrarEvento, resumoLivro, retratoFinanceiro } from "./financeiro.js";
 import { MARKETPLACE, criarClienteAmazon } from "./amazon.js";
 import { atualizarAfiliados } from "./afiliados.js";
+import { instalarFood } from "./food.js";
 import { MonitoramentoMotor } from "./tarefas/monitoramento.js";
 import { AgendadorOfertas } from "./tarefas/agendador.js";
 import { ConectorWaha } from "./integracoes/whatsapp/waha.js";
@@ -343,7 +344,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   // A vitrine pública inteira; usada pela API e pela página de produto (/p/:id).
   function vitrine() {
     const t = agora();
-    const visiveis = new Map(banco.lojas.filter((l) => lojaVisivel(l, t)).map((l) => [l.id, l]));
+    // Restaurantes (CITshop Food) ficam na /alimentacao, não na vitrine de produtos.
+    const visiveis = new Map(banco.lojas.filter((l) => lojaVisivel(l, t) && segmentoDe(l) !== "food").map((l) => [l.id, l]));
     const locais = banco.produtos
       .filter((p) => p.ativo && !p.bloqueado && visiveis.has(p.lojaId) && temEstoque(p, visiveis.get(p.lojaId)))
       .sort((x, y) => y.criadoEm.localeCompare(x.criadoEm))
@@ -828,8 +830,10 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const loja = {
       nome: txt(b.nome, 60), responsavel: txt(b.responsavel, 80), email: txt(b.email, 120).toLowerCase(),
       whatsapp: whatsapp(b.whatsapp), cidade: txt(b.cidade, 60), categoria: txt(b.categoria, 60),
+      ...(b.segmento === "food" && { segmento: "food" }), // restaurante do CITshop Food (plano FOOD PRO)
     };
     if (loja.nome.length < 2) return erro(res, 400, "Informe o nome da loja.");
+    if (loja.segmento === "food" && b.convite) return erro(res, 400, "Convite de parceria é só para lojas.");
     if (!loja.responsavel) return erro(res, 400, "Informe o nome do responsável.");
     if (!emailOk(loja.email)) return erro(res, 400, "Informe um e-mail válido.");
     if (String(b.senha ?? "").length < 8) return erro(res, 400, "A senha precisa ter pelo menos 8 caracteres.");
@@ -842,7 +846,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const convite = b.convite ? conviteAberto(String(b.convite)) : null;
     if (b.convite && !convite) return erro(res, 400, MSG_CONVITE);
     if (convite?.email && convite.email !== loja.email) return erro(res, 400, "Este convite é para outro e-mail.");
-    if (banco.lojaPorEmail(loja.email)) return erro(res, 409, "Já existe uma loja com este e-mail. Entre com sua senha.");
+    if (banco.lojaPorEmail(loja.email, segmentoDe(loja))) return erro(res, 409, `Já existe ${loja.segmento === "food" ? "um restaurante" : "uma loja"} com este e-mail. Entre com sua senha.`);
     const t = agora();
     Object.assign(loja, {
       id: randomUUID(), slug: slugUnico(loja.nome, banco.lojas), senhaHash: S.gerarHashSenha(b.senha),
@@ -873,7 +877,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const email = txt(req.body?.email, 120).toLowerCase();
     const chave = `${S.ipDe(req)}|${email}`;
     if (!limiteLogin.registrar(chave).permitido) return erro(res, 429, "Muitas tentativas. Espere alguns minutos.");
-    const loja = banco.lojaPorEmail(email);
+    const loja = banco.lojaPorEmail(email, req.body?.segmento === "food" ? "food" : "loja");
     const ok = S.conferirSenha(req.body?.senha, loja?.senhaHash ?? S.HASH_FALSO) && loja;
     if (!ok) return erro(res, 401, "E-mail ou senha incorretos.");
     limiteLogin.liberar(chave);
@@ -1309,7 +1313,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
           registrarEvento(banco, { tipo: "payment", id: pg.id, status: pg.status, lojaId: loja.id, pedidoId: pedido.id }, agora());
           banco.salvar();
           log.info?.(`[mp] venda ${pedido.id}: ${pg.status}`);
-          if (acabouDeAprovar) avisarLojaVenda(loja, pedido);
+          if (acabouDeAprovar) pedido.origem === "food" ? ctxFood.food.aoAprovar(loja, pedido) : avisarLojaVenda(loja, pedido);
         }
       }
     }
@@ -1395,7 +1399,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const email = txt(req.body?.email, 120).toLowerCase(), senha = String(req.body?.senha ?? "");
     if (!emailOk(email)) return erro(res, 400, "E-mail inválido.");
     if (senha.length < 8) return erro(res, 400, "A senha precisa ter pelo menos 8 caracteres.");
-    const outra = banco.lojaPorEmail(email);
+    const outra = banco.lojaPorEmail(email, segmentoDe(req.loja));
     if (outra && outra.id !== req.loja.id) return erro(res, 409, "Já existe outra loja com este e-mail.");
     Object.assign(req.loja, { email, senhaHash: S.gerarHashSenha(senha), trocarSenha: true, atualizadaEm: iso() });
     auditar("loja_acesso_definido", { lojaId: req.loja.id, loja: req.loja.nome, email });
@@ -1749,6 +1753,13 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     banco.salvar();
     res.json({ ok: true, oculta: a.oculta });
   });
+
+  // ---------- CITshop Food (servidor/food.js) ----------
+  const ctxFood = { banco, agora, iso, erro, a, exigirLoja, exigirAdmin, S, segredo, urlPublica, mp, tokenDaLoja, freteDe, freteAtivo, auditar, conectorWaha, log, lojaVisivel, notaDaLoja, whatsapp, txt, uploadsDir };
+  instalarFood(app, ctxFood);
+  for (const rota of ["/alimentacao", "/alimentacao/:slug"]) app.get(rota, (req, res) => { semCache(res); res.sendFile(join(publico, "alimentacao.html")); });
+  app.get("/restaurante", (req, res) => { semCache(res); res.sendFile(join(publico, "restaurante.html")); });
+  app.get("/cozinha", (req, res) => { semCache(res); res.sendFile(join(publico, "cozinha.html")); });
 
   // ---------- Instagram @shopcitmax ----------
   app.get("/bio", (req, res) => { semCache(res); res.sendFile(join(publico, "bio.html")); });

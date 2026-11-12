@@ -18,7 +18,8 @@ export class Banco {
   get lojas() { return this.d.lojas; }
   get produtos() { return this.d.produtos; }
   loja(id) { return this.lojas.find((l) => l.id === id); }
-  lojaPorEmail(email) { return this.lojas.find((l) => l.email === email); }
+  // O mesmo e-mail pode ter uma loja e um restaurante (CITshop Food): a busca é por segmento.
+  lojaPorEmail(email, segmento = "loja") { return this.lojas.find((l) => l.email === email && (l.segmento === "food" ? "food" : "loja") === segmento); }
   lojaPorSlug(slug) { return this.lojas.find((l) => l.slug === slug); }
   produto(id) { return this.produtos.find((p) => p.id === id); }
   cliquesContato(chave) { return this.d.metricasContato?.[chave]?.total ?? 0; }
@@ -74,7 +75,7 @@ export function ordenarVitrine(lista) {
 }
 
 // Nomes de páginas e rotas fixas do site: uma loja com esse nome ganha um sufixo (carrinho-2) em vez de roubar a rota.
-export const SLUGS_RESERVADOS = new Set(["api", "bio", "admin", "painel", "contato", "p", "og", "uploads", "webhook", "black-friday", "termos", "privacidade", "carrinho", "cupons", "alertas", "vendor", "mercadopago", "avaliar", "saude"]);
+export const SLUGS_RESERVADOS = new Set(["api", "bio", "admin", "painel", "contato", "p", "og", "uploads", "webhook", "black-friday", "termos", "privacidade", "carrinho", "cupons", "alertas", "vendor", "mercadopago", "avaliar", "saude", "alimentacao", "restaurante", "cozinha", "print"]);
 
 export function slugUnico(nome, lojas) {
   const base = String(nome).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
