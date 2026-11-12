@@ -56,13 +56,15 @@ Regra: nada vai para `main` (que publica sozinho no Coolify) sem autorização e
 - [ ] Conta do comprador: **não feito** — exige login de comprador (nova tabela de usuários); o link do pedido cobre a avaliação sem cadastro
 
 ## Fase 7 · Afiliados
-- [ ] Auditoria dos adaptadores e regras de qualidade de publicação
-- [ ] Histórico de preço e relatório por plataforma
+- [x] Auditoria dos adaptadores e regras de qualidade (`docs/AFILIADOS.md`): validador, preservação do catálogo, deduplicação já existiam e têm testes
+- [x] Histórico de preço (30 dias, selos queda/menor30) e relatório por plataforma (Central de Ofertas) já existiam
+- [ ] Correções sugeridas na auditoria (marketplace desconhecido, "de/por" sem histórico) — **aguardam aprovação**: mudam o que é publicado
 
 ## Fase 8 · Automações
-- [ ] Health check (`/saude`)
-- [ ] Alerta de falha de tarefas agendadas
-- [ ] Confirmação do WhatsApp nos alertas
+- [x] Health check: `/saude` público (de pé + tarefas com falha, sem mensagens de erro) e `/api/admin/saude` (detalhes, motor e WhatsApp)
+- [x] Tarefas agendadas registradas por `tarefa()` (afiliados, coletor, amazon, assinaturas, alertas, story); 2ª falha seguida avisa no WhatsApp da CIT, no máximo a cada 6 h
+- [x] Aviso só sai com a sessão do WAHA confirmada como conectada; senão fica registrado "whatsapp desconectado"
+- [x] Testes (`teste/saude.test.js`)
 
 ## Fase 9 · Escalabilidade
 - [ ] Backup automático do `citshop.json` com rotação

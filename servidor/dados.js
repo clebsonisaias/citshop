@@ -62,7 +62,7 @@ export function ordenarVitrine(lista) {
 }
 
 // Nomes de páginas e rotas fixas do site: uma loja com esse nome ganha um sufixo (carrinho-2) em vez de roubar a rota.
-export const SLUGS_RESERVADOS = new Set(["api", "bio", "admin", "painel", "contato", "p", "og", "uploads", "webhook", "black-friday", "termos", "privacidade", "carrinho", "cupons", "alertas", "vendor", "mercadopago", "avaliar"]);
+export const SLUGS_RESERVADOS = new Set(["api", "bio", "admin", "painel", "contato", "p", "og", "uploads", "webhook", "black-friday", "termos", "privacidade", "carrinho", "cupons", "alertas", "vendor", "mercadopago", "avaliar", "saude"]);
 
 export function slugUnico(nome, lojas) {
   const base = String(nome).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()

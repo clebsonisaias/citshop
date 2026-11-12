@@ -1973,6 +1973,45 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   });
 
   // Mapa do site XML dinâmico (Sitemap) para o Google e motores de IA
+  // ---------- saúde e tarefas agendadas ----------
+  // Cada tarefa periódica (servidor.js) roda por tarefa(nome, fn): guarda a última execução e o erro.
+  // Na 2ª falha seguida avisa no WhatsApp da própria sessão do WAHA (o número da CIT), só se a sessão estiver
+  // conectada (confirmada por verificarStatus); repete o aviso no máximo a cada 6 horas por tarefa.
+  const tarefas = {};
+  const inicio = agora();
+  async function avisarFalha(nome, t) {
+    if (t.falhasSeguidas < 2 || (t.alertadoEm && agora() - t.alertadoEm < 6 * 60 * 60 * 1000)) return;
+    const st = await conectorWaha.verificarStatus();
+    if (!st.online || !st.numero) { t.alerta = "whatsapp desconectado"; return log.warn?.(`[saude] ${nome} falhou e o WhatsApp está desconectado`); }
+    await conectorWaha.enviarTexto({ chatId: st.numero, texto: `⚠️ *CIT Shopping*: a tarefa "${nome}" falhou ${t.falhasSeguidas} vezes seguidas.\nÚltimo erro: ${t.erro}\n${urlPublica}/admin` });
+    t.alertadoEm = agora(); t.alerta = "enviado";
+  }
+  function tarefa(nome, fn) {
+    return async () => {
+      const t = (tarefas[nome] ??= { falhasSeguidas: 0 });
+      t.ultimaExecucao = iso();
+      try {
+        const r = await fn();
+        Object.assign(t, { ok: true, erro: null, falhasSeguidas: 0 });
+        return r;
+      } catch (e) {
+        Object.assign(t, { ok: false, erro: String(e?.message ?? e).slice(0, 300) });
+        t.falhasSeguidas += 1;
+        log.error?.(`[${nome}] ${t.erro}`);
+        await avisarFalha(nome, t).catch((e2) => log.error?.(`[saude] aviso falhou: ${e2.message}`));
+      }
+    };
+  }
+  // Público: só se está de pé e quais tarefas estão falhando (sem mensagens de erro).
+  app.get("/saude", (req, res) => {
+    const falhando = Object.entries(tarefas).filter(([, t]) => t.ok === false).map(([n]) => n);
+    res.set("Cache-Control", "no-store").json({ ok: true, desde: new Date(inicio).toISOString(), tarefasComFalha: falhando });
+  });
+  app.get("/api/admin/saude", exigirAdmin, a(async (req, res) => {
+    const motor = await monitoramentoMotor.obterStatus().catch(() => ({}));
+    res.json({ desde: new Date(inicio).toISOString(), tarefas, motor: { ultimaExecucao: motor.ultimaExecucao ?? null }, whatsapp: await conectorWaha.verificarStatus() });
+  }));
+
   app.get("/sitemap.xml", (req, res) => {
     const v = vitrine();
     const agoraIso = new Date(agora()).toISOString().slice(0, 10);
@@ -2143,5 +2182,5 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     erro(res, 500, "Algo deu errado do nosso lado. Tente de novo.");
   });
 
-  return { app, banco, dadosDir, sincronizarAssinaturas, verificarAlertas, publicarStoryDoDia, monitoramentoMotor, agendadorOfertas };
+  return { app, banco, dadosDir, sincronizarAssinaturas, verificarAlertas, publicarStoryDoDia, monitoramentoMotor, agendadorOfertas, tarefa, tarefas };
 }
