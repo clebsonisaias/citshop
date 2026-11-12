@@ -816,3 +816,21 @@ body.na-loja .carrinho-flutuante { bottom: max(16px, env(safe-area-inset-bottom)
 .mostrar-local { margin-top: 12px; padding: 12px; border: 1.5px solid var(--line); border-radius: 12px; }
 .mostrar-local label { display: flex; align-items: center; gap: 10px; font-weight: 700; min-height: 32px; }
 .mostrar-local input { width: 20px; height: 20px; }
+
+/* ---------- /admin: abas e tabelas que viram cartões no celular ---------- */
+.pg-admin [data-aba] > h1:first-child { margin-top: 20px !important; }
+.pg-admin .tabela summary { cursor: pointer; font-weight: 700; min-height: 32px; }
+.pg-admin .acoes-loja { display: grid; gap: 6px; }
+@media (max-width: 760px) {
+  .pg-admin .box.rolar { padding: 0; border: 0; background: transparent; overflow: visible; max-height: none !important; }
+  .pg-admin .tabela thead { display: none; }
+  .pg-admin .tabela, .pg-admin .tabela tbody, .pg-admin .tabela tr, .pg-admin .tabela td { display: block; width: 100%; }
+  .pg-admin .tabela tr { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin-bottom: 12px; background: var(--surface); }
+  .pg-admin .tabela td { border: 0; padding: 6px 0; }
+  .pg-admin .tabela td[data-rotulo]::before { content: attr(data-rotulo); display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 2px; }
+  .pg-admin .tabela td.acoes-loja { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .pg-admin .tabela td.acoes-loja::before { grid-column: 1 / -1; margin-bottom: 0; }
+  .pg-admin .acoes-loja .btn { min-height: 44px; }
+}
+.pg-admin .acoes-loja .btn { width: 100%; }
+.pg-admin code { overflow-wrap: anywhere; word-break: break-all; }

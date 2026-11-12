@@ -17,7 +17,7 @@
   <a class="logo" href="/"><img src="/marca-cit-shopping.png" alt="CIT Shopping" width="140" height="36"></a><span></span>
   <button class="btn sec" id="sair" hidden style="color:#FFFFFF;border-color:rgba(255,255,255,.4)">Sair</button>
 </div></header>
-<main class="pg" style="max-width:1200px">
+<main class="pg pg-admin" style="max-width:1200px">
   <form class="box form" id="fEnt" hidden style="max-width:420px">
     <h2>Administração</h2>
     <label>Senha<input name="senha" type="password" required autocomplete="current-password"></label>
@@ -25,6 +25,15 @@
     <button class="btn">Entrar</button>
   </form>
   <section id="vAdm" hidden>
+    <nav id="abas" aria-label="Seções da administração">
+      <a href="#lojas">Lojas</a>
+      <a href="#convites">Convites</a>
+      <a href="#cupons">Cupons</a>
+      <a href="#afiliados">Afiliados</a>
+      <a href="#canais">Canais</a>
+      <a href="#conta">Conta</a>
+    </nav>
+    <div data-aba="lojas">
     <h1>Lojas</h1>
     <p class="note" id="resumo"></p>
     <div class="msg ok" id="aviso" hidden role="status"></div>
@@ -34,6 +43,8 @@
         <tbody id="linhas"></tbody>
       </table>
     </div>
+    </div>
+    <div data-aba="convites" hidden>
     <h1 style="margin-top:32px">Convites de parceria (R$ 1 por venda)</h1>
     <div class="box form">
       <p class="note">Quem se cadastra em /painel paga assinatura. O link de convite é só para conhecidos: serve para uma loja e, depois de usado, não funciona mais. Vale 30 dias.</p>
@@ -48,6 +59,8 @@
       </form>
       <div id="listaConvitesAdm"></div>
     </div>
+    </div>
+    <div data-aba="cupons" hidden>
     <h1 style="margin-top:32px">Cupons das lojas parceiras</h1>
     <div class="box form">
       <p class="note">Cupons aparecem em /cupons e os produtos da loja ganham o selo "Tem cupom" enquanto estiverem válidos. Cupons das lojas locais são cadastrados por elas no painel.</p>
@@ -64,6 +77,8 @@
       </form>
       <div id="listaCuponsAdm"></div>
     </div>
+    </div>
+    <div data-aba="afiliados" hidden>
     <h1 style="margin-top:32px">Central de Ofertas (Automação de Afiliados)</h1>
     <div class="box form">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
@@ -113,7 +128,7 @@
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
         <p class="note" id="shopeeStatus">Consultando dados de vendas na Shopee…</p>
         <div style="display:flex;gap:6px;align-items:center">
-          <select id="shopeePeriodo" style="padding:6px;border-radius:6px;border:1px solid #ccc;background:#fff">
+          <select id="shopeePeriodo" style="padding:10px 12px;min-height:44px;border-radius:10px;border:1px solid #ccc;background:#fff">
             <option value="7">Últimos 7 dias</option>
             <option value="30" selected>Últimos 30 dias</option>
             <option value="90">Últimos 90 dias</option>
@@ -154,6 +169,16 @@
       </div>
     </div>
 
+    <h1 style="margin-top:32px">Amazon Afiliados</h1>
+    <div class="box form">
+      <p class="note" id="amzStatus">Carregando…</p>
+      <div class="msg erro" id="amzErro" hidden role="alert"></div>
+      <label>ASIN para testar a conexão<input id="amzAsin" maxlength="10" placeholder="B0H3Q1RHD7" autocomplete="off"></label>
+      <button class="btn sec" id="amzTestar" type="button">Testar conexão</button>
+      <div class="msg" id="amzTeste" hidden role="status"></div>
+    </div>
+    </div>
+    <div data-aba="canais" hidden>
     <h1 style="margin-top:32px">Radar de Ofertas no WhatsApp (WAHA)</h1>
     <div class="box form">
       <div id="radarWahaStatusCard" style="padding:14px;border-radius:8px;background:#f0fdf4;border:1px solid #bbf7d0;margin-bottom:16px">
@@ -301,15 +326,9 @@
       <div class="msg" id="tgMsg" hidden role="status"></div>
     </div>
 
-    <h1 style="margin-top:32px">Amazon Afiliados</h1>
-    <div class="box form">
-      <p class="note" id="amzStatus">Carregando…</p>
-      <div class="msg erro" id="amzErro" hidden role="alert"></div>
-      <label>ASIN para testar a conexão<input id="amzAsin" maxlength="10" placeholder="B0H3Q1RHD7" autocomplete="off"></label>
-      <button class="btn sec" id="amzTestar" type="button">Testar conexão</button>
-      <div class="msg" id="amzTeste" hidden role="status"></div>
     </div>
-    <details class="box" style="margin-top:24px">
+    <div data-aba="conta" hidden>
+    <details class="box" open style="margin-top:20px">
       <summary style="font-weight:800;cursor:pointer;min-height:44px">Trocar senha do admin</summary>
       <form class="form" id="fSenhaAdm" style="margin-top:12px">
         <div class="dois">
@@ -320,6 +339,7 @@
         <button class="btn">Trocar senha</button>
       </form>
     </details>
+    </div>
   </section>
 </main>
 </body>

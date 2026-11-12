@@ -1,4 +1,4 @@
-// Administração: lista de lojas, suspender/reativar, senha provisória e ocultar produto.
+// Administração em abas: lojas (suspender/reativar, senha provisória, ocultar produto), convites, cupons, afiliados, canais e conta.
 (() => {
   const { esc, brl } = window.CIT;
   const $ = (id) => document.getElementById(id);
@@ -21,11 +21,11 @@
       <td><b>${esc(l.nome)}</b><br><small class="note">${esc(l.cidade)} · desde ${data(l.criadaEm)}</small><br><a href="/${esc(l.slug)}" target="_blank">ver página /${esc(l.slug)}</a></td>
       <td>${esc(l.responsavel)}<br>${esc(l.email)}<br><a href="https://wa.me/${esc(l.whatsapp)}" target="_blank" rel="noopener">${esc(l.whatsapp)}</a></td>
       <td><span class="pill ${l.status}">${ROTULO[l.status] || esc(l.status)}</span><br><small class="note">${l.modeloCobranca === 'comissao_fixa' ? 'Cobrança: R$ ' + (l.comissaoPorVenda || 1).toFixed(2) + ' por venda (Split MP)' : 'Cobrança: Mensalidade R$ 49/mês'}<br>teste até ${data(l.testeAte)}<br>MP: ${esc(l.assinatura?.status ?? 'nenhuma')}<br>${l.cliquesContatoLoja ?? 0} cliques no WhatsApp<br>${l.pedidos?.total ?? 0} pedidos (${l.pedidos?.pagos ?? 0} pagos no site, ${l.pedidos?.whatsapp ?? 0} pelo WhatsApp)${l.mpConectado ? '<br>Mercado Pago conectado' : ''}</small></td>
-      <td>${l.produtos.map((p) => `<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
+      <td>${l.produtos.length ? `<details><summary>${l.produtos.length} ${l.produtos.length === 1 ? 'produto' : 'produtos'}</summary>` : ''}${l.produtos.map((p) => `<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
           <img src="${esc(p.foto)}" alt="" style="width:32px;height:32px;object-fit:cover;border-radius:6px">
           <span style="flex:1">${esc(p.nome)} · ${brl.format(p.preco)}<br><small class="note">${esc(DISPONIBILIDADE[p.disponibilidade] ?? DISPONIBILIDADE.consulte)} · ${p.cliquesContato ?? 0} cliques WhatsApp${p.ativo ? '' : ' · pausado'}</small></span>
-          <button class="btn sec" style="min-height:32px;padding:4px 8px;font-size:11px" data-bloq="${p.id}" data-v="${!p.bloqueado}">${p.bloqueado ? 'Mostrar' : 'Ocultar'}</button></div>`).join('') || '<small class="note">nenhum</small>'}</td>
-      <td style="display:grid;gap:6px">
+          <button class="btn sec" style="min-height:32px;padding:4px 8px;font-size:11px" data-bloq="${p.id}" data-v="${!p.bloqueado}">${p.bloqueado ? 'Mostrar' : 'Ocultar'}</button></div>`).join('') || '<small class="note">nenhum</small>'}${l.produtos.length ? '</details>' : ''}</td>
+      <td class="acoes-loja">
         <button class="btn sec" data-modelo="${l.id}" data-atual="${l.modeloCobranca || 'mensalidade'}">${l.modeloCobranca === 'comissao_fixa' ? 'Mudar p/ Mensalidade' : 'Mudar p/ Parceira (R$ 1/venda)'}</button>
         <button class="btn sec" data-susp="${l.id}" data-v="${!l.suspensa}">${l.suspensa ? 'Reativar' : 'Suspender'}</button>
         <button class="btn sec" data-senha="${l.id}">Senha provisória</button>
@@ -550,10 +550,30 @@
     };
   }
 
+  // Abas (#lojas, #convites, #cupons, #afiliados, #canais, #conta): uma seção por vez, o endereço guarda a aba.
+  function irPara() {
+    const nome = location.hash.slice(1);
+    const aba = document.querySelector(`[data-aba="${nome}"]`) ? nome : 'lojas';
+    document.querySelectorAll('[data-aba]').forEach((el) => { el.hidden = el.dataset.aba !== aba; });
+    document.querySelectorAll('#abas a').forEach((a) => a.toggleAttribute('aria-current', a.getAttribute('href') === `#${aba}`));
+  }
+  addEventListener('hashchange', irPara);
+  // No celular as tabelas viram cartões: cada célula ganha o nome da coluna (o CSS mostra como rótulo).
+  function rotular() {
+    document.querySelectorAll('#vAdm table.tabela').forEach((t) => {
+      const nomes = [...t.querySelectorAll('thead th')].map((th) => th.textContent.trim());
+      t.querySelectorAll('tbody tr').forEach((tr) => [...tr.children].forEach((td, i) => {
+        if (nomes[i] && !td.hasAttribute('colspan') && td.dataset.rotulo !== nomes[i]) td.dataset.rotulo = nomes[i];
+      }));
+    });
+  }
+  new MutationObserver(rotular).observe($('vAdm'), { childList: true, subtree: true });
+
   function iniciar() {
     carregar().then(() => {
       $('fEnt').hidden = true;
       $('vAdm').hidden = false;
+      irPara();
       $('sair').hidden = false;
       carregarShopeeRelatorio();
       carregarCentralOfertas();
