@@ -27,7 +27,6 @@
   }
 
   // ---------- restaurante e cardápio ----------
-  const menorPreco = (i) => i.preco + i.grupos.filter((g) => g.min > 0).reduce((s, g) => s + Math.min(...g.opcoes.map((o) => o.preco)), 0);
   async function abrirRest(slug) {
     const r = await fetch(`/api/food/restaurantes/${encodeURIComponent(slug)}`).then((x) => (x.ok ? x.json() : null)).catch(() => null);
     $('fLista').hidden = true; $('fRest').hidden = false;
@@ -40,50 +39,83 @@
     const cats = [...new Set(itens.map((i) => i.categoria))];
     $('fCats').innerHTML = cats.length > 1 ? cats.map((c, n) => `<a class="chip" href="#cat-${n}">${esc(c)}</a>`).join('') : '';
     $('fCardapio').innerHTML = itens.length ? cats.map((c, n) => `<h2 class="food-cat" id="cat-${n}">${esc(c)}</h2><div class="food-itens">${itens.filter((i) => i.categoria === c).map((i) => `
-      <button type="button" class="food-item" data-item="${esc(i.id)}" ${atual.aberto ? '' : 'aria-disabled="true"'}>
-        <span><b>${esc(i.nome)}</b>${i.descricao ? `<small>${esc(i.descricao)}</small>` : ''}<strong>${i.grupos.some((g) => g.min > 0) ? 'a partir de ' : ''}${brl(menorPreco(i))}</strong></span>
+      <button type="button" class="food-item" data-item="${esc(i.id)}" ${atual.aberto && !i.esgotado && !i.foraDoHorario ? '' : 'aria-disabled="true"'}>
+        <span><b>${esc(i.nome)}</b>${i.descricao ? `<small>${esc(i.descricao)}</small>` : ''}<strong>${(i.variacoes ?? []).length || i.grupos.some((g) => g.min > 0) ? 'a partir de ' : ''}${brl(i.aPartirDe ?? i.preco)}</strong>${i.esgotado ? '<small class="off">Esgotado</small>' : i.foraDoHorario ? '<small class="off">Fora do horário</small>' : ''}</span>
         ${i.foto ? `<img src="${esc(i.foto)}" alt="" loading="lazy" width="96" height="96">` : ''}</button>`).join('')}</div>`).join('') : '<p class="empty">Cardápio ainda vazio.</p>';
     pintarSacola();
   }
 
-  // ---------- item com opções ----------
-  function abrirItem(id) {
+  // ---------- item com opções (motor universal: o mesmo cálculo do servidor, em /food-preco.js) ----------
+  let motor = null, motorMod = null, variacaoId = null, sel = {};
+  const carregarMotor = () => (motor ??= import('/food-preco.js'));
+  const rotuloGrupo = (g) => (g.min ? (g.min === g.max ? `escolha ${g.min}` : `escolha de ${g.min} a ${g.max}`) : `opcional, até ${g.max}`) + (g.incluidas ? ` · ${g.incluidas} sem custo` : '');
+  const unidadesDoGrupo = (gid) => Object.values(sel[gid] ?? {}).reduce((s, q) => s + q, 0);
+  function gruposAgora() { return motorMod ? motorMod.gruposEfetivos(escolhendo, (escolhendo.variacoes ?? []).find((v) => v.id === variacaoId), {}) : escolhendo.grupos; }
+  async function abrirItem(id) {
     if (!atual.aberto) return alert(`${atual.nome} não está recebendo pedidos agora.`);
-    escolhendo = itens.find((i) => i.id === id); qtd = 1;
+    escolhendo = itens.find((i) => i.id === id);
+    if (escolhendo.esgotado || escolhendo.foraDoHorario) return alert(escolhendo.esgotado ? `${escolhendo.nome} esgotou.` : `${escolhendo.nome} não está disponível neste horário.`);
+    motorMod = await carregarMotor();
+    qtd = 1; sel = {}; variacaoId = (escolhendo.variacoes ?? []).length === 1 ? escolhendo.variacoes[0].id : null;
     $('fItemNome').textContent = escolhendo.nome;
-    $('fItemCorpo').innerHTML = `${escolhendo.descricao ? `<p>${esc(escolhendo.descricao)}</p>` : ''}${escolhendo.grupos.map((g) => `<fieldset class="food-grupo"><legend>${esc(g.nome)} <small>${g.min ? (g.min === g.max ? `escolha ${g.min}` : `escolha de ${g.min} a ${g.max}`) : `opcional, até ${g.max}`}</small></legend>
-      ${g.opcoes.map((o) => `<label><input type="${g.max === 1 ? 'radio' : 'checkbox'}" name="g-${esc(g.id)}" value="${esc(o.id)}" data-grupo="${esc(g.id)}"> ${esc(o.nome)}${o.preco ? ` <small>+ ${brl(o.preco)}</small>` : ''}</label>`).join('')}</fieldset>`).join('')}`;
     $('fItemForm').obs.value = ''; $('fItemErro').textContent = '';
-    atualizarItem();
+    desenharItem();
     $('fItem').showModal();
   }
-  function escolhasDoForm() {
-    const e = {};
-    for (const inp of $('fItemCorpo').querySelectorAll('input:checked')) (e[inp.dataset.grupo] ??= []).push(inp.value);
-    return e;
+  function desenharItem() {
+    const vs = escolhendo.variacoes ?? [];
+    const grupos = gruposAgora();
+    // Ao trocar de tamanho, tira o que não vale mais (grupo desligado ou acima do novo máximo).
+    for (const gid of Object.keys(sel)) { const g = grupos.find((x) => x.id === gid); if (!g || unidadesDoGrupo(gid) > g.max) delete sel[gid]; }
+    $('fItemCorpo').innerHTML = `${escolhendo.descricao ? `<p>${esc(escolhendo.descricao)}</p>` : ''}
+      ${vs.length ? `<fieldset class="food-grupo"><legend>Tamanho <small>obrigatório</small></legend>${vs.map((v) => `<label><input type="radio" name="variacao" value="${esc(v.id)}" ${v.id === variacaoId ? 'checked' : ''}> ${esc(v.nome)} <small>${brl(v.preco)}</small></label>`).join('')}</fieldset>` : ''}
+      ${grupos.map((g) => `<fieldset class="food-grupo" data-g="${esc(g.id)}"><legend>${esc(g.nome)} <small>${rotuloGrupo(g)}</small></legend>${g.descricao ? `<p class="note">${esc(g.descricao)}</p>` : ''}
+        ${g.opcoes.map((o) => {
+          const q = sel[g.id]?.[o.id] ?? 0, preco = o.preco ? ` <small>+ ${brl(o.preco)}</small>` : '', fora = o.esgotado ? ' <small class="off">esgotado</small>' : '';
+          if ((o.maxQtd ?? 1) > 1) return `<div class="food-opq${o.esgotado ? ' esgotado' : ''}"><span>${esc(o.nome)}${preco}${fora}</span><span class="food-qtd"><button type="button" data-op="${esc(o.id)}" data-gp="${esc(g.id)}" data-d="-1" aria-label="Menos ${esc(o.nome)}" ${q ? '' : 'disabled'}>−</button><output>${q}</output><button type="button" data-op="${esc(o.id)}" data-gp="${esc(g.id)}" data-d="1" aria-label="Mais ${esc(o.nome)}" ${o.esgotado ? 'disabled' : ''}>+</button></span></div>`;
+          return `<label${o.esgotado ? ' class="esgotado"' : ''}><input type="${g.max === 1 ? 'radio' : 'checkbox'}" name="g-${esc(g.id)}" value="${esc(o.id)}" data-grupo="${esc(g.id)}" ${q ? 'checked' : ''} ${o.esgotado ? 'disabled' : ''}> ${g.tipo === 'remover' ? 'Sem ' : ''}${esc(o.nome)}${preco}${fora}</label>`;
+        }).join('')}</fieldset>`).join('')}`;
+    atualizarItem();
   }
-  function precoPrevia(item, e) {
-    return item.preco + item.grupos.reduce((s, g) => s + (e[g.id] ?? []).reduce((t, id) => t + (g.opcoes.find((o) => o.id === id)?.preco ?? 0), 0), 0);
-  }
+  function calculo() { return motorMod.calcularItem(escolhendo, { variacaoId, escolhas: sel }, {}); }
   function atualizarItem() {
     $('fQtd').textContent = qtd;
-    $('fAdd').textContent = `Adicionar · ${brl(precoPrevia(escolhendo, escolhasDoForm()) * qtd)}`;
+    const r = calculo();
+    // Antes de completar as escolhas, mostra o menor preço possível ("a partir de"); depois, o valor exato.
+    $('fAdd').textContent = r.erro ? `Adicionar · a partir de ${brl(escolhendo.aPartirDe ?? escolhendo.preco)}` : `Adicionar · ${brl((r.unitarioC * qtd) / 100)}`;
   }
   $('fItemCorpo').addEventListener('change', (e) => {
-    const g = escolhendo.grupos.find((x) => x.id === e.target.dataset.grupo);
-    const marcados = $('fItemCorpo').querySelectorAll(`input[data-grupo="${g.id}"]:checked`);
-    if (g.max > 1 && marcados.length > g.max) e.target.checked = false; // não passa do máximo
+    if (e.target.name === 'variacao') { variacaoId = e.target.value; return desenharItem(); }
+    const gid = e.target.dataset.grupo;
+    if (!gid) return;
+    const g = gruposAgora().find((x) => x.id === gid);
+    if (e.target.type === 'radio') sel[gid] = { [e.target.value]: 1 };
+    else if (e.target.checked) {
+      if (unidadesDoGrupo(gid) + 1 > g.max) { e.target.checked = false; $('fItemErro').textContent = `No máximo ${g.max} em ${g.nome}.`; return; }
+      (sel[gid] ??= {})[e.target.value] = 1;
+    } else delete sel[gid]?.[e.target.value];
+    $('fItemErro').textContent = '';
     atualizarItem();
+  });
+  $('fItemCorpo').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-op]');
+    if (!b) return;
+    const gid = b.dataset.gp, g = gruposAgora().find((x) => x.id === gid), o = g.opcoes.find((x) => x.id === b.dataset.op);
+    const atualQ = sel[gid]?.[o.id] ?? 0, d = Number(b.dataset.d);
+    if (d > 0 && (atualQ + 1 > (o.maxQtd ?? 1) || unidadesDoGrupo(gid) + 1 > g.max)) { $('fItemErro').textContent = atualQ + 1 > (o.maxQtd ?? 1) ? `No máximo ${o.maxQtd} de ${o.nome}.` : `No máximo ${g.max} em ${g.nome}.`; return; }
+    const novo = Math.max(0, atualQ + d);
+    if (novo) (sel[gid] ??= {})[o.id] = novo; else delete sel[gid]?.[o.id];
+    $('fItemErro').textContent = '';
+    desenharItem();
   });
   $('fItemForm').addEventListener('submit', (ev) => {
     ev.preventDefault();
-    const e = escolhasDoForm();
-    const falta = escolhendo.grupos.find((g) => (e[g.id]?.length ?? 0) < g.min);
-    if (falta) { $('fItemErro').textContent = `Escolha ${falta.nome.toLowerCase()}.`; return; }
+    const r = calculo();
+    if (r.erro) { $('fItemErro').textContent = r.erro; return; }
     if (sacola && sacola.loja !== atual.slug && sacola.itens.length && !confirm(`Sua sacola tem itens de ${sacola.nome}. Começar uma nova com ${atual.nome}?`)) return;
     if (!sacola || sacola.loja !== atual.slug) sacola = { loja: atual.slug, nome: atual.nome, itens: [] };
-    const nomes = escolhendo.grupos.flatMap((g) => (e[g.id] ?? []).map((id) => g.opcoes.find((o) => o.id === id)?.nome)).filter(Boolean);
-    sacola.itens.push({ itemId: escolhendo.id, nome: escolhendo.nome, escolhas: e, opcoes: nomes, quantidade: qtd, observacao: $('fItemForm').obs.value.trim(), unitario: precoPrevia(escolhendo, e) });
+    const nomes = [...(r.variacao ? [r.variacao.nome] : []), ...r.opcoes.map((o) => `${o.tipo === 'remover' ? 'sem ' : ''}${o.qtd > 1 ? `${o.qtd}x ` : ''}${o.nome}`)];
+    sacola.itens.push({ itemId: escolhendo.id, nome: escolhendo.nome, variacaoId, escolhas: JSON.parse(JSON.stringify(sel)), opcoes: nomes, quantidade: qtd, observacao: $('fItemForm').obs.value.trim(), unitario: r.unitarioC / 100 });
     gravar(sacola); $('fItem').close(); pintarSacola();
   });
 
@@ -130,7 +162,7 @@
     bt.disabled = true; $('fErro').textContent = '';
     const corpo = {
       loja: atual.slug, receber: f.receber.value, pagamento: f.pagamento.value, troco: f.troco.value.replace(/[^\d,.]/g, '').replace(',', '.'), ponto,
-      itens: sacola.itens.map(({ itemId, quantidade, escolhas, observacao }) => ({ itemId, quantidade, escolhas, observacao })),
+      itens: sacola.itens.map(({ itemId, variacaoId, quantidade, escolhas, observacao }) => ({ itemId, variacaoId, quantidade, escolhas, observacao })),
       comprador: { nome: f.nome.value, whatsapp: f.whatsapp.value, endereco: f.endereco.value, observacao: f.observacao.value },
     };
     const r = await fetch('/api/food/pedidos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) }).catch(() => null);

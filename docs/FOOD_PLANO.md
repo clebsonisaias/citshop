@@ -89,3 +89,27 @@ As licenças estão avaliadas em `REFERENCIAS_TECNICAS.md`.
 - Entregadores independentes.
 - Impressora por estação: o modelo já está pronto.
 - Carrinho com vários restaurantes.
+
+## Motor universal de personalização (branch `food-motor`)
+- **Cálculo:** um só, em centavos inteiros, em `publico/food-preco.js`. O navegador mostra; o servidor (`food-regras.js`) revalida tudo.
+- **Variações:** com preço e regras próprias por grupo (mínimo, máximo, desligar, preço da opção).
+- **Grupos:**
+  - tipo escolha ou retirar ingrediente;
+  - mínimo e máximo contados em unidades;
+  - regra de preço soma, maior ou média;
+  - escolhas sem custo;
+  - estação.
+- **Opções:** quantidade máxima por opção, estoque e datas.
+- **Item:** estoque, datas (cardápio do dia) e horário.
+- **Estoque:** reservado de forma síncrona na criação do pedido (sem corrida). É devolvido em cancelamento, pagamento recusado ou estornado, e em checkout online abandonado (30 min).
+- **Modelos reutilizáveis:**
+  - aplicar copia os grupos para o produto;
+  - editar o modelo só altera produtos publicados quando o lojista pede;
+  - os ids de grupos e opções são mantidos.
+- **Cardápio do dia:** copiar as datas de um dia para outro.
+- **Retrato do pedido:** variação, opções com quantidade, preço-base, adicionais e data do cardápio. A cozinha, a comanda e o painel usam esse retrato.
+- **Testes:** `teste/food-motor.test.js` cobre os 27 casos pedidos, incluindo manipulação, concorrência, isolamento, retrato imutável, cozinha e comanda.
+- **Compatibilidade:**
+  - itens antigos (sem os campos novos) continuam funcionando com os valores padrão;
+  - carrinhos antigos (escolhas em lista) são aceitos.
+- **Limites técnicos:** 20 grupos por item, 60 opções por grupo, 12 variações e 60 datas.

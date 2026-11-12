@@ -6,15 +6,51 @@
 3. O plano é o **FOOD PRO**: mensalidade fixa, **sem comissão** sobre os pedidos e sem limite de faturamento. Você assina em **Conta e plano**.
 
 ## 2. Montar o cardápio (aba Cardápio)
-- Cada item tem nome, categoria, descrição, preço, foto e **opções**.
-- Escreva as opções uma por linha, no formato `Nome [mínimo-máximo]: Opção=preço, Opção`:
-  - `Tamanho [1-1]: Média=40, Grande=55` → o cliente é obrigado a escolher 1;
-  - `Sabores [1-2]: Calabresa, Frango=3` → escolhe 1 ou 2 (pizza meio a meio);
-  - `Borda [0-1]: Catupiry=8` → opcional;
-  - `Adicionais [0-3]: Queijo=4, Bacon=5` → até 3.
-- Se o preço depende do tamanho, deixe o preço base em 0.
-- **Marcar indisponível** tira o item do cardápio sem apagá-lo.
-- **Estação** (forno, chapa, bebidas) ajuda a cozinha a filtrar os itens.
+Cada restaurante define as regras dos próprios produtos. Marmita, pizza, hambúrguer, açaí e combo são montados com as mesmas ferramentas.
+
+### Tamanhos ou variações (opcional)
+- Exemplos: Pequena e Grande, ou 300 ml e 500 ml.
+- Cada tamanho tem o próprio preço.
+- Depois de salvar o item, abra **Regras deste tamanho** para mudar o mínimo e o máximo de cada grupo. Exemplo: Pequena com 1 proteína e até 3 acompanhamentos; Grande com até 2 proteínas e até 4.
+- Também dá para desligar um grupo num tamanho.
+
+### Grupos de opções
+| Campo | O que faz |
+|---|---|
+| Nome | Proteínas, Sabores, Borda, Molhos, Bebida, Complementos… |
+| Mínimo e Máximo | Mínimo 1 ou mais = obrigatório. Mínimo 0 = opcional. |
+| Sem custo | Quantas escolhas já estão incluídas no preço. Ex.: açaí com 3 complementos grátis; o 4º cobra. |
+| Preço do grupo | **Somar**: cada opção cobra o seu valor. **Pelo mais caro**: pizza meio a meio. **Média**: média dos sabores. |
+| Tipo "Retirar ingredientes" | Sai na cozinha como **SEM: cebola**. |
+| Estação | Chapa, forno, bebidas: a tela da cozinha filtra por ela. |
+| Setas ↑ ↓ | Mudam a ordem em que o cliente vê os grupos. |
+
+### Opções de cada grupo
+| Campo | O que faz |
+|---|---|
+| Nome | Nome da opção. |
+| Preço adicional | Vazio ou 0 = sem custo. |
+| Quantas vezes pode repetir | Ex.: até 3 ovos. |
+| Estoque | Vazio = sem controle. |
+| Datas | Para o cardápio do dia. Vazio = todo dia. |
+| **Tem** | Desmarque quando acabar (ex.: a proteína do dia). O cliente vê "esgotado" e o resto do produto continua à venda. |
+
+### Modelos
+1. Monte os grupos de um item e toque em **Salvar opções como modelo** (ex.: "Marmita tradicional").
+2. Em outro item, escolha o modelo em **Usar modelo**: os grupos são copiados.
+3. Para mudar o modelo depois, use **Atualizar com as opções do formulário**. O sistema pergunta se aplica também aos produtos publicados que usam o modelo. Sem confirmar, nada muda neles.
+
+### Cardápio do dia
+1. Coloque datas no item ou nas opções. Eles só aparecem nesses dias e podem ter um horário (das… até…).
+2. Para repetir o cardápio de um dia, use **Cardápio do dia → Copiar** e depois ajuste.
+
+### Estoque
+- O estoque do item ou da opção é reservado na hora do pedido.
+- Volta se o pedido for cancelado, se o pagamento falhar ou se o cliente abandonar o pagamento online, depois de 30 minutos.
+
+### Preço e pedido
+- O preço sempre é calculado pelo CITshop. O cliente vê o mesmo cálculo na tela.
+- O pedido guarda uma cópia do que foi escolhido. Mudar o cardápio depois não altera pedidos antigos.
 
 ## 3. Funcionamento (aba Funcionamento)
 - Marque os dias e os horários. Horário que passa da meia-noite funciona normal, por exemplo das 18:00 às 02:00.

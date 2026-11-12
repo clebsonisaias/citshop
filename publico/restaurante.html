@@ -66,16 +66,38 @@
         <label class="food-campo">Nome<input name="nome" required maxlength="80"></label>
         <label class="food-campo">Categoria<input name="categoria" maxlength="40" placeholder="Pizzas, Lanches, Bebidas…" list="rCats"></label><datalist id="rCats"></datalist>
         <label class="food-campo">Descrição<input name="descricao" maxlength="400"></label>
-        <label class="food-campo">Preço base (0 se o preço vem do tamanho)<input name="preco" inputmode="decimal" required></label>
-        <label class="food-campo">Opções (uma por linha)
-          <textarea name="grupos" rows="5" placeholder="Tamanho [1-1]: Média=40, Grande=55&#10;Sabores [1-2]: Calabresa, Frango=3&#10;Borda [0-1]: Catupiry=8, Cheddar=8&#10;Adicionais [0-3]: Queijo=4, Bacon=5"></textarea></label>
-        <p class="note">Formato: <b>Nome [mínimo-máximo]: Opção=preço, Opção</b>. Mínimo 1 = obrigatório. Opção sem preço não muda o valor.</p>
-        <label class="food-campo">Estação (opcional)<input name="estacao" maxlength="20" placeholder="forno, chapa, bebidas"></label>
+        <label class="food-campo">Preço-base (se houver tamanhos, o preço vai em cada tamanho)<input name="preco" inputmode="decimal" placeholder="0,00"></label>
+        <div class="ed-linha">
+          <label class="food-campo">Estoque do item<input name="estoque" inputmode="numeric" placeholder="sem controle"></label>
+          <label class="food-campo">Estação<input name="estacao" maxlength="20" placeholder="forno, chapa, bebidas"></label>
+        </div>
+        <div class="ed-linha">
+          <label class="food-campo">Só nestes dias (cardápio do dia)<input name="datas" placeholder="vazio = todo dia · 2026-11-14, 2026-11-15"></label>
+          <label class="food-campo">Das<input name="horaDe" type="time"></label><label class="food-campo">até<input name="horaAte" type="time"></label>
+        </div>
+        <div class="ed-linha">
+          <label class="food-campo">Usar modelo<select id="edModelo"><option value="">—</option></select></label>
+          <button class="btn sec" type="button" id="edSalvarModelo">Salvar opções como modelo</button>
+        </div>
+        <div id="edItem" class="ed"></div>
+        <p class="food-total" id="edPrevia" aria-live="polite"></p>
         <label class="food-campo"><span><input type="checkbox" name="ativo" checked> Disponível</span></label>
         <p><button class="btn" type="submit">Salvar item</button> <button class="btn sec" type="reset" id="fItemNovo">Novo</button></p>
         <p class="food-erro" role="alert"></p>
       </form>
       <div id="rItens" class="lista-adm"></div>
+      <div class="rest-card">
+        <h2>Modelos de personalização</h2>
+        <p class="note">Ex.: "Marmita tradicional". Aplicar um modelo copia os grupos para o produto. Mudar o modelo só altera os produtos que vieram dele se você marcar a opção ao salvar.</p>
+        <div id="rModelos" class="lista-adm"></div>
+      </div>
+      <form id="fCopiarDia" class="rest-card">
+        <h2>Cardápio do dia</h2>
+        <p class="note">Itens e opções com datas aparecem só nesses dias. Copie o cardápio de um dia para outro e depois ajuste.</p>
+        <div class="ed-linha"><label class="food-campo">Do dia<input name="de" type="date" required></label><label class="food-campo">Para o dia<input name="para" type="date" required></label></div>
+        <button class="btn" type="submit">Copiar cardápio</button>
+        <p class="food-erro" role="alert"></p>
+      </form>
     </div>
 
     <div data-painel="funcionamento" hidden>
@@ -125,6 +147,7 @@
   </section>
 </main>
 <script src="/comum.js" defer></script>
+<script src="/editor-food.js" defer></script>
 <script src="/restaurante.js" defer></script>
 </body>
 </html>

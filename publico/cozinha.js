@@ -27,7 +27,13 @@
       }
     } catch { /* sem áudio */ }
   }
-  const agrupar = (ops) => [...ops.reduce((m, o) => m.set(o.grupo, [...(m.get(o.grupo) ?? []), o.nome]), new Map())].map(([g, n]) => `${g}: ${n.join(', ')}`);
+  // Composição do retrato do pedido: tamanho, grupos, quantidades; "SEM" (retirar ingrediente) separado para destacar.
+  const agrupar = (i) => {
+    const m = new Map();
+    for (const o of i.opcoes) { const k = o.tipo === 'remover' ? 'SEM' : o.grupo; m.set(k, [...(m.get(k) ?? []), `${(o.qtd ?? 1) > 1 ? `${o.qtd}x ` : ''}${o.nome}`]); }
+    return [...(i.variacao ? [`Tamanho: ${i.variacao.nome}`] : []), ...[...m].map(([g, n]) => `${g}: ${n.join(', ')}`)];
+  };
+  const naEstacao = (i, e) => !e || i.estacao === e || i.opcoes.some((o) => o.estacao === e);
   const minutos = (iso) => Math.floor((Date.now() - Date.parse(iso)) / 60000);
   const brl = (n) => Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -46,12 +52,12 @@
   }
   function cartao(p) {
     const min = minutos(p.criadoEm), atrasado = !ENCERRADOS.has(p.situacao) && min > (dados.preparoMin ?? 40);
-    const itens = p.itens.filter((i) => !estacao || i.estacao === estacao);
+    const itens = p.itens.filter((i) => naEstacao(i, estacao));
     const pago = p.status === 'approved' ? 'Pago online' : 'Cobrar na entrega';
     return `<article class="kds-card s-${esc(p.situacao)}${atrasado ? ' atrasado' : ''}" aria-label="Pedido ${p.numero}">
       <header><b class="kds-num">#${p.numero}</b><span class="kds-sit">${ROTULO[p.situacao]}</span><span class="kds-tempo">${min} min${atrasado ? ' · atrasado' : ''}</span></header>
       <p class="kds-meta">${esc(p.comprador?.nome)} · ${p.receber === 'entrega' ? 'Entrega' : 'Retirada'} · ${pago} · ${new Date(p.criadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
-      <ul class="kds-itens">${itens.map((i) => `<li><b>${i.quantidade}x</b> ${esc(i.nome)}${i.opcoes.length ? `<small>${agrupar(i.opcoes).map(esc).join(' · ')}</small>` : ''}${i.observacao ? `<em class="kds-obs">⚠ ${esc(i.observacao)}</em>` : ''}</li>`).join('')}</ul>
+      <ul class="kds-itens">${itens.map((i) => `<li><b>${i.quantidade}x</b> ${esc(i.nome)}${i.opcoes.length || i.variacao ? agrupar(i).map((t) => `<small${t.startsWith('SEM:') ? ' class="kds-sem"' : ''}>${esc(t)}</small>`).join('') : ''}${i.observacao ? `<em class="kds-obs">⚠ ${esc(i.observacao)}</em>` : ''}</li>`).join('')}</ul>
       ${p.comprador?.observacao ? `<p class="kds-obs">⚠ ${esc(p.comprador.observacao)}</p>` : ''}
       ${dados.papel !== 'cozinha' ? `<p class="kds-meta">Total ${brl(p.valorTotal)}</p>` : ''}
       <div class="kds-botoes">${acoes(p)}</div></article>`;
@@ -62,10 +68,10 @@
       : filtro === 'encerrados' ? ENCERRADOS.has(p.situacao)
       : filtro === 'preparo' ? ['aceito', 'preparo'].includes(p.situacao)
       : filtro === 'pronto' ? ['pronto', 'aguardando_saida', 'saiu'].includes(p.situacao)
-      : p.situacao === filtro) && (!estacao || p.itens.some((i) => i.estacao === estacao)))
+      : p.situacao === filtro) && (!estacao || p.itens.some((i) => naEstacao(i, estacao))))
       .sort((a, b) => a.criadoEm.localeCompare(b.criadoEm));
     $('kGrade').innerHTML = lista.length ? lista.map(cartao).join('') : '<p class="kds-vazio-lista">Nenhum pedido aqui agora.</p>';
-    const est = [...new Set(todos.flatMap((p) => p.itens.map((i) => i.estacao)).filter(Boolean))];
+    const est = [...new Set(todos.flatMap((p) => p.itens.flatMap((i) => [i.estacao, ...i.opcoes.map((o) => o.estacao)])).filter(Boolean))];
     $('kEstacao').closest('label').hidden = !est.length;
     $('kEstacao').innerHTML = ['<option value="">Todas</option>', ...est.map((e) => `<option ${e === estacao ? 'selected' : ''}>${esc(e)}</option>`)].join('');
     const novos = todos.filter((p) => p.situacao === 'aguardando').length;

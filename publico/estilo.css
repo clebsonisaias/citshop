@@ -1042,3 +1042,28 @@ body.kds { background: #0f1416; color: #f2f5f5; min-height: 100dvh; margin: 0; }
 .rest .lista-adm h3 { margin: 16px 0 6px; }
 .food-topo-link { color: #fff; font-weight: 700; text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; padding: 0 4px; }
 .food-topo-link:hover { text-decoration: underline; }
+/* ---------- CITshop Food: editor visual de personalização ---------- */
+.ed { display: grid; gap: 12px; }
+.ed-bloco { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin: 0; display: grid; gap: 8px; min-width: 0; }
+.ed-bloco legend { font-weight: 800; padding: 0 4px; }
+.ed-bloco legend small { font-weight: 600; color: var(--muted); }
+.ed-grupo { background: #f7fbfa; }
+.ed-linha { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; min-width: 0; }
+.ed-linha > input, .ed-linha > select, .ed-bloco > input, .ed-bloco > label select { min-height: 44px; border: 1.5px solid var(--line); border-radius: 10px; padding: 0 10px; font: inherit; font-size: 16px; min-width: 0; background: var(--surface); }
+.ed-linha > input { flex: 1 1 120px; }
+.ed-linha label { display: grid; gap: 4px; font-size: 13px; font-weight: 700; flex: 1 1 90px; min-width: 0; }
+.ed-linha label input { min-height: 44px; border: 1.5px solid var(--line); border-radius: 10px; padding: 0 10px; font-size: 16px; width: 100%; }
+.ed-bloco > label { display: grid; gap: 4px; font-size: 13px; font-weight: 700; }
+.ed-op > input:nth-child(2), .ed-op > input:nth-child(3), .ed-op > input:nth-child(4) { flex: 0 1 90px; }
+.ed-ck { display: flex !important; flex: 0 0 auto !important; align-items: center; gap: 6px; min-height: 44px; }
+.ed-x { min-width: 44px; min-height: 44px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--surface); font-size: 18px; cursor: pointer; }
+.ed-ord { display: flex; gap: 4px; margin-left: auto; }
+.ed-regras { flex-basis: 100%; }
+.ed-regras summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 700; color: var(--deep); }
+.ed-regras .ed-linha span { font-weight: 700; flex: 1 1 100%; }
+.ed-legenda { font-size: 13px; }
+.kds-itens small.kds-sem { color: #ffb4a8; font-weight: 800; }
+.food-opq { display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 48px; }
+.food-opq small, .food-grupo label small.off { color: var(--muted); }
+.food-grupo .esgotado { opacity: .55; }
+.food small.off, .food-grupo small.off { color: #9a3a1c; font-weight: 700; }

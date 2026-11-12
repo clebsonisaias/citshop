@@ -18,20 +18,28 @@
   }
   const aviso = (t, ok = true) => { const m = $('rAviso'); m.textContent = t; m.className = `msg${ok ? ' ok' : ''}`; m.hidden = !t; };
 
-  // ---------- opções do item: texto <-> grupos (mantém os ids pelo nome) ----------
-  const grupoTexto = (g) => `${g.nome} [${g.min}-${g.max}]: ${g.opcoes.map((o) => (o.preco ? `${o.nome}=${String(o.preco).replace('.', ',')}` : o.nome)).join(', ')}`;
-  function lerGrupos(texto, antigos = []) {
-    return texto.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
-      const m = /^(.+?)\s*(?:\[(\d+)\s*-\s*(\d+)\])?\s*:\s*(.+)$/.exec(l);
-      if (!m) return null;
-      const nome = m[1].trim(), velho = antigos.find((g) => g.nome.toLowerCase() === nome.toLowerCase());
-      const opcoes = m[4].split(',').map((p) => p.trim()).filter(Boolean).map((p) => {
-        const [n, v] = p.split('=').map((x) => x.trim());
-        const o = velho?.opcoes.find((x) => x.nome.toLowerCase() === n.toLowerCase());
-        return { ...(o && { id: o.id }), nome: n, preco: v ? Number(v.replace(',', '.')) || 0 : 0 };
-      });
-      return { ...(velho && { id: velho.id }), nome, min: m[2] ? Number(m[2]) : 0, max: m[3] ? Number(m[3]) : 1, opcoes };
-    }).filter(Boolean);
+  // ---------- item: editor visual (editor-food.js) + prévia com o mesmo cálculo do servidor ----------
+  const resumoGrupo = (g) => `${g.nome}${g.tipo === 'remover' ? ' (tirar ingrediente)' : ''}: ${g.min ? `${g.min === g.max ? g.min : `${g.min} a ${g.max}`} obrigatório` : `até ${g.max}`} · ${g.opcoes.length} opções`;
+  let modeloAplicado = null, precoMod = null;
+  import('/food-preco.js').then((m) => { precoMod = m; }).catch(() => {});
+  function previa() {
+    const f = $('fItemRest'), v = CITEditorFood.valor();
+    if (!precoMod) return;
+    const item = { nome: f.nome.value || 'Item', preco: Number(String(f.preco.value || '0').replace(',', '.')) || 0, variacoes: v.variacoes.map((x, i) => ({ ...x, id: x.id ?? `v${i}`, preco: Number(String(x.preco || '0').replace(',', '.')) || 0 })), grupos: v.grupos.map((g, i) => ({ ...g, id: g.id ?? `g${i}`, opcoes: g.opcoes.map((o, j) => ({ ...o, id: o.id ?? `o${j}`, preco: Number(String(o.preco || '0').replace(',', '.')) || 0 })) })) };
+    const minimo = precoMod.precoMinimo(item, {});
+    $('edPrevia').textContent = Number.isFinite(minimo) ? `Prévia na vitrine: a partir de ${brl(minimo / 100)}${item.grupos.length ? ` · ${item.grupos.map(resumoGrupo).join(' · ')}` : ''}` : '';
+  }
+  function abrirItem(i) {
+    const f = $('fItemRest');
+    f.reset(); f.id.value = i?.id ?? ''; modeloAplicado = i?.modeloId ?? null;
+    if (i) {
+      f.nome.value = i.nome; f.categoria.value = i.categoria; f.descricao.value = i.descricao ?? ''; f.preco.value = i.preco ? String(i.preco).replace('.', ',') : '';
+      f.estacao.value = i.estacao ?? ''; f.ativo.checked = i.ativo; f.estoque.value = i.estoque ?? ''; f.datas.value = (i.datas ?? []).join(', ');
+      f.horaDe.value = i.horario?.de ?? ''; f.horaAte.value = i.horario?.ate ?? '';
+    }
+    $('edModelo').value = modeloAplicado ?? '';
+    $('fItemTitulo').textContent = i ? `Editar: ${i.nome}` : 'Novo item';
+    CITEditorFood.abrir($('edItem'), i, previa);
   }
 
   // ---------- render ----------
@@ -46,7 +54,7 @@
   function renderPedidos() {
     $('rPedidos').innerHTML = food.pedidos.length ? food.pedidos.map((p) => `<div class="item-adm">
       <p><b>#${p.numero}</b> · ${esc(SIT[p.situacao])} · ${new Date(p.criadoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })} · ${esc(PAG[p.pagamentoForma] ?? '')}${p.status === 'approved' ? ' (pago)' : ''}</p>
-      <p>${p.itens.map((i) => `${i.quantidade}x ${esc(i.nome)}${i.opcoes.length ? ` (${esc(i.opcoes.map((o) => o.nome).join(', '))})` : ''}${i.observacao ? ` — <b>${esc(i.observacao)}</b>` : ''}`).join('<br>')}</p>
+      <p>${p.itens.map((i) => `${i.quantidade}x ${esc(i.nome)}${i.opcoes.length || i.variacao ? ` (${esc([i.variacao?.nome, ...i.opcoes.map((o) => `${o.tipo === 'remover' ? 'sem ' : ''}${(o.qtd ?? 1) > 1 ? `${o.qtd}x ` : ''}${o.nome}`)].filter(Boolean).join(', '))})` : ''}${i.observacao ? ` — <b>${esc(i.observacao)}</b>` : ''}`).join('<br>')}</p>
       <p class="note">${esc(p.comprador?.nome)} · ${p.receber === 'entrega' ? `Entrega: ${esc(p.comprador?.endereco)}` : 'Retirada'} · total ${brl(p.valorTotal)}${p.troco ? ` · troco para ${brl(p.troco)}` : ''}</p>
       ${p.comprador?.observacao ? `<p class="kds-obs">⚠ ${esc(p.comprador.observacao)}</p>` : ''}
       <p class="rest-acoes"><label class="food-campo">Situação<select data-situacao="${esc(p.id)}">${Object.entries(SIT).map(([k, v]) => `<option value="${k}" ${k === p.situacao ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
@@ -58,7 +66,9 @@
     $('rCats').innerHTML = cats.map((c) => `<option value="${esc(c)}">`).join('');
     $('rItens').innerHTML = food.itens.length ? cats.map((c) => `<h3>${esc(c)}</h3>${food.itens.filter((i) => i.categoria === c).map((i) => `<div class="item-adm">
       <p><b>${esc(i.nome)}</b> · ${brl(i.preco)}${i.ativo ? '' : ' · <b>indisponível</b>'}${i.estacao ? ` · ${esc(i.estacao)}` : ''}</p>
-      ${i.grupos.length ? `<p class="note">${i.grupos.map((g) => esc(grupoTexto(g))).join('<br>')}</p>` : ''}
+      ${(i.variacoes ?? []).length ? `<p class="note">Tamanhos: ${i.variacoes.map((v) => `${esc(v.nome)} ${brl(v.preco)}`).join(' · ')}</p>` : ''}
+      ${i.grupos.length ? `<p class="note">${i.grupos.map((g) => esc(resumoGrupo(g))).join('<br>')}</p>` : ''}
+      ${i.estoque != null || (i.datas ?? []).length ? `<p class="note">${i.estoque != null ? `Estoque: ${i.estoque}` : ''}${(i.datas ?? []).length ? ` · Dias: ${esc(i.datas.join(', '))}` : ''}</p>` : ''}
       <p class="rest-acoes"><button class="btn sec" type="button" data-editar="${esc(i.id)}">Editar</button><button class="btn sec" type="button" data-alternar="${esc(i.id)}">${i.ativo ? 'Marcar indisponível' : 'Disponibilizar'}</button>
       <label class="btn sec rest-foto">Foto<input type="file" accept="image/jpeg,image/png,image/webp" data-foto="${esc(i.id)}" hidden></label>
       <button class="btn sec" type="button" data-apagar="${esc(i.id)}">Apagar</button></p></div>`).join('')}`).join('') : '<p class="note">Cadastre o primeiro item do cardápio acima.</p>';
@@ -95,7 +105,7 @@
       ${mpOk ? '' : '<p><a class="btn" href="/api/painel/mercadopago/conectar">Conectar Mercado Pago</a></p>'}
       <p class="note">Logo, cor, endereço e entrega por km: <a href="/painel#loja">dados do estabelecimento</a>.</p>`;
   }
-  function renderTudo() { renderTopo(); renderPedidos(); renderItens(); renderConfig(); renderCozinha(); renderConta(); }
+  function renderTudo() { renderTopo(); renderPedidos(); renderItens(); renderModelos(); renderConfig(); renderCozinha(); renderConta(); }
 
   async function carregar() {
     try { conta = await api('/api/painel/eu'); } catch { $('vAuth').hidden = false; $('vPainel').hidden = true; $('sair').hidden = true; return; }
@@ -103,6 +113,7 @@
     food = await api('/api/food/painel');
     $('vAuth').hidden = true; $('vPainel').hidden = false; $('sair').hidden = false;
     renderTudo();
+    abrirItem(null);
     const q = new URLSearchParams(location.search);
     if (q.get('mp') === 'conectado') aviso('Mercado Pago conectado.');
     if (q.get('mp') === 'erro') aviso('Não deu para conectar o Mercado Pago. Tente de novo.', false);
@@ -124,12 +135,40 @@
     carregar();
   });
   enviarForm('fItemRest', async (f) => {
-    const id = f.id.value, velho = food.itens.find((i) => i.id === id);
-    const corpo = { nome: f.nome.value, categoria: f.categoria.value, descricao: f.descricao.value, preco: f.preco.value, estacao: f.estacao.value, ativo: f.ativo.checked, grupos: lerGrupos(f.grupos.value, velho?.grupos) };
+    const id = f.id.value, ed = CITEditorFood.valor();
+    const corpo = { nome: f.nome.value, categoria: f.categoria.value, descricao: f.descricao.value, preco: f.preco.value || '0', estacao: f.estacao.value, ativo: f.ativo.checked,
+      estoque: f.estoque.value, datas: f.datas.value, horario: f.horaDe.value && f.horaAte.value ? { de: f.horaDe.value, ate: f.horaAte.value } : null,
+      variacoes: ed.variacoes, grupos: ed.grupos, modeloId: modeloAplicado };
     food = await api(id ? `/api/food/painel/itens/${encodeURIComponent(id)}` : '/api/food/painel/itens', id ? 'PUT' : 'POST', corpo);
-    f.reset(); f.id.value = ''; $('fItemTitulo').textContent = 'Novo item'; renderItens(); aviso('Item salvo.');
+    const salvo = id ? food.itens.find((x) => x.id === id) : food.itens.at(-1);
+    abrirItem(salvo); renderItens(); aviso('Item salvo. Agora dá para ajustar as regras de cada tamanho.');
   });
-  $('fItemNovo').addEventListener('click', () => { $('fItemRest').id.value = ''; $('fItemTitulo').textContent = 'Novo item'; });
+  $('fItemNovo').addEventListener('click', (e) => { e.preventDefault(); abrirItem(null); });
+  $('fItemRest').addEventListener('input', (e) => { if (!e.target.closest('#edItem')) previa(); });
+  $('edModelo').addEventListener('change', (e) => {
+    const m = food.modelos.find((x) => x.id === e.target.value);
+    if (!m) { modeloAplicado = null; return; }
+    if (CITEditorFood.valor().grupos.length && !confirm(`Trocar os grupos deste item pelos do modelo "${m.nome}"?`)) { e.target.value = modeloAplicado ?? ''; return; }
+    modeloAplicado = m.id; CITEditorFood.usarGrupos(m.grupos);
+  });
+  $('edSalvarModelo').addEventListener('click', async () => {
+    const grupos = CITEditorFood.valor().grupos;
+    if (!grupos.length) return aviso('Crie pelo menos um grupo com opções antes de salvar o modelo.', false);
+    const nome = prompt('Nome do modelo (ex.: Marmita tradicional):');
+    if (!nome) return;
+    try { food = await api('/api/food/painel/modelos', 'POST', { nome, grupos }); renderModelos(); aviso('Modelo salvo.'); } catch (err) { aviso(err.message, false); }
+  });
+  function renderModelos() {
+    $('edModelo').innerHTML = '<option value="">—</option>' + food.modelos.map((m) => `<option value="${esc(m.id)}">${esc(m.nome)}</option>`).join('');
+    $('edModelo').value = modeloAplicado ?? '';
+    const uso = (id) => food.itens.filter((i) => i.modeloId === id).length;
+    $('rModelos').innerHTML = food.modelos.length ? food.modelos.map((m) => `<div class="item-adm"><p><b>${esc(m.nome)}</b> · ${m.grupos.map((g) => esc(g.nome)).join(', ')} · usado em ${uso(m.id)} ${uso(m.id) === 1 ? 'produto' : 'produtos'}</p>
+      <p class="rest-acoes"><button class="btn sec" type="button" data-modelo-atualizar="${esc(m.id)}">Atualizar com as opções do formulário</button><button class="btn sec" type="button" data-modelo-apagar="${esc(m.id)}">Apagar</button></p></div>`).join('') : '<p class="note">Nenhum modelo ainda. Monte os grupos de um item e toque em "Salvar opções como modelo".</p>';
+  }
+  enviarForm('fCopiarDia', async (f) => {
+    const d = await api('/api/food/painel/cardapio/copiar', 'POST', { de: f.de.value, para: f.para.value });
+    food = d.painel; renderItens(); aviso(`${d.copiados} ${d.copiados === 1 ? 'item ou opção copiado' : 'itens e opções copiados'} para ${f.para.value.split('-').reverse().join('/')}.`);
+  });
   enviarForm('fConfig', async (f) => {
     const horarios = DIAS.map((_, n) => n).filter((n) => $('rHorarios').querySelector(`[data-dia="${n}"]`).checked)
       .map((n) => ({ dia: n, abre: $('rHorarios').querySelector(`[data-abre="${n}"]`).value, fecha: $('rHorarios').querySelector(`[data-fecha="${n}"]`).value }));
@@ -149,13 +188,21 @@
       if (t.closest('#rFechar')) { food = await api('/api/food/painel/pausa', 'POST', { minutos: 0, fechado: !food.food.fechadoManual }); return renderTudo(); }
       const ed = t.closest('[data-editar]');
       if (ed) {
-        const i = food.itens.find((x) => x.id === ed.dataset.editar), f = $('fItemRest');
-        f.id.value = i.id; f.nome.value = i.nome; f.categoria.value = i.categoria; f.descricao.value = i.descricao; f.preco.value = String(i.preco).replace('.', ',');
-        f.grupos.value = i.grupos.map(grupoTexto).join('\n'); f.estacao.value = i.estacao ?? ''; f.ativo.checked = i.ativo;
-        $('fItemTitulo').textContent = `Editar: ${i.nome}`; f.scrollIntoView({ behavior: 'smooth' }); return;
+        abrirItem(food.itens.find((x) => x.id === ed.dataset.editar)); $('fItemRest').scrollIntoView({ behavior: 'smooth' }); return;
       }
       const alt = t.closest('[data-alternar]');
       if (alt) { const i = food.itens.find((x) => x.id === alt.dataset.alternar); food = await api(`/api/food/painel/itens/${encodeURIComponent(i.id)}`, 'PUT', { ...i, ativo: !i.ativo }); return renderItens(); }
+      const mu = t.closest('[data-modelo-atualizar]');
+      if (mu) {
+        const m = food.modelos.find((x) => x.id === mu.dataset.modeloAtualizar), grupos = CITEditorFood.valor().grupos;
+        if (!grupos.length) return aviso('Monte os grupos no formulário do item primeiro.', false);
+        if (!confirm(`Substituir as opções do modelo "${m.nome}" pelas do formulário?`)) return;
+        const aplicar = confirm('Aplicar também aos produtos que usam este modelo?\n\nOK = aplicar agora nos produtos publicados.\nCancelar = vale só para os próximos produtos.');
+        const d = await api(`/api/food/painel/modelos/${encodeURIComponent(m.id)}`, 'PUT', { nome: m.nome, grupos, aplicarEmProdutos: aplicar });
+        food = d.painel; renderItens(); renderModelos(); return aviso(aplicar ? `Modelo atualizado e aplicado em ${d.aplicados} ${d.aplicados === 1 ? 'produto' : 'produtos'}.` : 'Modelo atualizado. Os produtos publicados não mudaram.');
+      }
+      const ma = t.closest('[data-modelo-apagar]');
+      if (ma && confirm('Apagar este modelo? Os produtos que usaram continuam com as opções.')) { food = await api(`/api/food/painel/modelos/${encodeURIComponent(ma.dataset.modeloApagar)}`, 'DELETE'); return renderModelos(); }
       const ap = t.closest('[data-apagar]');
       if (ap && confirm('Apagar este item do cardápio? Os pedidos antigos continuam guardados.')) { food = await api(`/api/food/painel/itens/${encodeURIComponent(ap.dataset.apagar)}`, 'DELETE'); return renderItens(); }
       const im = t.closest('[data-imprimir]');
