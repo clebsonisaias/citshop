@@ -252,42 +252,6 @@ export class ProvedorLinkShopee extends ProvedorLinkAfiliado {
     return j.data?.generateShortLink?.shortLink || null;
   }
 
-  /**
-   * Link curto com subIds (até 5), que voltam no conversionReport como utmContent: é assim que se sabe de qual canal
-   * do CITshop veio cada venda. subIds: só letras, números e _ (o resto é tirado).
-   */
-  async gerarLinkComSubIds(urlOriginal, subIds = []) {
-    if (!urlOriginal || !this.estaConfigurado()) return null;
-    const ids = subIds.map((s) => String(s).replace(/[^A-Za-z0-9_]/g, "").slice(0, 50)).filter(Boolean).slice(0, 5);
-    const dados = await this.chamarGraphQL(`mutation { generateShortLink(input: { originUrl: ${JSON.stringify(urlOriginal)}, subIds: ${JSON.stringify(ids)} }) { shortLink } }`);
-    return dados?.generateShortLink?.shortLink || null;
-  }
-
-  /**
-   * Conversões do período com o canal (utmContent) e a situação de cada pedido, lendo todas as páginas (scrollId vale 30 s).
-   * Devolve { conversoes: [{ conversionId, utm, purchaseTime, pedidos: [{ orderId, orderStatus, comissao, itens }] }] }.
-   */
-  async relatorioConversoes({ dias = 60, paginas = 20 } = {}) {
-    if (!this.estaConfigurado()) return { configurado: false, conversoes: [] };
-    const fim = Math.floor(Date.now() / 1000), inicio = fim - Math.max(1, Number(dias) || 60) * 86400;
-    const conversoes = [];
-    let scroll = null;
-    for (let n = 0; n < paginas; n++) {
-      const dados = await this.chamarGraphQL(`{ conversionReport(purchaseTimeStart: ${inicio}, purchaseTimeEnd: ${fim}, limit: 500${scroll ? `, scrollId: ${JSON.stringify(scroll)}` : ""}) {
-        nodes { conversionId purchaseTime utmContent totalCommission orders { orderId orderStatus items { itemId itemName qty itemPrice itemTotalCommission } } }
-        pageInfo { hasNextPage scrollId } } }`);
-      const r = dados?.conversionReport;
-      for (const c of r?.nodes ?? []) conversoes.push({
-        conversionId: String(c.conversionId), utm: c.utmContent ?? "", purchaseTime: c.purchaseTime,
-        pedidos: (c.orders ?? []).map((o) => ({ orderId: String(o.orderId), orderStatus: o.orderStatus, itens: o.items ?? [],
-          comissao: Math.round((o.items ?? []).reduce((s, i) => s + Number(i.itemTotalCommission || 0), 0) * 100) / 100 })),
-      });
-      if (!r?.pageInfo?.hasNextPage || !r.pageInfo.scrollId) break;
-      scroll = r.pageInfo.scrollId;
-    }
-    return { configurado: true, conversoes };
-  }
-
   async gerarLinksLote(urlsOriginal = []) {
     if (!urlsOriginal.length) return new Map();
     const mapa = new Map();
@@ -518,6 +482,42 @@ export class ConectorShopee extends ConectorMarketplace {
 
   normalizarItem(item, categoria = "casa") {
     return deShopee(item, categoria);
+  }
+
+  /**
+   * Link curto com subIds (até 5), que voltam no conversionReport como utmContent: é assim que se sabe de qual canal
+   * do CITshop veio cada venda. subIds: só letras, números e _ (o resto é tirado).
+   */
+  async gerarLinkComSubIds(urlOriginal, subIds = []) {
+    if (!urlOriginal || !this.estaConfigurado()) return null;
+    const ids = subIds.map((s) => String(s).replace(/[^A-Za-z0-9_]/g, "").slice(0, 50)).filter(Boolean).slice(0, 5);
+    const dados = await this.chamarGraphQL(`mutation { generateShortLink(input: { originUrl: ${JSON.stringify(urlOriginal)}, subIds: ${JSON.stringify(ids)} }) { shortLink } }`);
+    return dados?.generateShortLink?.shortLink || null;
+  }
+
+  /**
+   * Conversões do período com o canal (utmContent) e a situação de cada pedido, lendo todas as páginas (scrollId vale 30 s).
+   * Devolve { conversoes: [{ conversionId, utm, purchaseTime, pedidos: [{ orderId, orderStatus, comissao, itens }] }] }.
+   */
+  async relatorioConversoes({ dias = 60, paginas = 20 } = {}) {
+    if (!this.estaConfigurado()) return { configurado: false, conversoes: [] };
+    const fim = Math.floor(Date.now() / 1000), inicio = fim - Math.max(1, Number(dias) || 60) * 86400;
+    const conversoes = [];
+    let scroll = null;
+    for (let n = 0; n < paginas; n++) {
+      const dados = await this.chamarGraphQL(`{ conversionReport(purchaseTimeStart: ${inicio}, purchaseTimeEnd: ${fim}, limit: 500${scroll ? `, scrollId: ${JSON.stringify(scroll)}` : ""}) {
+        nodes { conversionId purchaseTime utmContent totalCommission orders { orderId orderStatus items { itemId itemName qty itemPrice itemTotalCommission } } }
+        pageInfo { hasNextPage scrollId } } }`);
+      const r = dados?.conversionReport;
+      for (const c of r?.nodes ?? []) conversoes.push({
+        conversionId: String(c.conversionId), utm: c.utmContent ?? "", purchaseTime: c.purchaseTime,
+        pedidos: (c.orders ?? []).map((o) => ({ orderId: String(o.orderId), orderStatus: o.orderStatus, itens: o.items ?? [],
+          comissao: Math.round((o.items ?? []).reduce((s, i) => s + Number(i.itemTotalCommission || 0), 0) * 100) / 100 })),
+      });
+      if (!r?.pageInfo?.hasNextPage || !r.pageInfo.scrollId) break;
+      scroll = r.pageInfo.scrollId;
+    }
+    return { configurado: true, conversoes };
   }
 
   /**

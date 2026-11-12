@@ -77,3 +77,24 @@ test("link por canal: gerado uma vez e guardado; Shopee lenta ou com erro cai no
   const de = new CanaisAfiliado({ dadosDir: dir }).cliquesNoPeriodo("2000-01-01");
   assert.deepEqual([de.whatsapp.total, de.site.porLoja.amazon], [1, 1], "contadores gravados e relidos");
 });
+
+test("conector real da Shopee: link com subIds e relatório paginado com o canal (API simulada)", async () => {
+  const { ConectorShopee } = await import("../servidor/integracoes/shopee/conector.js");
+  const corpos = [];
+  const fetchImpl = async (url, init) => {
+    const { query } = JSON.parse(init.body);
+    corpos.push(query);
+    assert.match(init.headers.Authorization, /^SHA256 Credential=app, Timestamp=\d+, Signature=[a-f0-9]{64}$/);
+    if (query.includes("generateShortLink")) return Response.json({ data: { generateShortLink: { shortLink: "https://s.shopee.com.br/novo" } } });
+    const segunda = query.includes("scrollId: \"abc\"");
+    return Response.json({ data: { conversionReport: {
+      nodes: [{ conversionId: segunda ? 2 : 1, purchaseTime: 1, utmContent: segunda ? "citshop-site" : "citshop-whatsapp", totalCommission: 1, orders: [{ orderId: segunda ? 20 : 10, orderStatus: "COMPLETED", items: [{ itemTotalCommission: "2.50" }, { itemTotalCommission: "1" }] }] }],
+      pageInfo: { hasNextPage: !segunda, scrollId: segunda ? null : "abc" } } } });
+  };
+  const c = new ConectorShopee({ appId: "app", segredo: "x", fetchImpl });
+  assert.equal(await c.gerarLinkComSubIds("https://shopee.com.br/p-i.1.2", ["citshop", "whats-app!"]), "https://s.shopee.com.br/novo");
+  assert.match(corpos[0], /subIds: \["citshop","whatsapp"\]/, "subIds limpos");
+  const r = await c.relatorioConversoes({ dias: 30 });
+  assert.equal(r.conversoes.length, 2, "leu as duas páginas pelo scrollId");
+  assert.deepEqual(vendasPorCanal(r.conversoes), { whatsapp: { pedidos: 1, estimada: 0, confirmada: 3.5, cancelados: 0 }, site: { pedidos: 1, estimada: 0, confirmada: 3.5, cancelados: 0 } });
+});
