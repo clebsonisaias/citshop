@@ -115,7 +115,7 @@ import { filtrarCatalogo } from './catalogo.js';
   function showResults(title, list, head = '', { naLoja = false, rodape = '', ...filtros } = {}) {
     document.body.classList.toggle('na-loja', naLoja);
     $('rfoot').innerHTML = rodape;
-    Object.assign(view, { list, ordem: 'relevancia', cidade: '', sub: '', origem: '', precoMin: '', precoMax: '', q: '', dept: '' }, filtros);
+    Object.assign(view, { list, ordem: 'relevancia', cidade: '', sub: '', origem: '', marca: '', precoMin: '', precoMax: '', q: '', dept: '' }, filtros);
     $('rsort').value = view.ordem;
     $('rcidade').value = '';
     $('rorigem').value = '';
@@ -129,7 +129,9 @@ import { filtrarCatalogo } from './catalogo.js';
     renderResults();
     scrollTo({ top: 0 });
   }
-  function renderResults() {
+  const POR_PAGINA = 48; // a lista cresce de 48 em 48 ("Ver mais produtos")
+  function renderResults(mais = false) {
+    view.mostrar = mais === true ? (view.mostrar ?? POR_PAGINA) + POR_PAGINA : POR_PAGINA;
     // Sem filtro por loja: a CIT Shopping é uma loja só; quem vende aparece em cada produto.
     const base = view.list.filter((x) => !view.cidade || (x.loja === 'local' && x.cidade === view.cidade));
     const cidades = [...new Set(view.list.filter((x) => x.loja === 'local').map((x) => x.cidade))].sort();
@@ -139,11 +141,16 @@ import { filtrarCatalogo } from './catalogo.js';
     const subs = [...new Set(base.map((x) => x.sub).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
     $('subchips').innerHTML = subs.length > 1 ? [['', 'Tudo'], ...subs.map((s) => [s, s])]
       .map(([k, n]) => `<button class="chip" data-sub="${esc(k)}" aria-pressed="${view.sub === k}">${esc(n)}</button>`).join('') : '';
+    // Marca: só aparece quando os produtos da lista têm duas marcas ou mais.
+    const marcas = [...new Set(base.map((x) => x.marca).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    $('rmarcaL').hidden = marcas.length < 2;
+    $('rmarca').innerHTML = ['<option value="">Todas</option>', ...marcas.map((m) => `<option ${view.marca === m ? 'selected' : ''}>${esc(m)}</option>`)].join('');
     const list = filtrarCatalogo(base, {
       ...view, ordem: view.ordem, cidade: '', sub: view.sub,
     });
     $('rcount').textContent = `${list.length} ${list.length === 1 ? 'produto encontrado' : 'produtos encontrados'}`;
-    $('rgrid').innerHTML = list.length ? list.map(card).join('') : '<p class="empty">Nenhum produto por aqui ainda. Tente outro departamento ou outra busca.</p>';
+    $('rgrid').innerHTML = list.length ? list.slice(0, view.mostrar).map(card).join('') : '<p class="empty">Nenhum produto por aqui ainda. Tente outro departamento ou outra busca.</p>';
+    $('rmais').hidden = list.length <= view.mostrar;
   }
   function goHome() {
     document.title = TITULO;
@@ -173,16 +180,28 @@ import { filtrarCatalogo } from './catalogo.js';
     const cor = l.cor || '#036271';
     const botaoZap = (texto) => `<a class="btn lv-zap" href="${zap}" target="_blank" rel="noopener">${ICONE_ZAP}${texto}</a>`;
     showResults(`Produtos de ${l.nome}`, P.filter((x) => x.lojaSlug === slug),
-      window.CIT.cabecalhoLoja(l, `${l.soPeloSite ? '' : botaoZap('Chamar no WhatsApp')}<button class="btn sec lv-share" type="button" data-compartilhar aria-label="Compartilhar loja" title="Compartilhar loja">${ICONE_COMPARTILHAR}</button>`), {
+      window.CIT.cabecalhoLoja(l, `${l.soPeloSite ? '' : botaoZap('Chamar no WhatsApp')}<button class="btn sec lv-fav" type="button" data-favorito="loja:${esc(l.slug)}" data-rotulos="Loja favorita|Favoritar loja" aria-pressed="false"><span>Favoritar loja</span></button><button class="btn sec lv-share" type="button" data-compartilhar aria-label="Compartilhar loja" title="Compartilhar loja">${ICONE_COMPARTILHAR}</button>`), {
         naLoja: true,
         rodape: l.soPeloSite ? '' : `<aside class="lv-encomenda" style="--loja:${esc(cor)};--loja-ink:${window.CIT.textoSobre(cor)}">
           <p><b>Não achou a cor ou o modelo?</b> Peça sob encomenda direto para a loja.</p>${botaoZap('Falar com a loja')}</aside>`,
       });
     // No celular, horário/área/prazo começam recolhidos para os produtos aparecerem mais cedo.
     if (matchMedia('(max-width: 900px)').matches) document.querySelector('#rhead .lv-info')?.removeAttribute('open');
+    window.CITFavoritos?.pintar();
+    if (l.avaliacao) mostrarAvaliacoes(slug);
     document.title = `${l.nome} · CIT Shopping`;
     const targetUrl = location.pathname === `/${slug}` ? `/${slug}` : `/loja/${slug}`;
     if (location.pathname !== targetUrl) history.pushState(null, '', targetUrl);
+  }
+
+  // Avaliações de quem comprou (link do pedido), no fim da página da loja.
+  async function mostrarAvaliacoes(slug) {
+    const d = await fetch(`/api/lojas/${encodeURIComponent(slug)}/avaliacoes`).then((r) => r.json()).catch(() => null);
+    if (!d?.avaliacoes?.length || !location.pathname.endsWith(`/${slug}`)) return;
+    const estrelas = (n) => '★'.repeat(n) + '☆'.repeat(5 - n);
+    $('rfoot').insertAdjacentHTML('beforeend', `<section class="lv-avaliacoes" id="avaliacoes"><h2>Avaliações de clientes</h2><ul>${d.avaliacoes.map((a) => `<li>
+      <span class="nota" aria-label="${a.nota} de 5 estrelas">${estrelas(a.nota)}</span> <b>${esc(a.nome)}</b> <small>${new Date(a.em).toLocaleDateString('pt-BR')}</small>
+      ${a.texto ? `<p>${esc(a.texto)}</p>` : ''}</li>`).join('')}</ul></section>`);
   }
 
   // Black Friday: página própria (/black-friday) com contagem regressiva e o que tem desconto ou baixou de preço.
@@ -339,7 +358,7 @@ import { filtrarCatalogo } from './catalogo.js';
   // Contagem discreta para a próxima data dupla, com os favoritos salvos neste aparelho.
   function montarContagem() {
     if (!PROXIMA) return;
-    const favoritos = window.CITFavoritos?.ler() ?? [];
+    const favoritos = (window.CITFavoritos?.ler() ?? []).filter((id) => !id.startsWith('loja:'));
     const quando = PROXIMA.dias === 0 ? `É hoje o ${PROXIMA.nome}!` : `Faltam ${PROXIMA.dias} ${PROXIMA.dias === 1 ? 'dia' : 'dias'} para o ${PROXIMA.nome}`;
     $('contagem').innerHTML = `<span class="contagem-dias">${esc(quando)}</span><button type="button" id="verFavoritos">Seus favoritos (${favoritos.length})</button>`;
     $('contagem').hidden = false;
@@ -354,8 +373,10 @@ import { filtrarCatalogo } from './catalogo.js';
   });
 
   function montarHome() {
-    $('sellers').innerHTML = LOJAS.slice(0, 12).map((l) => `<a class="seller" href="/loja/${esc(l.slug)}" data-seller="${esc(l.slug)}" style="border-top:4px solid ${esc(l.cor || '#036271')}">
-        <div class="top"><span class="avatar" style="background:${esc(l.cor || '#036271')};color:${window.CIT.textoSobre(l.cor || '#036271')}">${l.logo ? `<img src="${esc(l.logo)}" alt="">` : esc(iniciais(l.nome))}</span><span><b>${esc(l.nome)}</b><small>${esc(l.categoria || 'Loja local')}</small></span></div>
+    const lojasFav = new Set((window.CITFavoritos?.ler() ?? []).filter((id) => id.startsWith('loja:')).map((id) => id.slice(5)));
+    const lojasHome = [...LOJAS.filter((l) => lojasFav.has(l.slug)), ...LOJAS.filter((l) => !lojasFav.has(l.slug))];
+    $('sellers').innerHTML = lojasHome.slice(0, 12).map((l) => `<a class="seller" href="/loja/${esc(l.slug)}" data-seller="${esc(l.slug)}" style="border-top:4px solid ${esc(l.cor || '#036271')}">
+        <div class="top"><span class="avatar" style="background:${esc(l.cor || '#036271')};color:${window.CIT.textoSobre(l.cor || '#036271')}">${l.logo ? `<img src="${esc(l.logo)}" alt="">` : esc(iniciais(l.nome))}</span><span><b>${lojasFav.has(l.slug) ? '<span class="seller-fav" aria-label="Loja favorita">♥</span> ' : ''}${esc(l.nome)}</b><small>${esc(l.categoria || 'Loja local')}${l.avaliacao ? ` · ★ ${String(l.avaliacao.media).replace('.', ',')}` : ''}</small></span></div>
         <div class="meta"><span>${P.filter((x) => x.lojaSlug === l.slug).length} produtos</span><span>${esc(l.cidade)}</span></div></a>`).join('') +
       `<a class="seller cta" href="/painel"><div class="top"><span class="avatar">+</span><span><b>Sua loja aqui</b><small>30 dias grátis pra testar</small></span></div></a>`;
     for (const k of Object.keys(LISTS)) rail(`r-${k}`, LISTS[k].f());
@@ -412,10 +433,12 @@ import { filtrarCatalogo } from './catalogo.js';
   $('rsort').addEventListener('change', (e) => { view.ordem = e.target.value; renderResults(); });
   $('rcidade').addEventListener('change', (e) => { view.cidade = e.target.value; renderResults(); });
   $('rorigem').addEventListener('change', (e) => { view.origem = e.target.value; renderResults(); });
+  $('rmarca').addEventListener('change', (e) => { view.marca = e.target.value; renderResults(); });
+  $('rmais').addEventListener('click', () => renderResults(true));
   $('rmin').addEventListener('input', (e) => { view.precoMin = e.target.value; renderResults(); });
   $('rmax').addEventListener('input', (e) => { view.precoMax = e.target.value; renderResults(); });
   $('rreset').addEventListener('click', () => {
-    view.ordem = 'relevancia'; view.cidade = ''; view.sub = ''; view.origem = ''; view.precoMin = ''; view.precoMax = '';
+    view.ordem = 'relevancia'; view.cidade = ''; view.sub = ''; view.origem = ''; view.marca = ''; view.precoMin = ''; view.precoMax = '';
     $('rsort').value = view.ordem; $('rcidade').value = ''; $('rorigem').value = ''; $('rmin').value = ''; $('rmax').value = '';
     renderResults();
   });

@@ -909,3 +909,26 @@ button.buybtn { border: 0; font: inherit; font-weight: 800; cursor: pointer; } /
 .hist-pedido summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 700; }
 .hist-pedido ul { margin: 0; padding-left: 18px; }
 .venda-rodape label { display: grid; gap: 4px; }
+/* Avaliação de compra (/avaliar) e avaliações na página da loja */
+.avaliar { max-width: 560px; }
+.avaliar form { display: grid; gap: 14px; margin-top: 12px; }
+.avaliar .campo { display: grid; gap: 6px; font-weight: 700; font-size: 14px; }
+.avaliar textarea { width: 100%; border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 12px; font: inherit; font-size: 16px; }
+.estrelas { border: 0; padding: 0; margin: 0; display: flex; flex-direction: row-reverse; justify-content: flex-end; gap: 4px; }
+.estrelas legend { font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+.estrelas input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.estrelas label { font-size: 36px; line-height: 1; width: 48px; height: 48px; display: grid; place-items: center; cursor: pointer; color: #A9BDBA; border-radius: 10px; }
+.estrelas input:checked ~ label, .estrelas label:hover, .estrelas label:hover ~ label { color: #f5a623; }
+.estrelas input:focus-visible + label { outline: 2px solid var(--brand, #036271); outline-offset: 2px; }
+.lv-avaliacoes { margin-top: 24px; }
+.lv-avaliacoes h2 { font-size: 18px; margin: 0 0 10px; }
+.lv-avaliacoes ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.lv-avaliacoes li { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--surface); }
+.lv-avaliacoes .nota, .lv-nota { color: #b7791f; font-weight: 700; }
+.lv-avaliacoes p { margin: 4px 0 0; overflow-wrap: anywhere; }
+.lv-avaliacoes small { color: var(--muted); }
+.mais-resultados { text-align: center; margin: 18px 0; }
+.mais-resultados .btn { min-height: 44px; }
+.seller-fav { color: var(--hot, #d6336c); }
+.lv-fav[aria-pressed="true"] { border-color: var(--hot, #d6336c); color: var(--hot, #d6336c); }
+.lv-nota { color: inherit; font-weight: 700; }

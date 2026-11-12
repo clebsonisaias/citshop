@@ -47,10 +47,13 @@ Regra: nada vai para `main` (que publica sozinho no Coolify) sem autorização e
 - [ ] Banner da loja (upload) — adiado: exige novo fluxo de imagem
 
 ## Fase 6 · Vitrine e comprador
-- [ ] Filtros por marca, loja, disponibilidade e tipo de vendedor; paginação
-- [ ] Favoritar lojas
-- [ ] Avaliações por link do pedido (só quem comprou, uma por pedido, moderação)
-- [ ] Conta do comprador (avaliar: exige login de comprador)
+- [x] Filtro por marca (aparece com 2+ marcas); tipo de vendedor já existia ("Vendedor"); paginação de 48 em 48 ("Ver mais produtos")
+- [x] Disponibilidade: esgotado já sai da vitrine (Fase de estoque), sem filtro extra
+- [ ] Filtro por loja: **não feito** — decisão anterior do projeto (a vitrine é uma loja só; cada loja tem a própria página)
+- [x] Favoritar lojas (neste aparelho; favoritas aparecem primeiro na faixa de lojas da home)
+- [x] Avaliações por link assinado do pedido (só pedido pago ou vendido, uma por pedido, nota 1–5 e texto), nota na loja e na home, lista na página da loja, moderação no admin (Lojas → ocultar) com auditoria; painel do lojista ganha "Pedir avaliação" pelo WhatsApp
+- [x] Testes (`teste/avaliacoes.test.js`) e prévia 375/1280 px
+- [ ] Conta do comprador: **não feito** — exige login de comprador (nova tabela de usuários); o link do pedido cobre a avaliação sem cadastro
 
 ## Fase 7 · Afiliados
 - [ ] Auditoria dos adaptadores e regras de qualidade de publicação

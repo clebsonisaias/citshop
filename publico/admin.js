@@ -36,7 +36,7 @@
         <button class="btn sec" data-acesso="${l.id}">Definir acesso</button>
         <button class="btn perigo" data-excluir="${l.id}">Excluir loja</button></td></tr>`).join('') : '<tr><td colspan="5" class="note">Nenhuma loja com esse filtro.</td></tr>';
   }
-  async function carregar() { lojas = await api('/api/admin/lojas'); render(); carregarCupons(); carregarConvites(); carregarComercial(); carregarDashboard(); carregarFinanceiro(); }
+  async function carregar() { lojas = await api('/api/admin/lojas'); render(); carregarCupons(); carregarConvites(); carregarComercial(); carregarDashboard(); carregarFinanceiro(); carregarAvaliacoes(); }
   ['fStatusLoja', 'fBuscaLoja'].forEach((id) => $(id).addEventListener('input', render));
   // ---------- visão geral (dados reais) ----------
   const cartao = (rotulo, valor, sub = '') => `<div class="cartao"><span>${esc(rotulo)}</span><b>${valor}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</div>`;
@@ -136,6 +136,17 @@
     if (!cancelar || !confirm('Cancelar este convite? O link deixa de funcionar.')) return;
     await api(`/api/admin/convites/${encodeURIComponent(cancelar.dataset.cancelarConv)}`, 'DELETE').catch((err) => alert(err.message));
     carregarConvites();
+  });
+  async function carregarAvaliacoes() {
+    const l = await api('/api/admin/avaliacoes').catch(() => []);
+    $('listaAvaliacoes').innerHTML = l.length ? l.map((a) => `<div class="item-adm"><p><b>${'★'.repeat(a.nota)}</b> ${esc(a.nome)} · ${esc(a.lojaNome)} · ${new Date(a.em).toLocaleDateString('pt-BR')}${a.oculta ? ' · <b>oculta</b>' : ''}</p>
+      ${a.texto ? `<p class="note">${esc(a.texto)}</p>` : ''}<button class="btn sec" type="button" data-avaliacao="${esc(a.id)}" data-oculta="${a.oculta ? '' : '1'}">${a.oculta ? 'Mostrar' : 'Ocultar'}</button></div>`).join('') : '<p class="note">Nenhuma avaliação ainda.</p>';
+  }
+  $('listaAvaliacoes').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-avaliacao]');
+    if (!b) return;
+    await api(`/api/admin/avaliacoes/${encodeURIComponent(b.dataset.avaliacao)}`, 'PATCH', { oculta: Boolean(b.dataset.oculta) }).catch(() => {});
+    carregarAvaliacoes();
   });
   async function carregarCupons() {
     const cupons = await api('/api/admin/cupons').catch(() => []);

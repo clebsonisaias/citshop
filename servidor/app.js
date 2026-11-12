@@ -301,7 +301,18 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     modeloCobranca: l.modeloCobranca ?? "mensalidade",
     // Só o texto que a loja escolheu mostrar; o ponto do mapa (lat/lng) nunca sai do servidor.
     localEndereco: l.local?.publico && l.local.endereco ? l.local.endereco : "",
+    avaliacao: notaDaLoja(l.id),
   });
+  // Avaliações: só quem comprou (link assinado do pedido), uma por pedido; o admin pode ocultar.
+  const avaliacoesVisiveis = (lojaId) => (banco.d.avaliacoes ?? []).filter((a) => a.lojaId === lojaId && !a.oculta);
+  function notaDaLoja(lojaId) {
+    const l = avaliacoesVisiveis(lojaId);
+    return l.length ? { media: Math.round((l.reduce((s, a) => s + a.nota, 0) / l.length) * 10) / 10, total: l.length } : null;
+  }
+  const tokenAvaliacao = (pedidoId) => createHmac("sha256", segredo).update(`avaliacao:${pedidoId}`).digest("base64url").slice(0, 24);
+  const pedidoAvaliavel = (p) => p && p.lojaId && p.etapa !== "cancelado" && (p.status === "approved" || p.etapa === "vendido");
+  const linkAvaliacao = (p) => (pedidoAvaliavel(p) && !(banco.d.avaliacoes ?? []).some((a) => a.pedidoId === p.id)
+    ? `${urlPublica}/avaliar?p=${encodeURIComponent(p.id)}&t=${tokenAvaliacao(p.id)}` : null);
   const produtoLocal = (p, l) => ({
     id: `l-${p.id}`, nome: p.nome, descricao: p.descricao, dept: p.dept, loja: "local",
     lojaId: l.id,
@@ -780,7 +791,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const pedidos = pedidosDa(loja); // uma vez só: filtra e ordena todos os pedidos
     return {
       loja: { ...dados, mpConectado: Boolean(mpConta) },
-      pedidos: pedidos.slice(0, 200),
+      pedidos: pedidos.slice(0, 200).map((p) => ({ ...p, linkAvaliacao: linkAvaliacao(p) })),
       resumo: resumoDe(loja, pedidos),
       financeiro: financeiroLoja(loja, pedidos),
       cupons: (banco.d.cupons ?? []).filter((c) => c.lojaId === loja.id).map(cupomPublico),
@@ -1679,6 +1690,62 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
 
     res.json({ ok: true, resultado });
   }));
+
+  // ---------- avaliações (link do pedido) ----------
+  const limiteAvaliacao = new S.Limitador({ maximo: 20, janelaMs: 10 * 60_000 });
+  function pedidoDoLink(q) {
+    const id = String(q?.p ?? ""), t = String(q?.t ?? "");
+    const p = (banco.d.pedidos ?? []).find((x) => x.id === id);
+    const certo = Buffer.from(tokenAvaliacao(id)), veio = Buffer.from(t);
+    if (!p || certo.length !== veio.length || !timingSafeEqual(certo, veio)) return null;
+    return p;
+  }
+  app.get("/avaliar", (req, res) => { semCache(res); res.sendFile(join(publico, "avaliar.html")); });
+  app.get("/api/avaliacoes/pedido", (req, res) => {
+    if (!limiteAvaliacao.registrar(`av|${S.ipDe(req)}`).permitido) return erro(res, 429, "Muitas tentativas. Espere um pouco.");
+    const p = pedidoDoLink(req.query);
+    if (!p) return erro(res, 404, "Link de avaliação inválido.");
+    const loja = banco.loja(p.lojaId);
+    res.json({
+      loja: loja ? { nome: loja.nome, slug: loja.slug } : null,
+      itens: (p.itens ?? [{ nome: p.produtoNome, quantidade: p.quantidade }]).map((i) => `${i.quantidade ?? 1}x ${i.nome ?? i.produtoNome ?? "Produto"}`),
+      podeAvaliar: pedidoAvaliavel(p),
+      jaAvaliado: (banco.d.avaliacoes ?? []).some((a) => a.pedidoId === p.id),
+    });
+  });
+  app.post("/api/avaliacoes", (req, res) => {
+    if (!limiteAvaliacao.registrar(`av|${S.ipDe(req)}`).permitido) return erro(res, 429, "Muitas tentativas. Espere um pouco.");
+    const p = pedidoDoLink(req.body);
+    if (!p) return erro(res, 404, "Link de avaliação inválido.");
+    if (!pedidoAvaliavel(p)) return erro(res, 409, "Este pedido ainda não pode ser avaliado.");
+    const nota = Number(req.body?.nota);
+    if (!Number.isInteger(nota) || nota < 1 || nota > 5) return erro(res, 400, "Escolha de 1 a 5 estrelas.");
+    banco.d.avaliacoes ??= [];
+    if (banco.d.avaliacoes.some((a) => a.pedidoId === p.id)) return erro(res, 409, "Este pedido já foi avaliado. Obrigado!");
+    const texto = String(req.body?.texto ?? "").replace(/[<>]/g, "").replace(/\s+/g, " ").trim().slice(0, 500);
+    const nome = String(p.comprador?.nome ?? "").trim().split(/\s+/)[0]?.slice(0, 30) || "Cliente";
+    banco.d.avaliacoes.push({ id: randomBytes(8).toString("hex"), pedidoId: p.id, lojaId: p.lojaId, nota, texto, nome, em: iso(), oculta: false });
+    banco.salvar();
+    res.json({ ok: true });
+  });
+  app.get("/api/lojas/:slug/avaliacoes", (req, res) => {
+    const loja = banco.lojas.find((l) => l.slug === req.params.slug);
+    if (!loja) return erro(res, 404, "Loja não encontrada.");
+    res.set("Cache-Control", "no-cache").json({
+      resumo: notaDaLoja(loja.id),
+      avaliacoes: avaliacoesVisiveis(loja.id).slice(-20).reverse().map(({ nota, texto, nome, em }) => ({ nota, texto, nome, em })),
+    });
+  });
+  app.get("/api/admin/avaliacoes", exigirAdmin, (req, res) => res.json([...(banco.d.avaliacoes ?? [])].reverse().slice(0, 300)
+    .map((a) => ({ ...a, lojaNome: banco.loja(a.lojaId)?.nome ?? "" }))));
+  app.patch("/api/admin/avaliacoes/:id", exigirAdmin, (req, res) => {
+    const a = (banco.d.avaliacoes ?? []).find((x) => x.id === req.params.id);
+    if (!a) return erro(res, 404, "Avaliação não encontrada.");
+    a.oculta = Boolean(req.body?.oculta);
+    auditar("avaliacao_moderada", { avaliacaoId: a.id, lojaId: a.lojaId, oculta: a.oculta });
+    banco.salvar();
+    res.json({ ok: true, oculta: a.oculta });
+  });
 
   // ---------- Instagram @shopcitmax ----------
   app.get("/bio", (req, res) => { semCache(res); res.sendFile(join(publico, "bio.html")); });

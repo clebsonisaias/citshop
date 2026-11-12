@@ -57,6 +57,7 @@ export function filtrarCatalogo(produtos, filtros = {}) {
     .filter(({ produto, relevancia }) => relevancia > 0
       && (!filtros.dept || produto.dept === filtros.dept)
       && (!filtros.origem || produto.loja === filtros.origem)
+      && (!filtros.marca || produto.marca === filtros.marca)
       && (!filtros.cidade || (produto.loja === "local" && produto.cidade === filtros.cidade))
       && (min == null || produto.preco >= min)
       && (max == null || produto.preco <= max)

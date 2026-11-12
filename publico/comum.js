@@ -75,7 +75,7 @@ window.CIT = (() => {
         <span class="avatar lv-logo">${avatar}</span>
         <div class="lv-id">
           <h2 class="lv-nome">${esc(l.nome)}</h2>
-          <p class="lv-meta">${esc(l.categoria || 'Loja local')} em ${esc(l.cidade)}</p>
+          <p class="lv-meta">${esc(l.categoria || 'Loja local')} em ${esc(l.cidade)}${l.avaliacao ? ` · <a class="lv-nota" href="#avaliacoes">★ ${String(l.avaliacao.media).replace('.', ',')} (${l.avaliacao.total} ${l.avaliacao.total === 1 ? 'avaliação' : 'avaliações'})</a>` : ''}</p>
           ${entrega ? `<span class="lv-chip">${entrega}</span>` : ''}
           ${l.sobre ? `<p class="lv-sobre">${esc(l.sobre)}</p>` : ''}
           ${extra ? `<div class="lv-acoes">${extra}</div>` : ''}

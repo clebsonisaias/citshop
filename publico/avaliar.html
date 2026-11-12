@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Avaliar compra · CIT Shopping</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400..800&display=swap">
+<link rel="stylesheet" href="/estilo.css">
+</head>
+<body>
+<header class="site"><div class="wrap bar" style="grid-template-columns:auto"><a class="logo" href="/"><img src="/marca-cit-shopping.png" alt="CIT Shopping" width="140" height="36"></a></div></header>
+<main class="pg avaliar">
+  <h1>Como foi sua compra?</h1>
+  <p id="aLoja" class="note">Carregando…</p>
+  <form id="fAvaliar" hidden>
+    <fieldset class="estrelas">
+      <legend>Sua nota</legend>
+      <input type="radio" name="nota" id="n5" value="5" required><label for="n5" title="5 estrelas">★<span class="sr-only">5 estrelas</span></label>
+      <input type="radio" name="nota" id="n4" value="4"><label for="n4" title="4 estrelas">★<span class="sr-only">4 estrelas</span></label>
+      <input type="radio" name="nota" id="n3" value="3"><label for="n3" title="3 estrelas">★<span class="sr-only">3 estrelas</span></label>
+      <input type="radio" name="nota" id="n2" value="2"><label for="n2" title="2 estrelas">★<span class="sr-only">2 estrelas</span></label>
+      <input type="radio" name="nota" id="n1" value="1"><label for="n1" title="1 estrela">★<span class="sr-only">1 estrela</span></label>
+    </fieldset>
+    <label class="campo">Conte como foi (opcional)<textarea name="texto" maxlength="500" rows="4" placeholder="Produto, atendimento, entrega…"></textarea></label>
+    <p class="note">Aparece na página da loja com o seu primeiro nome.</p>
+    <button class="btn" type="submit">Enviar avaliação</button>
+  </form>
+  <p id="aMsg" role="status" aria-live="polite"></p>
+</main>
+<script src="/avaliar.js" defer></script>
+</body>
+</html>
