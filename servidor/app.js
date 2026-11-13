@@ -23,7 +23,7 @@ import { atualizarAfiliados } from "./afiliados.js";
 import { instalarFood } from "./food.js";
 import { Buscas } from "./buscas.js";
 import { HORARIOS_PADRAO, brasilia, escolherPelaBusca, escolherProduto, horarioDaVez, lerHorarios, pareceTapado, prepararToken, semSegredos } from "./instagram-diario.js";
-import { CanaisAfiliado, canalValido, filtrarCampanhas, lancarComissoesShopee, vendasPorCanal } from "./afiliados-canal.js";
+import { CanaisAfiliado, canalValido, filtrarCampanhas, lancarComissoesShopee, postValido, vendasPorCanal, vendasPorPost } from "./afiliados-canal.js";
 import { MonitoramentoMotor } from "./tarefas/monitoramento.js";
 import { AgendadorOfertas } from "./tarefas/agendador.js";
 import { ConectorWaha } from "./integracoes/whatsapp/waha.js";
@@ -1664,13 +1664,20 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   app.get("/ir/:id", a(async (req, res) => {
     const id = req.params.id;
     // Produto: a mesma lista da vitrine (Amazon da API, Amazon desligada). Campanha da Shopee: campanhas.json.
-    const p = id.startsWith("campanha-") ? campanhasValidas().map((c) => ({ ...c, loja: "shopee" })).find((x) => x.id === id) : (afiliados().produtos ?? []).find((x) => x.id === id);
+    const canal = canalValido(req.query.c), post = postValido(req.query.p), ua = String(req.headers["user-agent"] ?? "");
     res.set("Cache-Control", "no-store");
+    // Produto de loja da cidade (link do direct do Instagram): conta o clique e abre a página do produto no site.
+    if (id.startsWith("l-")) {
+      const x = produtoPorId(id);
+      if (!x) return res.redirect(302, "/");
+      canais.registrarClique(canal, "local", ua, post);
+      return res.redirect(302, `/p/${encodeURIComponent(x.id)}`);
+    }
+    const p = id.startsWith("campanha-") ? campanhasValidas().map((c) => ({ ...c, loja: "shopee" })).find((x) => x.id === id) : (afiliados().produtos ?? []).find((x) => x.id === id);
     if (!p) return res.redirect(302, "/");
     conectorShopee();
-    const canal = canalValido(req.query.c);
-    canais.registrarClique(canal, p.loja, String(req.headers["user-agent"] ?? ""));
-    const destino = await canais.destino(p, canal);
+    canais.registrarClique(canal, p.loja, ua, post);
+    const destino = await canais.destino(p, canal, post);
     res.redirect(302, destino ?? `/p/${encodeURIComponent(p.id)}`);
   }));
   // Campanhas da Shopee (shopeeOfferV2) para a faixa da home: atualizadas a cada 3 h; vencidas saem na leitura.
@@ -1945,13 +1952,26 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
         if (change.field !== "comments" || !val?.id || !val.text) { registrarEventoIg({ ...base, resultado: "ignorado: não é comentário" }); continue; }
         if (!pedeLink(String(val.text))) { registrarEventoIg({ ...base, resultado: "ignorado: comentário sem QUERO/LINK" }); continue; }
         if (val.from?.id && val.from.id === conectorInstagram.accountId) { registrarEventoIg({ ...base, resultado: "ignorado: comentário da própria conta @citshopping (teste com outro perfil)" }); continue; }
-        const vinculo = banco.d.instagramPosts?.[val.media?.id];
+        const mediaBruto = String(val.media?.id ?? ""), mediaId = postValido(mediaBruto); // código numérico só para o link
+        const vinculo = mediaBruto && banco.d.instagramPosts?.[mediaBruto];
         const x = vinculo && produtoPorId(vinculo.produtoId);
+        if (vinculo) vinculo.queros = (vinculo.queros ?? 0) + 1;
+        // O link passa pela /ir com o código do post: o clique e a venda ficam marcados com este post.
         const texto = x
-          ? `Oi! Aqui está o link de ${x.nome} por ${Number(x.preco).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}: ${urlPublica}/p/${encodeURIComponent(x.id)}`
+          ? `Oi! Aqui está o link de ${x.nome} por ${Number(x.preco).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}: ${urlPublica}/ir/${encodeURIComponent(x.id)}?c=instagram${mediaId ? `&p=${mediaId}` : ""}`
           : `Oi! As ofertas do CIT Shopping estão aqui: ${urlPublica}/bio`;
         try {
           await conectorInstagram.responderComentarioDirect({ commentId: val.id, texto });
+          if (vinculo) vinculo.directs = (vinculo.directs ?? 0) + 1;
+          // Resposta pública (mostra para os outros que funciona). Falha aqui não desfaz o direct.
+          const cfgIg = (await monitoramentoMotor.obterConfiguracao()).instagram ?? {};
+          if (cfgIg.responderPublico !== false) {
+            const frases = ["Te mandei o link no direct 💌", "Enviado no seu direct! 📩", "Link no seu direct, confere lá 😉"];
+            await conectorInstagram.responderComentarioPublico({ commentId: val.id, texto: frases[Math.floor(Math.random() * frases.length)] })
+              .then(() => { if (vinculo) vinculo.respostas = (vinculo.respostas ?? 0) + 1; })
+              .catch((e) => registrarEventoIg({ ...base, resultado: `direct ok, mas a resposta pública falhou: ${e.message.slice(0, 120)}` }));
+          }
+          banco.salvar();
           log.info?.(`[webhook-instagram] direct enviado (comentário ${val.id}, ${x ? `produto ${x.id}` : "sem produto ligado ao post"})`);
           registrarEventoIg({ ...base, resultado: `direct enviado${x ? `: ${x.nome}` : " (post sem produto ligado: link da bio)"}` });
         } catch (e) {
@@ -1960,6 +1980,17 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
         }
       }
     }
+  }));
+
+  // Resultados por post do Instagram: QUERO, directs, respostas, cliques (link do direct) e vendas Shopee marcadas com o post.
+  app.get("/api/admin/instagram/posts", exigirAdmin, a(async (req, res) => {
+    canais.descarregar();
+    let vendas = {}, erro = null;
+    const c = conectorShopee();
+    if (c?.estaConfigurado?.()) { try { vendas = vendasPorPost((await c.relatorioConversoes({ dias: 60 })).conversoes); } catch (e) { erro = `Shopee: ${e.message}`; } }
+    const posts = Object.entries(banco.d.instagramPosts ?? {}).sort((x, y) => String(y[1].em).localeCompare(String(x[1].em))).slice(0, 40)
+      .map(([id, v]) => ({ id, em: v.em, produtoId: v.produtoId, nome: produtoPorId(v.produtoId)?.nome ?? v.produtoId, queros: v.queros ?? 0, directs: v.directs ?? 0, respostas: v.respostas ?? 0, cliques: canais.posts[id] ?? 0, vendas: vendas[id] ?? null }));
+    res.json({ posts, erro });
   }));
 
   app.get("/api/admin/instagram/legenda/:id", exigirAdmin, (req, res) => {
@@ -1995,6 +2026,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       diario: { ativo: true, story: false, horarios: HORARIOS_PADRAO, ...(cfg.instagram?.diario ?? {}) },
       historicoDiario: (banco.d.instagramDiario?.historico ?? []).slice(-15).reverse(),
       maisBuscados: buscas.top(7, 10).map(({ termo, n }) => ({ termo, n })),
+      responderPublico: cfg.instagram?.responderPublico !== false,
       // Diagnóstico do QUERO no direct: o que falta e o que chegou da Meta.
       quero: {
         assinaturaConfigurada: Boolean(env.INSTAGRAM_APP_SECRET), tokenDePagina: Boolean(conectorInstagram.pageAccessToken),

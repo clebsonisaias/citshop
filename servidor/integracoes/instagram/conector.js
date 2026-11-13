@@ -162,6 +162,18 @@ export class ConectorInstagram {
     return { sucesso: true, messageId: data.message_id || data.recipient_id };
   }
 
+  /** Resposta pública no comentário (ex.: "Te mandei o link no direct"). Precisa de instagram_manage_comments. */
+  async responderComentarioPublico({ commentId, texto }) {
+    const token = this.pageAccessToken || this.accessToken;
+    if (!token) throw new Error("Instagram sem token para responder comentário.");
+    const res = await this.fetchImpl(`${GRAPH_API}/${encodeURIComponent(commentId)}/replies`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: texto, access_token: token }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error?.message || `Erro HTTP ${res.status} ao responder comentário.`);
+    return { id: data.id ?? null };
+  }
+
   /**
    * Publica uma imagem nos Stories do Instagram.
    */

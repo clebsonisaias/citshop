@@ -556,6 +556,11 @@
       const falta = [!q.assinaturaConfigurada && 'falta INSTAGRAM_APP_SECRET no Coolify (sem ele o site recusa os avisos da Meta)', !q.tokenDePagina && 'falta token de Página (salve o token pelo campo acima: a resposta no direct precisa dele)'].filter(Boolean);
       $('instaQuero').innerHTML = `${falta.length ? `<p class="erro"><b>Para o QUERO funcionar:</b> ${falta.map(esc).join('; ')}.</p>` : '<p><b>QUERO:</b> configuração do site completa.</p>'}
         <p><b>Últimos avisos da Meta:</b></p>${(q.eventos ?? []).length ? `<ul>${q.eventos.map((e) => `<li>${new Date(e.em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })} · ${e.de ? `@${esc(e.de)} · ` : ''}${e.texto ? `"${esc(e.texto)}" · ` : ''}${esc(e.resultado)}${e.post ? ` <small>(post ${esc(e.post)})</small>` : ''}</li>`).join('')}</ul>` : '<p class="note">Nenhum aviso desde o último reinício. Se você comentou QUERO e nada aparece aqui, a Meta não está mandando os comentários: confira o webhook no app da Meta.</p>'}`;
+      $('instaResponderPublico').checked = st.responderPublico !== false;
+      api('/api/admin/instagram/posts').then((d) => {
+        $('instaPostsErro').textContent = d.erro ? `Vendas: ${d.erro}` : '';
+        $('instaPosts').innerHTML = d.posts.length ? d.posts.map((p) => `<tr><td>${esc(p.nome)}<br><small>${new Date(p.em).toLocaleDateString('pt-BR')}</small></td><td>${p.queros}</td><td>${p.directs}${p.respostas ? ` <small>(${p.respostas} resp.)</small>` : ''}</td><td>${p.cliques}</td><td>${p.vendas?.pedidos ?? 0}</td><td>${brl.format((p.vendas?.confirmada ?? 0) + (p.vendas?.estimada ?? 0))}</td></tr>`).join('') : '<tr><td colspan="6">Nenhum post publicado pelo sistema ainda.</td></tr>';
+      }).catch(() => {});
       $('instaBuscas').textContent = st.maisBuscados?.length ? `Mais buscados da semana: ${st.maisBuscados.map((b) => `${b.termo} (${b.n})`).join(', ')}` : 'Ainda sem buscas registradas no site.';
       $('instaHistorico').innerHTML = (st.historicoDiario ?? []).map((h) => `<div class="item-adm"><p>${new Date(h.em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })} · ${h.ok ? 'Publicado' : '<b>Falhou</b>'} · ${esc(h.nome ?? '-')}</p><p class="note">${esc(h.motivo ?? '')}${h.erro ? ` · ${esc(h.erro)}` : ''}</p></div>`).join('') || '<p class="note">Nenhuma postagem diária ainda.</p>';
       if ($('instaUltimoStory')) $('instaUltimoStory').textContent = st.ultimoStory ? `Último Story: ${st.ultimoStory.produto} (${st.ultimoStory.loja}), em ${new Date(`${st.ultimoStory.dia}T12:00:00`).toLocaleDateString('pt-BR')}` : 'Nenhum Story de loja publicado ainda.';
@@ -634,6 +639,7 @@
           postarAutomatico: $('instaPostarAutomatico')?.checked || false,
           storyDiario: $('instaStoryDiario')?.checked || false,
           diario: { ativo: $('instaDiarioAtivo').checked, story: $('instaDiarioStory').checked, horarios: $('instaDiarioHorarios').value },
+          responderPublico: $('instaResponderPublico').checked,
         });
         $('instaToken').value = '';
         alert('Configurações do Instagram salvas com sucesso!');

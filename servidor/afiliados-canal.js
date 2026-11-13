@@ -8,6 +8,10 @@ import { lancar } from "./financeiro.js";
 
 export const CANAIS = ["site", "produto", "whatsapp", "telegram", "instagram", "bio", "outros"];
 export const canalValido = (c) => (CANAIS.includes(String(c)) ? String(c) : "outros");
+/** Código de post do Instagram (só dígitos) que vem no link do direct; qualquer outra coisa é ignorada. */
+export const postValido = (p) => (/^\d{6,25}$/.test(String(p ?? "")) ? String(p) : null);
+/** Post do Instagram dentro do utmContent (o subId numérico longo), ou null. */
+export const postDoUtm = (utm) => String(utm ?? "").split(/[-_,|\s]+/).find((x) => /^\d{10,25}$/.test(x)) ?? null;
 /** Canal a partir do utmContent da Shopee (subIds juntos por "-"). Venda sem marca = "sem_canal" (link antigo ou direto). */
 export function canalDoUtm(utm) {
   const partes = String(utm ?? "").toLowerCase().split(/[-_,|\s]+/);
@@ -26,6 +30,8 @@ export class CanaisAfiliado {
     this.arqCliques = join(dadosDir, "cliques-canal.json");
     this.links = this.lerJson(this.arqLinks, {});
     this.cliques = this.lerJson(this.arqCliques, {}); // { "AAAA-MM-DD": { canal: { loja: n } } }
+    this.arqPosts = join(dadosDir, "cliques-posts.json");
+    this.posts = this.lerJson(this.arqPosts, {}); // { postId: n } (cliques vindos do direct de cada post do Instagram)
     this.sujo = false;
     this.gerando = new Map();
   }
@@ -37,10 +43,12 @@ export class CanaisAfiliado {
     const dias = Object.keys(this.cliques).sort();
     for (const d of dias.slice(0, Math.max(0, dias.length - 120))) delete this.cliques[d]; // guarda 120 dias
     this.gravar(this.arqCliques, this.cliques);
+    this.gravar(this.arqPosts, this.posts);
     this.sujo = false;
   }
-  registrarClique(canal, loja, userAgent = "") {
+  registrarClique(canal, loja, userAgent = "", post = null) {
     if (ROBO.test(userAgent)) return false;
+    if (post) this.posts[post] = (this.posts[post] ?? 0) + 1;
     const dia = new Date(this.agora()).toISOString().slice(0, 10);
     const c = ((this.cliques[dia] ??= {})[canal] ??= {});
     c[loja] = (c[loja] ?? 0) + 1;
@@ -51,13 +59,13 @@ export class CanaisAfiliado {
    * Destino do clique. Shopee com link original: link com a origem (gerado uma vez por produto+canal e guardado 30 dias).
    * Sem API, sem link original ou com erro na Shopee: o link de afiliado de sempre (o clique nunca fica esperando).
    */
-  async destino(produto, canal) {
+  async destino(produto, canal, post = null) {
     const padrao = DESTINO_OK.test(produto.link ?? "") ? produto.link : null;
     if (produto.loja !== "shopee" || !produto.linkOriginal || !this.shopee?.estaConfigurado?.()) return padrao;
-    const chave = `${produto.id}|${canal}`, g = this.links[chave];
+    const chave = `${produto.id}|${canal}${post ? `|${post}` : ""}`, g = this.links[chave];
     if (g && this.agora() - g.em < TTL_LINK && DESTINO_OK.test(g.link)) return g.link;
     // Gera uma vez e guarda quando chegar, mesmo que passe dos 4 s: este clique vai pelo link padrão, os próximos já saem marcados.
-    if (!this.gerando.has(chave)) this.gerando.set(chave, this.shopee.gerarLinkComSubIds(produto.linkOriginal, ["citshop", canal])
+    if (!this.gerando.has(chave)) this.gerando.set(chave, this.shopee.gerarLinkComSubIds(produto.linkOriginal, ["citshop", canal, ...(post ? [post] : [])])
       .then((link) => (link && DESTINO_OK.test(link) ? (this.guardar(chave, link), link) : null))
       .catch((e) => { this.log.warn?.(`[canal] link ${chave}: ${e.message}`); return null; })
       .finally(() => this.gerando.delete(chave)));
@@ -96,6 +104,22 @@ export function filtrarCampanhas(lista, agora) {
       && (!c.inicio || Date.parse(c.inicio) <= agora) && !vistos.has(c.id) && vistos.add(c.id))
     .sort((a, b) => (a.fim ? Date.parse(a.fim) : Infinity) - (b.fim ? Date.parse(b.fim) : Infinity) || (b.comissaoPct ?? 0) - (a.comissaoPct ?? 0))
     .slice(0, 16);
+}
+
+/** Vendas da Shopee por post do Instagram (o código do post vai como subId no link do direct). */
+export function vendasPorPost(conversoes) {
+  const r = {};
+  for (const c of conversoes) {
+    const post = postDoUtm(c.utm);
+    if (!post) continue;
+    for (const p of c.pedidos) {
+      const t = (r[post] ??= { pedidos: 0, estimada: 0, confirmada: 0 });
+      t.pedidos++;
+      if (p.orderStatus === "COMPLETED") t.confirmada = Math.round((t.confirmada + p.comissao) * 100) / 100;
+      else if (p.orderStatus !== "CANCELLED") t.estimada = Math.round((t.estimada + p.comissao) * 100) / 100;
+    }
+  }
+  return r;
 }
 
 /** Vendas da Shopee por canal: pedidos, comissão estimada (em andamento) e confirmada (concluídos). */

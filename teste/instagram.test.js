@@ -151,7 +151,7 @@ test("Rotas /bio e /api/instagram/card/:id respondem corretamente", async () => 
     assert.equal(await resHookPost.text(), "EVENT_RECEIVED");
     await new Promise((r) => setTimeout(r, 50));
     assert.deepEqual(directs.map((d) => d.recipient.comment_id), ["c1", "c4"], "responde c1 e c4; ignora 'não quero' e a própria conta");
-    assert.match(directs[0].message.text, /https:\/\/shop\.citmax\.com\.br\/p\/l-p1/);
+    assert.match(directs[0].message.text, /https:\/\/shop\.citmax\.com\.br\/ir\/l-p1\?c=instagram/, "link pela /ir (clique contado no canal Instagram)");
     assert.match(directs[1].message.text, /\/bio/);
     assert.equal(directs[0].access_token, "token-pagina");
   } finally {
