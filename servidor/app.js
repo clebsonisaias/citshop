@@ -1941,7 +1941,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     for (const entry of req.body?.entry ?? []) {
       for (const change of entry.changes ?? []) {
         const val = change.value;
-        const base = { tipo: change.field, texto: String(val?.text ?? "").slice(0, 60), de: val?.from?.username ?? null };
+        const base = { tipo: change.field, texto: String(val?.text ?? "").slice(0, 60), de: val?.from?.username ?? null, post: val?.media?.id ?? null };
         if (change.field !== "comments" || !val?.id || !val.text) { registrarEventoIg({ ...base, resultado: "ignorado: não é comentário" }); continue; }
         if (!pedeLink(String(val.text))) { registrarEventoIg({ ...base, resultado: "ignorado: comentário sem QUERO/LINK" }); continue; }
         if (val.from?.id && val.from.id === conectorInstagram.accountId) { registrarEventoIg({ ...base, resultado: "ignorado: comentário da própria conta @citshopping (teste com outro perfil)" }); continue; }
