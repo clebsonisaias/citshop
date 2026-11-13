@@ -713,10 +713,12 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const indice = Object.keys(reg.feitos).length;
     // Produto local com o tipo da loja no texto (ex.: "Laços e Acessórios Infantis"), para a busca achar.
     const categoriaLoja = new Map(banco.lojas.map((l) => [l.slug, l.categoria ?? ""]));
-    const produtos = vitrine().produtos.map((p) => (p.loja === "local" ? { ...p, descricao: `${p.descricao ?? ""} ${categoriaLoja.get(p.lojaSlug) ?? ""}` } : p));
+    // Comissão (R$ por venda) só aqui dentro, para escolher o post: não vai para a vitrine pública.
+    const comissao = new Map(afiliados().produtos.map((p) => [p.id, p.comissaoEstimada ?? 0]));
+    const produtos = vitrine().produtos.map((p) => (p.loja === "local" ? { ...p, descricao: `${p.descricao ?? ""} ${categoriaLoja.get(p.lojaSlug) ?? ""}` } : { ...p, comissao: comissao.get(p.id) ?? 0 }));
     const pelaBusca = escolherPelaBusca(produtos, reg.historico, buscas.top(7, 15), agora());
     const x = pelaBusca?.produto ?? escolherProduto(produtos, reg.historico, indice, agora());
-    const motivo = pelaBusca ? `mais buscado da semana: "${pelaBusca.termo}"` : indice % 2 === 0 ? "rodízio: loja da cidade" : "rodízio: melhor oferta";
+    const motivo = pelaBusca ? `mais buscado da semana: "${pelaBusca.termo}"` : indice % 2 === 0 ? "rodízio: loja da cidade" : "rodízio: oferta de maior comissão";
     const registrar = (extra) => { reg.historico.push({ em: iso(), slot, produtoId: x?.id ?? null, nome: x?.nome ?? null, lojaSlug: x?.lojaSlug ?? null, termo: pelaBusca?.termo ?? null, motivo, ...extra }); reg.historico = reg.historico.slice(-200); };
     if (!x) { reg.feitos[slot] = "sem produto"; registrar({ ok: false, erro: "nenhum produto com foto disponível" }); banco.salvar(); return { postado: false, motivo: "sem produto" }; }
     try {

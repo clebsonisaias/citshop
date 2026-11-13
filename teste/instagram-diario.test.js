@@ -157,3 +157,10 @@ test("QUERO: webhook confirma com o token mostrado no admin; aviso sem assinatur
   assert.equal(st.quero.assinaturaConfigurada, false);
   assert.deepEqual(st.quero.eventos.map((e) => e.resultado), ["recusado: falta INSTAGRAM_APP_SECRET no Coolify", "webhook confirmado pela Meta"]);
 });
+
+test("post diário: entre ofertas de afiliado, a de maior comissão ganha da de maior desconto", () => {
+  const t = Date.parse("2026-11-12T15:00:00Z");
+  const of = (id, comissao, extra = {}) => ({ id, loja: "shopee", preco: 40, fotos: ["x"], comissao, ...extra });
+  const produtos = [of("desconto", 0.4, { precoAntigo: 120, menor30: true }), of("comissao", 6)];
+  assert.equal(escolherProduto(produtos, [], 1, t).id, "comissao");
+});

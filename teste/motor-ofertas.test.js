@@ -121,3 +121,9 @@ test("publicador: preserva produtos da rodada anterior quando um marketplace fal
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test("ranking: na Shopee, maior comissão em R$ vem primeiro e a de centavos vai para o fim (sem sumir)", () => {
+  const p = (id, comissaoEstimada, extra = {}) => ({ id, loja: "shopee", categoria: "casa", preco: 50, comissaoEstimada, ...extra });
+  const lista = [p("centavos", 0.3, { precoAntigo: 100, nota: 4.9, vendidos: 5000, menor30: true }), p("alta", 8), p("media", 2.5), p("sem", null)];
+  assert.deepEqual(ranquearOfertas(lista).map((x) => x.id), ["alta", "media", "centavos", "sem"]);
+});

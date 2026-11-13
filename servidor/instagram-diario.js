@@ -39,7 +39,7 @@ export function escolherPelaBusca(produtos, historico, buscas, t) {
   for (const b of buscas.filter((x) => x.n >= 2 && x.palavras.length && !termosRecentes.has(x.termo))) {
     const com = ok.map((p) => ({ p, s: pontosBusca(p, b.palavras) })).filter((x) => x.s > 0);
     if (!com.length) continue;
-    const ordem = (a, c) => c.s - a.s || notaOferta(c.p) - notaOferta(a.p);
+    const ordem = (a, c) => c.s - a.s || (c.p.comissao ?? 0) - (a.p.comissao ?? 0) || notaOferta(c.p) - notaOferta(a.p);
     const local = com.filter((x) => x.p.loja === "local").sort(ordem)[0];
     return { produto: (local ?? com.sort(ordem)[0]).p, termo: b.termo };
   }
@@ -47,7 +47,7 @@ export function escolherPelaBusca(produtos, historico, buscas, t) {
 }
 
 /**
- * Escolhe o produto do horário. Pares: loja da cidade (a que postou há mais tempo); ímpares: melhor oferta de afiliado.
+ * Escolhe o produto do horário. Pares: loja da cidade (a que postou há mais tempo); ímpares: oferta de afiliado de maior comissão.
  * Se faltar um tipo, usa o outro. Só produto com foto e sem post nos últimos 14 dias.
  */
 export function escolherProduto(produtos, historico, indiceSlot, t) {
@@ -56,7 +56,8 @@ export function escolherProduto(produtos, historico, indiceSlot, t) {
   const locais = ok.filter((p) => p.loja === "local"), afiliados = ok.filter((p) => p.loja !== "local");
   const ultimaVezLoja = (slug) => Math.max(0, ...historico.filter((h) => h.ok && h.lojaSlug === slug).map((h) => Date.parse(h.em)));
   const melhorLocal = () => [...locais].sort((a, b) => ultimaVezLoja(a.lojaSlug) - ultimaVezLoja(b.lojaSlug) || (b.precoAntigo > b.preco) - (a.precoAntigo > a.preco))[0];
-  const melhorAfiliado = () => [...afiliados].sort((a, b) => notaOferta(b) - notaOferta(a))[0];
+  // Oferta de afiliado: a que paga mais comissão por venda (p.comissao, R$) primeiro; empate, a melhor oferta.
+  const melhorAfiliado = () => [...afiliados].sort((a, b) => (b.comissao ?? 0) - (a.comissao ?? 0) || notaOferta(b) - notaOferta(a))[0];
   const escolhido = indiceSlot % 2 === 0 ? melhorLocal() ?? melhorAfiliado() : melhorAfiliado() ?? melhorLocal();
   if (escolhido) return escolhido;
   // Todo dia tem post: se tudo já saiu nos últimos 14 dias, repete o que foi postado há mais tempo.

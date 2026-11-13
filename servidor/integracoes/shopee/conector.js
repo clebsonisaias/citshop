@@ -423,13 +423,17 @@ export class ConectorShopee extends ConectorMarketplace {
 
     const candidatos = [];
 
-    // 1. Puxar páginas de melhores ofertas em destaque da Shopee Brasil
+    // 1. Puxar páginas de ofertas da Shopee Brasil, da maior comissão para a menor (sortType 5 = COMMISSION_DESC).
+    // Se a API recusar a ordenação, segue sem ela.
+    let ordem = "sortType: 5, ";
     for (let p = 1; p <= paginasGerais; p++) {
       try {
         if (p > 1) await new Promise((r) => setTimeout(r, 250));
-        const query = `{ productOfferV2(page: ${p}, limit: 50) {
+        const query = (o) => `{ productOfferV2(${o}page: ${p}, limit: 50) {
           nodes { itemId productName priceMin priceMax priceDiscountRate ratingStar sales imageUrl productLink offerLink commission sellerCommissionRate shopeeCommissionRate } } }`;
-        const data = await this.chamarGraphQL(query);
+        let data;
+        try { data = await this.chamarGraphQL(query(ordem)); }
+        catch (e) { if (!ordem || e.codigoStatus === 429) throw e; ordem = ""; data = await this.chamarGraphQL(query(ordem)); }
         const nodes = data?.productOfferV2?.nodes ?? [];
         for (const item of nodes) {
           if (item.productLink || item.offerLink) {

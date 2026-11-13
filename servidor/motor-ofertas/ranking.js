@@ -57,10 +57,13 @@ export function ranquearOfertas(produtos = [], { limitePorCategoria = 25, limite
   const marketplaces = ["shopee", "mercado-livre", "shein"];
   const cotaPorMp = { shopee: 350, "mercado-livre": 30, shein: 30 };
 
+  // Shopee: quem paga mais comissão (em R$ por venda) vem primeiro na vitrine; as de comissão baixa ficam no fim.
+  const porComissao = [...comScore].sort((a, b) => (b.comissaoEstimada ?? 0) - (a.comissaoEstimada ?? 0) || b.score - a.score);
+
   for (const mp of marketplaces) {
     let countMp = 0;
     const maxMp = cotaPorMp[mp] || 25;
-    for (const p of comScore) {
+    for (const p of mp === "shopee" ? porComissao : comScore) {
       if ((p.marketplace || p.loja) !== mp) continue;
       if (selecionadosIds.has(p.id)) continue;
       const cat = p.categoria || p.dept || "casa";

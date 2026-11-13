@@ -87,3 +87,9 @@ As duas primeiras correções mudam o que é publicado. Por isso ficam para apro
 - **Home:** faixa "Campanhas Shopee" com imagem, nome e "Termina em…". O link não vai para a página: o clique passa por `/ir/campanha-…?c=site` (conta o clique e marca o canal, se a API devolver `originalLink`).
 - **Ressalva:** os nomes dos campos vêm de documentação não oficial. Se a API recusar algum, o conector tenta de novo só com o essencial (nome, imagem, link e período).
 - **Limite real da API:** 50 itens por página no `shopeeOfferV2` (a documentação não oficial dizia 500; a API real recusou com o erro 11001).
+
+## Shopee: maior comissão primeiro
+
+- O coletor pede as páginas gerais da Shopee ordenadas por comissão (`productOfferV2` com `sortType: 5`). Se a API recusar, busca sem ordenar.
+- No ranking, as ofertas da Shopee ficam em ordem de comissão em R$ por venda (`comissaoEstimada`). As de centavos continuam na vitrine, no fim.
+- No post diário do Instagram, o horário de oferta de afiliado escolhe a de maior comissão. A comissão não aparece na vitrine pública.

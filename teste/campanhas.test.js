@@ -49,3 +49,19 @@ test("vitrine: campanhas sem o link (só pelo /ir, que conta o clique); vencida 
   assert.deepEqual([ir.status, ir.headers.get("location")], [302, "https://s.shopee.com.br/abc"]);
   assert.equal((await fetch(`${base}/ir/campanha-velha`, { redirect: "manual" })).headers.get("location"), "/", "vencida não redireciona");
 });
+
+test("Shopee: páginas gerais pedem maior comissão primeiro; se a API recusar a ordenação, busca sem ela", async () => {
+  const consultas = [];
+  const item = { itemId: 1, productName: "Fone bluetooth", priceMin: "50", priceMax: "50", imageUrl: "https://down-br.img.susercontent.com/file/f.jpg", productLink: "https://shopee.com.br/x-i.1.1", offerLink: "https://s.shopee.com.br/f1", commission: "6" };
+  const fetchImpl = async (url, init) => {
+    const query = JSON.parse(init.body).query;
+    consultas.push(query);
+    if (query.includes("sortType: 5")) return Response.json({ errors: [{ message: "invalid sortType" }] });
+    return Response.json({ data: { productOfferV2: { nodes: query.includes("keyword") ? [] : [item] } } });
+  };
+  const r = await new ConectorShopee({ appId: "a", segredo: "s", fetchImpl }).buscarOfertas({ termos: ["fone"], paginasGerais: 2 });
+  assert.ok(consultas[0].includes("sortType: 5"), "1ª tentativa ordena por comissão");
+  const primeiraSem = consultas.findIndex((q) => !q.includes("sortType"));
+  assert.ok(consultas.slice(primeiraSem).every((q) => !q.includes("sortType")), "recusou: não insiste nas próximas páginas");
+  assert.equal(r.length, 1);
+});
