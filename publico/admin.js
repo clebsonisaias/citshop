@@ -381,6 +381,24 @@
   if ($('btnAtualizarShopee')) $('btnAtualizarShopee').onclick = () => carregarShopeeRelatorio();
   if ($('shopeePeriodo')) $('shopeePeriodo').onchange = () => carregarShopeeRelatorio();
 
+  // Mercado Livre: conta conectada pelo OAuth do app (o robô busca produtos sozinho e põe a etiqueta nos links).
+  async function carregarML() {
+    try {
+      const s = await api('/api/admin/mercadolivre');
+      const quando = (d) => new Date(d).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+      $('mlStatus').textContent = !s.configurado
+        ? `Falta o app do Mercado Livre: crie em developers.mercadolivre.com.br com o endereço de retorno ${s.retorno} e defina MERCADO_LIVRE_CLIENT_ID e MERCADO_LIVRE_CLIENT_SECRET no Coolify.`
+        : s.conectado
+          ? `Conta conectada${s.userId ? ` (usuário ${s.userId})` : ''} desde ${quando(s.conectadaEm)}. O acesso é renovado sozinho. Consultas hoje: ${s.consultasHoje} de ${s.limiteDiario}.`
+          : 'App configurado. Falta conectar a conta: clique no botão e autorize no Mercado Livre.';
+      $('mlConectar').hidden = !s.configurado;
+      $('mlConectar').textContent = s.conectado ? 'Conectar de novo' : 'Conectar conta do Mercado Livre';
+      const retorno = new URLSearchParams(location.search).get('ml');
+      const erroTxt = s.erro || (retorno === 'erro' ? 'A conexão com o Mercado Livre não foi concluída. Tente de novo.' : '');
+      $('mlErro').hidden = !erroTxt;
+      $('mlErro').textContent = erroTxt;
+    } catch (err) { $('mlStatus').textContent = err.message; }
+  }
   // Amazon Afiliados: só mostra o estado. As credenciais ficam no Coolify, nunca nesta tela.
   async function carregarAmazon() {
     try {
@@ -729,6 +747,7 @@
       carregarShopeeRelatorio();
       carregarCentralOfertas();
       carregarAmazon();
+      carregarML();
       carregarRadar();
       carregarInstagram();
       carregarTelegram();

@@ -118,3 +118,23 @@ Nada é gravado: cada termo fica 1 h na memória (até 500 termos), com limite d
 ## Mercado Livre: atribuição
 
 O link oficial do Gerador de links traz `matt_word=<etiqueta>&matt_tool=70471590`. `comAtribuicaoML` põe esses dois parâmetros nos links gerados e corrige, na hora de servir a vitrine, os links já gravados com `matt_tool=citshop`. Para trocar o número, use a variável `MERCADO_LIVRE_MATT_TOOL`.
+
+## Mercado Livre: busca automática
+
+A busca pública do Mercado Livre agora recusa quem não está logado. Por isso o robô busca com o token de uma conta conectada.
+
+Passo a passo para ligar:
+
+1. Crie um app em developers.mercadolivre.com.br.
+   - Endereço de retorno (redirect URI): `https://shop.citmax.com.br/mercadolivre/retorno`.
+   - Permissões: leitura e acesso offline (`offline_access`, que é o que gera o refresh token).
+2. No Coolify, defina `MERCADO_LIVRE_CLIENT_ID` (o App ID) e `MERCADO_LIVRE_CLIENT_SECRET` (a chave secreta) e faça o Redeploy.
+3. No admin, em "Mercado Livre Afiliados", clique em "Conectar conta do Mercado Livre" e autorize.
+
+Como funciona depois de conectado:
+
+- **Token:** fica cifrado em `banco.d.mercadoLivre` e vale 6 h. É renovado sozinho quando faltam 10 min, e o refresh token novo substitui o antigo.
+- **Busca:** primeiro tenta `sites/MLB/search`. Se ela responder 403, usa `products/search` e escolhe o melhor anúncio de cada produto: mais vendido, frete grátis, desconto, preço.
+- **Volume baixo:** 3 termos por rodada, em rodízio, e no máximo 150 consultas por dia (`limiteDiario`). Apps que consultam demais são bloqueados pelo Mercado Livre.
+- **Falha:** se todos os termos falharem, a rodada lança erro e o motor mantém os produtos anteriores do Mercado Livre.
+- **Etiqueta:** os links saem com `matt_word` (`MERCADO_LIVRE_AFFILIATE_TAG`) e `matt_tool`.

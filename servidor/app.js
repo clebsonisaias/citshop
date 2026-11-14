@@ -24,7 +24,7 @@ import { ganhoEsperado } from "./motor-ofertas/ranking.js";
 import { instalarFood } from "./food.js";
 import { Buscas, normalizarBusca } from "./buscas.js";
 import { deShopee } from "./integracoes/shopee/conector.js";
-import { MATT_TOOL_PADRAO, comAtribuicaoML } from "./integracoes/mercado-livre/conector.js";
+import { MATT_TOOL_PADRAO, comAtribuicaoML, pedirTokenML, urlAutorizacaoML } from "./integracoes/mercado-livre/conector.js";
 import { HORARIOS_PADRAO, brasilia, escolherPelaBusca, escolherProduto, horarioDaVez, lerHorarios, pareceTapado, prepararToken, semSegredos } from "./instagram-diario.js";
 import { CanaisAfiliado, canalValido, filtrarCampanhas, lancarComissoesShopee, postValido, vendasPorCanal, vendasPorPost } from "./afiliados-canal.js";
 import { MonitoramentoMotor } from "./tarefas/monitoramento.js";
@@ -1197,6 +1197,66 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       res.redirect(`${painelUrl}?mp=erro`);
     }
   }));
+  // ---------- Conta do Mercado Livre da CIT (OAuth): busca automática de produtos ----------
+  // App criado em developers.mercadolivre.com.br (MERCADO_LIVRE_CLIENT_ID e MERCADO_LIVRE_CLIENT_SECRET no Coolify), com o
+  // endereço de retorno <URL_PUBLICA>/mercadolivre/retorno. O admin conecta uma vez; o token (6 h) é renovado sozinho.
+  const retornoMl = `${urlPublica}/mercadolivre/retorno`;
+  const mlApp = { client_id: env.MERCADO_LIVRE_CLIENT_ID, client_secret: env.MERCADO_LIVRE_CLIENT_SECRET };
+  const mlConfigurado = () => Boolean(mlApp.client_id && mlApp.client_secret);
+  function guardarContaMl(c) {
+    const antes = banco.d.mercadoLivre;
+    banco.d.mercadoLivre = {
+      userId: c.userId ?? antes?.userId ?? null, token: cifrar(c.accessToken, segredo),
+      refresh: c.refreshToken ? cifrar(c.refreshToken, segredo) : antes?.refresh ?? null, // o refresh_token muda a cada renovação
+      expiraEm: new Date(agora() + c.expiraEmSeg * 1000).toISOString(), conectadaEm: antes?.conectadaEm ?? iso(), erro: null,
+    };
+    banco.salvar();
+  }
+  let renovandoMl = null;
+  async function tokenMercadoLivre() {
+    const c = banco.d.mercadoLivre;
+    if (!c?.token) return null;
+    if (Date.parse(c.expiraEm) - agora() < 10 * 60_000 && c.refresh && mlConfigurado()) {
+      renovandoMl ??= pedirTokenML({ grant_type: "refresh_token", ...mlApp, refresh_token: decifrar(c.refresh, segredo) }, fetchImpl)
+        .then(guardarContaMl)
+        .catch((e) => { c.erro = `A renovação do acesso falhou: ${e.message}. Conecte a conta de novo.`; banco.salvar(); log.warn?.(`[ml] ${c.erro}`); })
+        .finally(() => { renovandoMl = null; });
+      await renovandoMl;
+    }
+    const atual = banco.d.mercadoLivre;
+    return Date.parse(atual.expiraEm) > agora() ? decifrar(atual.token, segredo) : null;
+  }
+  const conectorMl = agendadorOfertas.coletor?.conectores?.["mercado-livre"];
+  if (conectorMl) conectorMl.obterToken = tokenMercadoLivre;
+  app.get("/api/admin/mercadolivre/conectar", exigirAdmin, (req, res) => {
+    if (!mlConfigurado()) return erro(res, 503, "Defina MERCADO_LIVRE_CLIENT_ID e MERCADO_LIVRE_CLIENT_SECRET no Coolify.");
+    banco.d.mercadoLivreOauth = { state: randomBytes(16).toString("hex"), em: iso() };
+    banco.salvar();
+    res.redirect(urlAutorizacaoML({ clientId: mlApp.client_id, redirectUri: retornoMl, state: banco.d.mercadoLivreOauth.state }));
+  });
+  app.get("/mercadolivre/retorno", a(async (req, res) => {
+    const o = banco.d.mercadoLivreOauth;
+    const valido = o && req.query.code && String(req.query.state ?? "") === o.state && agora() - Date.parse(o.em) < 15 * 60_000;
+    delete banco.d.mercadoLivreOauth; // uso único
+    banco.salvar();
+    if (!valido) return res.redirect("/admin?ml=erro");
+    try {
+      guardarContaMl(await pedirTokenML({ grant_type: "authorization_code", ...mlApp, code: String(req.query.code), redirect_uri: retornoMl }, fetchImpl));
+      log.info?.("[ml] conta do Mercado Livre conectada");
+      res.redirect("/admin?ml=conectado");
+    } catch (e) {
+      log.warn?.(`[ml] troca do código OAuth falhou: ${e.message}`);
+      res.redirect("/admin?ml=erro");
+    }
+  }));
+  app.get("/api/admin/mercadolivre", exigirAdmin, (req, res) => {
+    const c = banco.d.mercadoLivre;
+    res.json({
+      configurado: mlConfigurado(), conectado: Boolean(c?.token), userId: c?.userId ?? null, conectadaEm: c?.conectadaEm ?? null,
+      expiraEm: c?.expiraEm ?? null, erro: c?.erro ?? null, retorno: retornoMl,
+      consultasHoje: conectorMl?.cota?.n ?? 0, limiteDiario: conectorMl?.limiteDiario ?? null, ultimaColeta: conectorMl?.obterStatus?.() ?? null,
+    });
+  });
   app.post("/api/painel/cupons", exigirLoja, (req, res) => {
     const { cupom, erro: msg } = lerCupom(req.body);
     if (msg) return erro(res, 400, msg);
