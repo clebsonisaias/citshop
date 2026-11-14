@@ -123,8 +123,8 @@ test("publicador: preserva produtos da rodada anterior quando um marketplace fal
 });
 
 test("ranking: na Shopee, maior comissão em R$ vem primeiro e a de centavos vai para o fim (sem sumir)", () => {
-  const p = (id, comissaoEstimada, extra = {}) => ({ id, loja: "shopee", categoria: "casa", preco: 50, comissaoEstimada, ...extra });
-  const lista = [p("centavos", 0.3, { precoAntigo: 100, nota: 4.9, vendidos: 5000, menor30: true }), p("alta", 8), p("media", 2.5), p("sem", null)];
+  const p = (id, comissaoEstimada, extra = {}) => ({ id, loja: "shopee", categoria: "casa", preco: 50, comissaoEstimada, vendidos: 200, ...extra });
+  const lista = [p("centavos", 0.3, { precoAntigo: 100, nota: 4.9, menor30: true }), p("alta", 8), p("media", 2.5), p("sem", null)];
   assert.deepEqual(ranquearOfertas(lista).map((x) => x.id), ["alta", "media", "centavos", "sem"]);
 });
 
@@ -134,4 +134,10 @@ test("ranking: SHEIN e Mercado Livre têm vagas próprias por categoria (a Shope
   const r = ranquearOfertas([...shopee, ...shein], { agora: Date.parse("2027-04-10T12:00:00Z") });
   assert.equal(r.filter((p) => p.loja === "shein").length, 3);
   assert.equal(r.filter((p) => p.loja === "shopee").length, 25);
+});
+
+test("ranking: na Shopee, produto caro sem nenhuma venda não fica no topo; sobe o que paga bem e vende", () => {
+  const p = (id, comissaoEstimada, vendidos, preco) => ({ id, loja: "shopee", categoria: "casa", preco, comissaoEstimada, vendidos });
+  const lista = [p("estacao-energia", 1500, 0, 19980), p("vela-1000", 80, 0, 1000), p("air-fryer", 25, 300, 350), p("fone", 4, 5000, 60)];
+  assert.deepEqual(ranquearOfertas(lista).map((x) => x.id), ["air-fryer", "fone", "estacao-energia", "vela-1000"]);
 });

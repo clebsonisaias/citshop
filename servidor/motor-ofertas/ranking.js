@@ -43,6 +43,8 @@ export function calcularScore(produto) {
 /**
  * Ordena e aplica limites de ofertas por categoria e total geral com representatividade justa.
  */
+export const ganhoEsperado = (p) => (p.comissaoEstimada ?? 0) * Math.log10((p.vendidos ?? 0) + 1);
+
 export function ranquearOfertas(produtos = [], { limitePorCategoria = 25, limiteTotal = 400, agora = Date.now() } = {}) {
   // Natal, Ano Novo etc. em vigor: cota própria (não disputam as 25 vagas de "casa" ou "moda").
   const ativas = temporadasAtivas(agora);
@@ -63,8 +65,9 @@ export function ranquearOfertas(produtos = [], { limitePorCategoria = 25, limite
   const marketplaces = ["shopee", "mercado-livre", "shein"];
   const cotaPorMp = { shopee: 350, "mercado-livre": 30, shein: 30 };
 
-  // Shopee: quem paga mais comissão (em R$ por venda) vem primeiro na vitrine; as de comissão baixa ficam no fim.
-  const porComissao = [...comScore].sort((a, b) => (b.comissaoEstimada ?? 0) - (a.comissaoEstimada ?? 0) || b.score - a.score);
+  // Shopee: ganho esperado = comissão em R$ × prova de venda (log das vendas). Produto caro que ninguém compra
+  // (comissão alta, 0 vendas) vai para o fim; sobe o que paga bem e vende. Empate: maior comissão, depois o score.
+  const porComissao = [...comScore].sort((a, b) => ganhoEsperado(b) - ganhoEsperado(a) || (b.comissaoEstimada ?? 0) - (a.comissaoEstimada ?? 0) || b.score - a.score);
 
   for (const mp of marketplaces) {
     let countMp = 0;

@@ -20,6 +20,7 @@ import {
 import { TIPOS_LANCAMENTO, estornarComissao, lancar, lancarComissao, registrarEvento, resumoLivro, retratoFinanceiro } from "./financeiro.js";
 import { MARKETPLACE, criarClienteAmazon } from "./amazon.js";
 import { TAG_AMAZON_PADRAO, atualizarAfiliados, comTagAmazon, comissaoAmazonPct, ordenarAmazonPorComissao } from "./afiliados.js";
+import { ganhoEsperado } from "./motor-ofertas/ranking.js";
 import { instalarFood } from "./food.js";
 import { Buscas } from "./buscas.js";
 import { HORARIOS_PADRAO, brasilia, escolherPelaBusca, escolherProduto, horarioDaVez, lerHorarios, pareceTapado, prepararToken, semSegredos } from "./instagram-diario.js";
@@ -716,8 +717,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const indice = Object.keys(reg.feitos).length;
     // Produto local com o tipo da loja no texto (ex.: "Laços e Acessórios Infantis"), para a busca achar.
     const categoriaLoja = new Map(banco.lojas.map((l) => [l.slug, l.categoria ?? ""]));
-    // Comissão (R$ por venda) só aqui dentro, para escolher o post: não vai para a vitrine pública.
-    const comissao = new Map(afiliados().produtos.map((p) => [p.id, p.comissaoEstimada ?? (p.loja === "amazon" ? (p.preco * comissaoAmazonPct(p)) / 100 : 0)]));
+    // Ganho esperado (comissão em R$, e na Shopee vezes a prova de venda) só aqui dentro, para escolher o post: não vai para a vitrine pública.
+    const comissao = new Map(afiliados().produtos.map((p) => [p.id, p.loja === "amazon" ? (p.preco * comissaoAmazonPct(p)) / 100 : ganhoEsperado(p)]));
     const produtos = vitrine().produtos.map((p) => (p.loja === "local" ? { ...p, descricao: `${p.descricao ?? ""} ${categoriaLoja.get(p.lojaSlug) ?? ""}` } : { ...p, comissao: comissao.get(p.id) ?? 0 }));
     const pelaBusca = escolherPelaBusca(produtos, reg.historico, buscas.top(7, 15), agora());
     const x = pelaBusca?.produto ?? escolherProduto(produtos, reg.historico, indice, agora());

@@ -91,7 +91,7 @@ As duas primeiras correções mudam o que é publicado. Por isso ficam para apro
 ## Shopee: maior comissão primeiro
 
 - O coletor pede as páginas gerais da Shopee ordenadas por comissão (`productOfferV2` com `sortType: 5`). Se a API recusar, busca sem ordenar.
-- No ranking, as ofertas da Shopee ficam em ordem de comissão em R$ por venda (`comissaoEstimada`). As de centavos continuam na vitrine, no fim.
+- No ranking, as ofertas da Shopee ficam em ordem de ganho esperado: comissão em R$ (`comissaoEstimada`) × log10(vendas + 1). Produto caro sem venda nenhuma e comissão de centavos vão para o fim, mas continuam na vitrine.
 - No post diário do Instagram, o horário de oferta de afiliado escolhe a de maior comissão. A comissão não aparece na vitrine pública.
 
 ## Temporadas (faixas de data na home)

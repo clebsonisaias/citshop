@@ -340,7 +340,8 @@ import { TEMPORADAS, temporadasAtivas } from './temporadas.js';
       $('mbuy').textContent = `Comprar na ${STORE[x.loja]} ↗`;
       // Preço vindo de API com hora da consulta (hoje só a Amazon): mostra quando foi visto.
       const quando = x.atualizadoEm ? ` Preço consultado em ${new Date(x.atualizadoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })} e pode mudar.` : '';
-      $('mnote').textContent = `Você finaliza a compra no site da loja. Preço e frete confirmados lá.${quando}`;
+      const pix = x.loja === 'shopee' ? ' Na Shopee pode sair menor no Pix ou com cupom.' : '';
+      $('mnote').textContent = `Você finaliza a compra no site da loja. Preço e frete confirmados lá.${quando}${pix}`;
     }
     $('mzap').href = `https://wa.me/?text=${encodeURIComponent(`Olha esse achado na CIT Shopping: ${x.nome} por ${brl.format(x.preco)} ${link}`)}`;
     const jaAberto = !$('modal').hidden;
