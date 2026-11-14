@@ -127,3 +127,11 @@ test("ranking: na Shopee, maior comissão em R$ vem primeiro e a de centavos vai
   const lista = [p("centavos", 0.3, { precoAntigo: 100, nota: 4.9, vendidos: 5000, menor30: true }), p("alta", 8), p("media", 2.5), p("sem", null)];
   assert.deepEqual(ranquearOfertas(lista).map((x) => x.id), ["alta", "media", "centavos", "sem"]);
 });
+
+test("ranking: SHEIN e Mercado Livre têm vagas próprias por categoria (a Shopee não ocupa todas)", () => {
+  const shopee = Array.from({ length: 30 }, (_, i) => ({ id: `s${i}`, nome: `Blusa ${i}`, loja: "shopee", categoria: "moda", preco: 40, comissaoEstimada: 5 }));
+  const shein = Array.from({ length: 3 }, (_, i) => ({ id: `h${i}`, nome: `Vestido estampado ${i}`, loja: "shein", marketplace: "shein", categoria: "moda", preco: 90 }));
+  const r = ranquearOfertas([...shopee, ...shein], { agora: Date.parse("2027-04-10T12:00:00Z") });
+  assert.equal(r.filter((p) => p.loja === "shein").length, 3);
+  assert.equal(r.filter((p) => p.loja === "shopee").length, 25);
+});

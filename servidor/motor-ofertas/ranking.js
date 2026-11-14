@@ -59,7 +59,7 @@ export function ranquearOfertas(produtos = [], { limitePorCategoria = 25, limite
   // Garantir representatividade justa para cada marketplace ativo (Shopee, Mercado Livre, SHEIN)
   const selecionados = [];
   const selecionadosIds = new Set();
-  const contagemPorCat = new Map();
+  const contagemPorCat = new Map(), contagemPorLojaCat = new Map();
   const marketplaces = ["shopee", "mercado-livre", "shein"];
   const cotaPorMp = { shopee: 350, "mercado-livre": 30, shein: 30 };
 
@@ -72,12 +72,14 @@ export function ranquearOfertas(produtos = [], { limitePorCategoria = 25, limite
     for (const p of mp === "shopee" ? porComissao : comScore) {
       if ((p.marketplace || p.loja) !== mp) continue;
       if (selecionadosIds.has(p.id)) continue;
-      const cat = grupo(p);
-      const qtdCat = contagemPorCat.get(cat) || 0;
+      // Vagas por categoria contadas por loja: senão a Shopee (que vem primeiro) enche "moda" e a SHEIN fica de fora.
+      const cat = grupo(p), chave = `${mp}|${cat}`;
+      const qtdCat = contagemPorLojaCat.get(chave) || 0;
       if (qtdCat < cota(cat) && countMp < maxMp) {
         selecionados.push(p);
         selecionadosIds.add(p.id);
-        contagemPorCat.set(cat, qtdCat + 1);
+        contagemPorLojaCat.set(chave, qtdCat + 1);
+        contagemPorCat.set(cat, (contagemPorCat.get(cat) || 0) + 1);
         countMp++;
       }
     }
