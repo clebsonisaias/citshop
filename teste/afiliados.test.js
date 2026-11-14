@@ -125,3 +125,17 @@ test("Mercado Livre: link sai com o matt_tool oficial do painel (70471590) e a e
   assert.equal(comAtribuicaoML("https://s.shopee.com.br/x", "clebsonisaias138"), "https://s.shopee.com.br/x");
   assert.equal(comAtribuicaoML("https://www.mercadolivre.com.br/p/MLB1", undefined), "https://www.mercadolivre.com.br/p/MLB1", "sem etiqueta não inventa atribuição");
 });
+
+test("vitrine: Amazon de comissão baixa fica só para a busca; comissão alta e aparelhos Amazon aparecem na home", async (t) => {
+  const { mkdtempSync, rmSync: rm2, writeFileSync: wf } = await import("node:fs");
+  const { criarApp } = await import("../servidor/app.js");
+  const dir = mkdtempSync(join(tmpdir(), "cit-sobusca-"));
+  t.after(() => rm2(dir, { recursive: true, force: true }));
+  const amz = (id, categoria, extra = {}) => ({ id: `amazon-${id}`, loja: "amazon", nome: id, categoria, preco: 100, imagem: "https://m.media-amazon.com/x.jpg", link: `https://www.amazon.com.br/dp/${id}?tag=citshop0e-20`, ...extra });
+  wf(join(dir, "afiliados.json"), JSON.stringify({ produtos: [amz("GELADEIRA", "eletro"), amz("CREME", "beleza"), amz("ECHO", "tec", { destaque: true })] }));
+  const { app } = criarApp({ env: { SESSAO_SEGREDO: "s".repeat(40), DADOS_DIR: dir }, log: { info() {}, warn() {}, error() {} } });
+  const srv = await new Promise((ok) => { const s = app.listen(0, () => ok(s)); });
+  t.after(() => srv.close());
+  const { produtos } = await (await fetch(`http://127.0.0.1:${srv.address().port}/api/vitrine`)).json();
+  assert.deepEqual(Object.fromEntries(produtos.map((p) => [p.id, Boolean(p.soBusca)])), { "amazon-CREME": false, "amazon-ECHO": false, "amazon-GELADEIRA": true });
+});

@@ -349,6 +349,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     fotos: x.imagem ? [x.imagem] : [], link: x.link, queda: x.queda, atualizadoEm: x.atualizadoEm ?? null,
     destaque: x.destaque === true, menor30: x.menor30 === true, fixo: x.fixo === true, sub: x.sub ?? null,
     descricao: x.descricao ?? "", // destaques do produto, quando a API oficial manda
+    // Amazon de comissão baixa (eletrodomésticos, eletrônicos: 7 a 8%) só aparece na busca; na home, só comissão alta e aparelhos Amazon.
+    ...(x.loja === "amazon" && x.destaque !== true && comissaoAmazonPct(x) < 10 ? { soBusca: true } : {}),
   });
 
   // A vitrine pública inteira; usada pela API e pela página de produto (/p/:id).

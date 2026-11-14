@@ -65,4 +65,8 @@ No empate, vem primeiro quem rende mais R$ por venda.
 
 ## Origem dos produtos
 
-Sem as credenciais da API oficial (`AMAZON_CREDENCIAL_*`), o motor de ofertas usa os produtos que a coleta das páginas da Amazon (`servidor/coletor.js`) grava em `coleta.json`. No ranking, a Amazon tem cota própria de 80 vagas, preenchidas pela comissão da categoria.
+Sem as credenciais da API oficial (`AMAZON_CREDENCIAL_*`), o motor de ofertas usa os produtos que a coleta das páginas da Amazon (`servidor/coletor.js`) grava em `coleta.json`. O ranking escolhe a Amazon assim:
+- todos os aparelhos Amazon (Echo, Alexa, Kindle, Fire TV), que chegam marcados com `destaque`;
+- do resto, as 2 melhores ofertas de cada subcategoria da coleta (6 quando o produto não tem subcategoria), pelo score e, no empate, pelo menor preço.
+
+Na vitrine, Amazon com menos de 10% de comissão (eletrodomésticos, eletrônicos e casa) recebe `soBusca`: não aparece na home nem nas faixas, só na busca. Beleza, saúde, bebê, mercado, moda, pets, livros e os aparelhos Amazon aparecem normalmente.

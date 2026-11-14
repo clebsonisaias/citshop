@@ -1,5 +1,4 @@
 import { temporadaDo, temporadasAtivas } from "../../publico/temporadas.js";
-import { comissaoAmazonPct } from "../afiliados.js";
 
 /**
  * Motor de ranking de ofertas: calcula pontuação de relevância comercial e qualidade.
@@ -64,20 +63,33 @@ export function ranquearOfertas(produtos = [], { limitePorCategoria = 25, limite
   const selecionadosIds = new Set();
   const contagemPorCat = new Map(), contagemPorLojaCat = new Map();
   const marketplaces = ["shopee", "amazon", "mercado-livre", "shein"];
-  const cotaPorMp = { shopee: 300, amazon: 80, "mercado-livre": 30, shein: 30 };
+  const cotaPorMp = { shopee: 300, amazon: 400, "mercado-livre": 30, shein: 30 };
+  const AMAZON_POR_SUB = 2, AMAZON_SEM_SUB = 6;
 
   // Shopee: ganho esperado = comissão em R$ × prova de venda (log das vendas). Produto caro que ninguém compra
   // (comissão alta, 0 vendas) vai para o fim; sobe o que paga bem e vende. Empate: maior comissão, depois o score.
-  // Amazon: categoria de maior comissão primeiro (13% beleza/saúde/bebê/mercado, 11% moda/pets...), depois o score.
-  const amazonPorComissao = [...comScore].sort((a, b) => comissaoAmazonPct(b) - comissaoAmazonPct(a) || b.score - a.score);
+  // Amazon: todos os aparelhos Amazon (destaque: Echo, Alexa, Kindle, Fire TV); do resto, um pouco de cada
+  // subcategoria: as melhores ofertas (score: desconto, queda, menor preço em 30 dias, nota), no empate o menor preço.
+  // Quem aparece na home é decidido em app.js (soBusca): só comissão alta; o resto fica para a busca.
+  const amazonPorOferta = [...comScore].sort((a, b) => (b.destaque === true) - (a.destaque === true) || b.score - a.score || a.preco - b.preco);
   const porComissao = [...comScore].sort((a, b) => ganhoEsperado(b) - ganhoEsperado(a) || (b.comissaoEstimada ?? 0) - (a.comissaoEstimada ?? 0) || b.score - a.score);
 
   for (const mp of marketplaces) {
     let countMp = 0;
     const maxMp = cotaPorMp[mp] || 25;
-    for (const p of mp === "shopee" ? porComissao : mp === "amazon" ? amazonPorComissao : comScore) {
+    for (const p of mp === "shopee" ? porComissao : mp === "amazon" ? amazonPorOferta : comScore) {
       if ((p.marketplace || p.loja) !== mp) continue;
       if (selecionadosIds.has(p.id)) continue;
+      if (mp === "amazon") {
+        const sub = p.destaque ? null : `amazon|${p.sub ?? grupo(p)}`, qtd = sub ? contagemPorLojaCat.get(sub) || 0 : 0;
+        if ((sub && qtd >= (p.sub ? AMAZON_POR_SUB : AMAZON_SEM_SUB)) || countMp >= maxMp) continue;
+        selecionados.push(p);
+        selecionadosIds.add(p.id);
+        if (sub) contagemPorLojaCat.set(sub, qtd + 1);
+        contagemPorCat.set(grupo(p), (contagemPorCat.get(grupo(p)) || 0) + 1);
+        countMp++;
+        continue;
+      }
       // Vagas por categoria contadas por loja: senão a Shopee (que vem primeiro) enche "moda" e a SHEIN fica de fora.
       const cat = grupo(p), chave = `${mp}|${cat}`;
       const qtdCat = contagemPorLojaCat.get(chave) || 0;
@@ -91,9 +103,9 @@ export function ranquearOfertas(produtos = [], { limitePorCategoria = 25, limite
     }
   }
 
-  // Preenche as vagas restantes até limiteTotal respeitando limitePorCategoria
+  // Preenche as vagas restantes até limiteTotal respeitando limitePorCategoria (a Amazon já entrou toda acima)
   for (const p of comScore) {
-    if (selecionadosIds.has(p.id)) continue;
+    if (selecionadosIds.has(p.id) || (p.marketplace || p.loja) === "amazon") continue;
     const cat = grupo(p);
     const qtdCat = contagemPorCat.get(cat) || 0;
     if (qtdCat < cota(cat)) {

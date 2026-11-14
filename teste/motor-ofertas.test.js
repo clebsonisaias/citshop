@@ -142,7 +142,7 @@ test("ranking: na Shopee, produto caro sem nenhuma venda não fica no topo; sobe
   assert.deepEqual(ranquearOfertas(lista).map((x) => x.id), ["air-fryer", "fone", "estacao-energia", "vela-1000"]);
 });
 
-test("publicador: sem a API da Amazon, usa a Amazon da coleta das páginas; ranking dá vaga à Amazon pela comissão da categoria", async () => {
+test("publicador: sem a API da Amazon, usa a Amazon da coleta das páginas", async () => {
   const dir = await mkdtemp(join(tmpdir(), "citshop-amz-coleta-"));
   try {
     const amz = (id, categoria, preco) => ({ id: `amazon-${id}`, asin: id, loja: "amazon", nome: `Produto ${id}`, categoria, preco, imagem: "https://m.media-amazon.com/images/I/x.jpg", link: `https://www.amazon.com.br/dp/${id}?tag=citshop0e-20` });
@@ -150,8 +150,28 @@ test("publicador: sem a API da Amazon, usa a Amazon da coleta das páginas; rank
     const publicador = new PublicadorOfertas({ dadosDir: dir, log: { warn: () => {} } });
     await publicador.publicar({ novosColetados: [{ id: "shopee-1", externalId: "1", marketplace: "shopee", nome: "Fone", preco: 50, imagem: "https://img/f.jpg", link: "https://s.shopee.com.br/f", categoria: "cel" }], statusPorLoja: { shopee: { ok: true } } });
     const { produtos } = JSON.parse(await readFile(join(dir, "afiliados.json"), "utf8"));
-    assert.deepEqual(produtos.filter((p) => (p.marketplace || p.loja) === "amazon").map((p) => p.id), ["amazon-CREME", "amazon-RACAO", "amazon-TV1"]);
+    assert.deepEqual(produtos.filter((p) => (p.marketplace || p.loja) === "amazon").map((p) => p.id).sort(), ["amazon-CREME", "amazon-RACAO", "amazon-TV1"]);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+test("ranking Amazon: todos os aparelhos Amazon; do resto, as 2 melhores ofertas de cada subcategoria", () => {
+  const amz = (id, sub, preco, extra = {}) => ({ id, loja: "amazon", categoria: "eletro", sub, preco, ...extra });
+  const lista = [
+    ...Array.from({ length: 15 }, (_, i) => amz(`echo${i}`, null, 300, { destaque: true, categoria: "tec" })),
+    amz("gel-cara", "Geladeiras", 5000), amz("gel-oferta", "Geladeiras", 3000, { precoAntigo: 4000 }), amz("gel-barata", "Geladeiras", 2500),
+    amz("micro", "Micro-ondas", 600),
+  ];
+  const ids = ranquearOfertas(lista).map((p) => p.id);
+  assert.equal(ids.filter((id) => id.startsWith("echo")).length, 15, "aparelhos Amazon: todos");
+  assert.deepEqual(ids.filter((id) => id.startsWith("gel")), ["gel-oferta", "gel-barata"], "a com desconto e depois a mais barata");
+  assert.ok(ids.includes("micro"));
+});
+
+test("normalizador: Amazon mantém subcategoria, ASIN e marca de aparelho; outras lojas não ganham destaque", () => {
+  const a = normalizarProduto({ id: "amazon-B1", asin: "B1", loja: "amazon", nome: "Echo Dot", preco: 300, categoria: "tec", sub: "Alexa", destaque: true, imagem: "https://m.media-amazon.com/x.jpg", link: "https://www.amazon.com.br/dp/B1?tag=t" });
+  assert.deepEqual([a.sub, a.asin, a.destaque], ["Alexa", "B1", true]);
+  const s = normalizarProduto({ id: "shein-1", loja: "shein", nome: "Vestido", preco: 90, categoria: "moda", destaque: true, imagem: "https://img/x.jpg", link: "https://br.shein.com/x" });
+  assert.equal(s.destaque, undefined);
 });

@@ -71,6 +71,7 @@ import { desenharHistorico } from './historico-preco.js';
       <div class="price">${preco(x)}</div>${tagsHtml}${ship}${stock}${selo}<div class="vendido">Vendido por ${esc(label(x))}</div></div></button>`;
   }
   function rail(id, list) {
+    list = list.filter((x) => !x.soBusca); // Amazon de comissão baixa: só na busca
     const el = $(id);
     el.closest('section').hidden = !list.length;
     el.innerHTML = list.slice(0, 16).map(card).join('');
@@ -146,7 +147,7 @@ import { desenharHistorico } from './historico-preco.js';
   function renderResults(mais = false) {
     view.mostrar = mais === true ? (view.mostrar ?? POR_PAGINA) + POR_PAGINA : POR_PAGINA;
     // Sem filtro por loja: a CIT Shopping é uma loja só; quem vende aparece em cada produto.
-    const base = view.list.filter((x) => !view.cidade || (x.loja === 'local' && x.cidade === view.cidade));
+    const base = view.list.filter((x) => (view.q || !x.soBusca) && (!view.cidade || (x.loja === 'local' && x.cidade === view.cidade)));
     const cidades = [...new Set(view.list.filter((x) => x.loja === 'local').map((x) => x.cidade))].sort();
     $('rcidadeL').hidden = cidades.length < 2;
     $('rcidade').innerHTML = ['<option value="">Todas</option>', ...cidades.map((c) => `<option ${view.cidade === c ? 'selected' : ''}>${esc(c)}</option>`)].join('');
