@@ -250,6 +250,17 @@ import { desenharHistorico } from './historico-preco.js';
   }
 
   // Janela do produto
+  // Shopee: confere o preço na hora (a API devolve o atual) e troca no modal e na lista, se mudou.
+  async function conferirPreco(x) {
+    let v;
+    try { v = await fetch(`/api/preco-agora/${encodeURIComponent(x.id)}`).then((r) => r.json()); } catch { return; }
+    if (!(v?.preco > 0) || (v.preco === x.preco && (v.precoAntigo ?? null) === (x.precoAntigo ?? null))) return;
+    Object.assign(x, { preco: v.preco, precoAntigo: v.precoAntigo ?? null, atualizadoEm: v.em });
+    if ($('modal').hidden || $('mt').textContent !== x.nome) return;
+    $('mold').textContent = off(x) ? `de ${brl.format(x.precoAntigo)}` : '';
+    $('mprice').innerHTML = preco(x);
+    $('msave').textContent = off(x) ? `Economia de ${brl.format(x.precoAntigo - x.preco)} (${off(x)}% off)` : x.menor30 ? 'Menor preço em 30 dias' : '';
+  }
   function openProduct(x) {
     const local = x.loja === 'local';
     const fotos = x.fotos?.length ? x.fotos : [null];
@@ -274,6 +285,7 @@ import { desenharHistorico } from './historico-preco.js';
     $('modal').querySelector('.sheet').scrollTop = 0;
     desenharHistorico($('mhist'), x.loja === 'local' ? null : x.id);
     $('msave').textContent = off(x) ? `Economia de ${brl.format(x.precoAntigo - x.preco)} (${off(x)}% off)` : x.menor30 ? 'Menor preço em 30 dias' : '';
+    if (x.loja === 'shopee') conferirPreco(x);
     $('mdesc').textContent = x.descricao ?? '';
     // Link próprio do produto: o servidor monta a prévia (título, preço e foto) que o WhatsApp mostra.
     const link = `${location.origin}/p/${encodeURIComponent(x.id)}`;

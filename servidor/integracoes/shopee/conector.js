@@ -489,6 +489,16 @@ export class ConectorShopee extends ConectorMarketplace {
     return deShopee(item, categoria);
   }
 
+  /** Preço atual de um produto (productOfferV2 pelo itemId): { preco, precoAntigo } ou null se a API não achar. */
+  async precoAtual(itemId) {
+    if (!/^\d{5,20}$/.test(String(itemId))) return null;
+    const data = await this.chamarGraphQL(`{ productOfferV2(itemId: ${itemId}, page: 1, limit: 1) {
+      nodes { itemId productName priceMin priceMax priceDiscountRate offerLink productLink } } }`);
+    const n = data?.productOfferV2?.nodes?.[0];
+    const p = n && String(n.itemId) === String(itemId) ? deShopee(n, null, n.offerLink) : null;
+    return p ? { preco: p.preco, precoAntigo: p.precoAntigo } : null;
+  }
+
   /**
    * Campanhas e coleções da própria Shopee (shopeeOfferV2): nome, imagem, link, comissão e período.
    * Os campos vêm de documentação não oficial: se a API recusar algum, tenta de novo só com o essencial.

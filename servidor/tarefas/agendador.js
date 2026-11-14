@@ -134,7 +134,7 @@ export class AgendadorOfertas {
     // Roda uma rodada inicial de subida
     this.executarRodada().catch(() => {});
 
-    // Agenda timers independentes (Amazon a cada 50min, Shopee e ML a cada 4h)
+    // Agenda timers independentes (Amazon a cada 50min, Shopee a cada 1h, ML a cada 4h)
     const timerAmazon = setInterval(() => {
       this.executarRodada({ marketplace: "amazon" }).catch(() => {});
     }, 50 * 60 * 1000);
@@ -143,7 +143,7 @@ export class AgendadorOfertas {
 
     const timerShopee = setInterval(() => {
       this.executarRodada({ marketplace: "shopee" }).catch(() => {});
-    }, 4 * 60 * 60 * 1000);
+    }, 60 * 60 * 1000); // de hora em hora: preço da Shopee muda muito
     timerShopee.unref?.();
     this.timers.set("shopee", timerShopee);
 

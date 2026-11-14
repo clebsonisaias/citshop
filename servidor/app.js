@@ -285,6 +285,30 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   // A Creators API só permite guardar oferta por 1 hora: passado isso, a Amazon da API some da vitrine
   // (a lista manual continua) em vez de mostrar preço vencido. Quando o ASIN se repete, vale o dado da API.
   const IDADE_MAXIMA_AMAZON = 60 * 60_000;
+  // Preço na hora (Shopee): quem abre o produto dispara a consulta na API; o preço vale 30 min para novas consultas
+  // e passa a valer na vitrine por até 6 h (ou até a próxima coleta trazer um mais novo).
+  const precosAoVivo = new Map();
+  const comPrazo = (promessa, ms) => Promise.race([promessa, new Promise((ok) => setTimeout(() => ok(null), ms).unref?.())]);
+  async function precoNaHora(id) {
+    const m = /^shopee-(\d{5,20})$/.exec(id);
+    if (!m) return null;
+    const c = precosAoVivo.get(id);
+    if (c && agora() - c.em < 30 * 60_000) return c;
+    const shopee = conectorShopee();
+    if (!shopee?.precoAtual || !shopee.estaConfigurado?.()) return c ?? null;
+    try {
+      const p = await shopee.precoAtual(m[1]);
+      if (!p) return c ?? null;
+      if (precosAoVivo.size >= 2000) precosAoVivo.delete(precosAoVivo.keys().next().value); // ponytail: sai o mais antigo, sem LRU
+      precosAoVivo.set(id, { ...p, em: agora() });
+      return precosAoVivo.get(id);
+    } catch { return c ?? null; }
+  }
+  const comPrecoAoVivo = (p) => {
+    const v = precosAoVivo.get(p.id);
+    const coleta = Date.parse(p.atualizadoEm ?? 0) || 0;
+    return v && agora() - v.em < 6 * 3600_000 && v.em > coleta ? { ...p, preco: v.preco, precoAntigo: v.precoAntigo, atualizadoEm: new Date(v.em).toISOString() } : p;
+  };
   function afiliados() {
     const af = ler("afiliados.json", { produtos: [] });
     const amazonDesativada = process.env.AMAZON_DESATIVADA === "true" || process.env.DESATIVAR_AMAZON === "true";
@@ -298,7 +322,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     // Links gravados com a tag antiga passam a usar a do Associado atual.
     const tag = env.AMAZON_TAG || TAG_AMAZON_PADRAO;
     const comTag = (p) => (p.loja === "amazon" ? { ...p, link: comTagAmazon(p.link, tag) } : p.loja === "mercado-livre" ? { ...p, link: comAtribuicaoML(p.link, env.MERCADO_LIVRE_AFFILIATE_TAG, env.MERCADO_LIVRE_MATT_TOOL || MATT_TOOL_PADRAO) } : p);
-    return { atualizadoEm: af.atualizadoEm, produtos: ordenarAmazonPorComissao([...frescos, ...af.produtos.filter((p) => !ids.has(p.id))].map(comTag)) };
+    return { atualizadoEm: af.atualizadoEm, produtos: ordenarAmazonPorComissao([...frescos, ...af.produtos.filter((p) => !ids.has(p.id))].map(comTag).map(comPrecoAoVivo)) };
   }
   // Loja que paga por venda (comissão) vende só pelo Mercado Pago, para a comissão da CIT cair em toda venda:
   // sem pedido pelo WhatsApp e sem o número dela no site.
@@ -2443,12 +2467,19 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       .replace("<!--structured-->", `<script type="application/ld+json">${JSON.stringify(jsonLd).replace(/[<>&\u2028\u2029]/g, (c) => ({ "<": "\\u003c", ">": "\\u003e", "&": "\\u0026", "\u2028": "\\u2028", "\u2029": "\\u2029" })[c])}</script>`);
     return html.replace(/\{\{([A-Z_]+)\}\}/g, (_match, chave) => substituir[chave] ?? "");
   }
-  app.get("/p/:id", (req, res) => {
+  app.get("/p/:id", a(async (req, res) => {
+    if (!produtoPorId(req.params.id)) return res.status(404).sendFile(join(publico, "404.html"));
+    await comPrazo(precoNaHora(req.params.id), 2500); // Shopee: confere o preço antes de mostrar (sem travar a página)
     const x = produtoPorId(req.params.id);
-    if (!x) return res.status(404).sendFile(join(publico, "404.html"));
     semCache(res);
     res.type("html").send(metaProduto(x));
-  });
+  }));
+  // Preço na hora para o modal da home (o mesmo da página do produto).
+  app.get("/api/preco-agora/:id", a(async (req, res) => {
+    const id = String(req.params.id);
+    const v = produtoPorId(id) ? await comPrazo(precoNaHora(id), 4000) : null;
+    res.set("Cache-Control", "no-cache").json(v ? { preco: v.preco, precoAntigo: v.precoAntigo, em: new Date(v.em).toISOString() } : {});
+  }));
   // A prévia do WhatsApp não lê WebP com segurança: a foto vira JPEG 1200x630 uma vez só, gravado ao lado
   // da original (og-<uuid>.jpg). apagarFoto remove os dois.
   app.get("/og/:arquivo", a(async (req, res) => {

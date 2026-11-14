@@ -138,3 +138,19 @@ Como funciona depois de conectado:
 - **Volume baixo:** 3 termos por rodada, em rodízio, e no máximo 150 consultas por dia (`limiteDiario`). Apps que consultam demais são bloqueados pelo Mercado Livre.
 - **Falha:** se todos os termos falharem, a rodada lança erro e o motor mantém os produtos anteriores do Mercado Livre.
 - **Etiqueta:** os links saem com `matt_word` (`MERCADO_LIVRE_AFFILIATE_TAG`) e `matt_tool`.
+
+## Preço sempre atualizado (Shopee)
+
+- **Coleta:** a da Shopee roda de hora em hora (`agendador.js`).
+- **Preço na hora:** ao abrir um produto da Shopee (página `/p/<id>` ou modal da home), o site consulta o preço atual na API (`productOfferV2(itemId)`).
+  - O resultado vale 30 min para novas consultas e entra na vitrine por até 6 h, ou até a próxima coleta trazer um preço mais novo.
+  - Se a API não responder em 2,5 s, a página mostra o último preço conhecido.
+  - Só consulta produtos que estão na vitrine.
+- **Amazon:** continua no rodízio da coleta das páginas (o catálogo todo gira em cerca de 16 h).
+
+## Temporada: foco em Shopee e SHEIN
+
+- **Faixas:** nas faixas de temporada, Shopee e SHEIN vêm primeiro (`FOCO_TEMPORADA`).
+- **Looks:** toda roupa da SHEIN entra em "Looks de fim de ano" (`porLoja`).
+- **Vagas:** a cota por temporada é de 60 vagas por loja.
+- **Post diário:** o horário de oferta escolhe produto de temporada da Shopee ou da SHEIN, alternando a loja que postou há mais tempo.
