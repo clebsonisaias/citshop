@@ -114,4 +114,10 @@ test("lojas da cidade: todo dia 1 produto de cada loja visível, cada loja no se
   agora = sp("2026-11-18T12:31");
   assert.deepEqual(await postarAgendados(), { postados: 2 }, "duas lojas: uma às 10h30, outra às 12h30");
   assert.deepEqual(zap.slice(3).map((m) => m.text.split("\n")[0]).sort(), ["📍 Achado local: Bia Modas (Macaíba)", "📍 Achado local: Mimos da Delly (Macaíba)"]);
+
+  // Horário perdido (servidor fora do ar de manhã): a loja ainda sai no mesmo dia, não no seguinte.
+  agora = sp("2026-11-19T15:00");
+  assert.deepEqual(await postarAgendados(), { postados: 2 }, "10h30 e 12h30 saem às 15h, atrasados mas no dia");
+  agora = sp("2026-11-20T00:10");
+  assert.deepEqual(await postarAgendados(), { postados: 0 }, "virou o dia: o plano é novo e ainda não é hora");
 });

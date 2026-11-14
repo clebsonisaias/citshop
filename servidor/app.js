@@ -821,9 +821,10 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   async function postarAgendados() {
     const agenda = lerAgenda(), t = agora(), reg = (banco.d.agendaPosts ??= {}), erros = [];
     let postados = 0;
-    for (const { quando, produtoId, titulo, produto } of [...(agenda.posts ?? []), ...locaisDoDia(t)]) {
+    for (const { quando, produtoId, titulo, produto, noDia } of [...(agenda.posts ?? []), ...locaisDoDia(t).map((p) => ({ ...p, noDia: true }))]) {
       const h = horaDe(quando);
-      if (!(t >= h && t - h <= 3 * 3600_000)) continue;
+      // Loja da cidade que perdeu o horário (servidor fora do ar) ainda sai no mesmo dia; o resto, até 3 h depois.
+      if (!(t >= h && (noDia ? brasilia(t).data === quando.slice(0, 10) : t - h <= 3 * 3600_000))) continue;
       const feito = (reg[`${quando}|${produtoId}`] ??= {});
       const pendentes = [...(conectorInstagram.estaConfigurado() ? ["instagram"] : []), ...(agenda.whatsapp ?? [])].filter((d) => typeof (feito[d] ?? 0) === "number");
       if (!pendentes.length) continue;
