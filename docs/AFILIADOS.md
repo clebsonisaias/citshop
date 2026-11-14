@@ -93,3 +93,12 @@ As duas primeiras correções mudam o que é publicado. Por isso ficam para apro
 - O coletor pede as páginas gerais da Shopee ordenadas por comissão (`productOfferV2` com `sortType: 5`). Se a API recusar, busca sem ordenar.
 - No ranking, as ofertas da Shopee ficam em ordem de comissão em R$ por venda (`comissaoEstimada`). As de centavos continuam na vitrine, no fim.
 - No post diário do Instagram, o horário de oferta de afiliado escolhe a de maior comissão. A comissão não aparece na vitrine pública.
+
+## Temporadas (faixas de data na home)
+
+`publico/temporadas.js` define cada data: período, palavras do nome que colocam o produto na faixa e buscas extras na Shopee.
+- Decoração de Natal: 1/11 a 24/12.
+- Mesa posta, Looks de fim de ano (branco, vermelho, amarelo) e Réveillon: 1/11 a 1/1.
+- Volta às aulas: 1/1 a 28/2.
+
+Durante a data, a faixa e o banner aparecem no topo da home, e o ranking dá à temporada uma cota própria de 40 produtos.

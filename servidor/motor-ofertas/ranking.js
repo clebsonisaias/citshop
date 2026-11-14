@@ -1,3 +1,5 @@
+import { temporadaDo, temporadasAtivas } from "../../publico/temporadas.js";
+
 /**
  * Motor de ranking de ofertas: calcula pontuação de relevância comercial e qualidade.
  * Classifica e limita produtos por categoria para garantir uma vitrine atrativa.
@@ -41,7 +43,11 @@ export function calcularScore(produto) {
 /**
  * Ordena e aplica limites de ofertas por categoria e total geral com representatividade justa.
  */
-export function ranquearOfertas(produtos = [], { limitePorCategoria = 25, limiteTotal = 400 } = {}) {
+export function ranquearOfertas(produtos = [], { limitePorCategoria = 25, limiteTotal = 400, agora = Date.now() } = {}) {
+  // Natal, Ano Novo etc. em vigor: cota própria (não disputam as 25 vagas de "casa" ou "moda").
+  const ativas = temporadasAtivas(agora);
+  const grupo = (p) => temporadaDo(p, ativas) ?? (p.categoria || p.dept || "casa");
+  const cota = (g) => (ativas.some((t) => t.id === g) ? Math.max(40, limitePorCategoria) : limitePorCategoria);
   const comScore = produtos.map((p) => ({
     ...p,
     score: calcularScore(p),
@@ -66,9 +72,9 @@ export function ranquearOfertas(produtos = [], { limitePorCategoria = 25, limite
     for (const p of mp === "shopee" ? porComissao : comScore) {
       if ((p.marketplace || p.loja) !== mp) continue;
       if (selecionadosIds.has(p.id)) continue;
-      const cat = p.categoria || p.dept || "casa";
+      const cat = grupo(p);
       const qtdCat = contagemPorCat.get(cat) || 0;
-      if (qtdCat < limitePorCategoria && countMp < maxMp) {
+      if (qtdCat < cota(cat) && countMp < maxMp) {
         selecionados.push(p);
         selecionadosIds.add(p.id);
         contagemPorCat.set(cat, qtdCat + 1);
@@ -80,9 +86,9 @@ export function ranquearOfertas(produtos = [], { limitePorCategoria = 25, limite
   // Preenche as vagas restantes até limiteTotal respeitando limitePorCategoria
   for (const p of comScore) {
     if (selecionadosIds.has(p.id)) continue;
-    const cat = p.categoria || p.dept || "casa";
+    const cat = grupo(p);
     const qtdCat = contagemPorCat.get(cat) || 0;
-    if (qtdCat < limitePorCategoria) {
+    if (qtdCat < cota(cat)) {
       selecionados.push(p);
       selecionadosIds.add(p.id);
       contagemPorCat.set(cat, qtdCat + 1);

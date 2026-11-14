@@ -4,6 +4,7 @@
  */
 import { createHash } from "node:crypto";
 import { ConectorMarketplace, ErroConector, ProvedorLinkAfiliado, executarComRetry } from "../base.js";
+import { temporadasAtivas } from "../../../publico/temporadas.js";
 
 const SHOPEE_API = "https://open-api.affiliate.shopee.com.br/graphql";
 
@@ -123,10 +124,7 @@ export const BUSCAS_PADRAO_SHOPEE = [
   { termo: "ukulele", categoria: "musica" },
   { termo: "palheta", categoria: "musica" },
 
-  // 26. Especial de Natal (Casa & Decoração Natalina)
-  { termo: "arvore natal", categoria: "casa" },
-  { termo: "pisca pisca natal", categoria: "casa" },
-  { termo: "enfeite natal", categoria: "casa" },
+  // 26. Natal e Ano Novo: buscas da temporada ativa (publico/temporadas.js), somadas em buscarOfertas
   { termo: "cascata led", categoria: "casa" },
 
   // 27. Energia Solar, Inversores, Placas & Baterias Portáteis
@@ -446,7 +444,10 @@ export class ConectorShopee extends ConectorMarketplace {
     }
 
     // 2. Buscas específicas por categoria/termo para garantir variedade
-    const buscas = termos.length ? termos.map((t, i) => ({ termo: t, categoria: categorias[i] || "casa" })) : BUSCAS_PADRAO_SHOPEE;
+    const buscas = [
+      ...(termos.length ? termos.map((t, i) => ({ termo: t, categoria: categorias[i] || "casa" })) : BUSCAS_PADRAO_SHOPEE),
+      ...temporadasAtivas().flatMap((t) => t.buscas.map((termo) => ({ termo, categoria: t.categoria ?? "casa" }))),
+    ];
     for (const { termo, categoria } of buscas) {
       try {
         await new Promise((r) => setTimeout(r, 200));

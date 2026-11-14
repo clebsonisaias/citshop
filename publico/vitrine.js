@@ -1,4 +1,5 @@
 import { filtrarCatalogo } from './catalogo.js';
+import { TEMPORADAS, temporadasAtivas } from './temporadas.js';
 
 // Vitrine: lê /api/vitrine (lojas locais já vêm na frente dos afiliados) e monta a loja.
 (() => {
@@ -31,6 +32,8 @@ import { filtrarCatalogo } from './catalogo.js';
     livros: { t: 'Livros e eBooks', f: () => P.filter((x) => x.dept === 'livros').sort((a, b) => b.fixo - a.fixo) },
     mercado: { t: 'Mercado, saúde e bebê', f: () => P.filter((x) => ['mercado', 'saude', 'bebe'].includes(x.dept)) },
     camping: { t: 'Camping e sobrevivência', f: () => P.filter((x) => x.dept === 'camping') },
+    // Natal, looks de fim de ano e réveillon: só enquanto a data vale (publico/temporadas.js); fora dela a faixa some.
+    ...Object.fromEntries(TEMPORADAS.map((s) => [s.id, { t: s.titulo, f: () => (temporadasAtivas().some((a) => a.id === s.id) ? P.filter((x) => s.nome.test(x.nome)) : []) }])),
   };
 
   // O desconto aparece ao lado do preço ("33% OFF"), como no Mercado Livre, e não em cima da foto.
@@ -83,6 +86,14 @@ import { filtrarCatalogo } from './catalogo.js';
     { k: 'Compre perto', h: 'As lojas da sua cidade estão aqui', p: 'Escolha, chame a loja no WhatsApp e receba rápido.', c: 'Ver lojas →', a: 'shop', show: 'local' },
     { k: 'Venda na CIT Shopping', h: 'Sua loja na frente das gigantes', p: '30 dias grátis pra testar. Depois, R$ 99,90 por mês.', c: 'Cadastrar minha loja →', a: 'shop', href: '/painel' },
   ];
+  // Banner da temporada em vigor vai na frente do carrossel.
+  const BANNER_TEMPORADA = {
+    natal: { k: 'Natal', h: 'Decoração de Natal', p: 'Árvore, pisca-pisca e enfeites até 24 de dezembro.', c: 'Ver decoração →', a: 'shop' },
+    aulas: { k: 'Volta às aulas', h: 'Material escolar para 2027', p: 'Mochilas, estojos, cadernos e kits escolares.', c: 'Ver material escolar →', a: 'bag' },
+    mesa: { k: 'Ceia', h: 'Mesa posta de Natal e Ano Novo', p: 'Taças, sousplat, guardanapos e louças para a ceia.', c: 'Montar a mesa →', a: 'bag' },
+    looks: { k: 'Fim de ano', h: 'Looks para formatura, Natal e réveillon', p: 'Branco, vermelho e amarelo para as festas.', c: 'Ver looks →', a: 'bag' },
+  };
+  SLIDES.unshift(...temporadasAtivas().filter((s) => BANNER_TEMPORADA[s.id]).map((s) => ({ ...BANNER_TEMPORADA[s.id], show: s.id })));
   let cur = 0, timer;
   function renderSlides() {
     $('slides').innerHTML = SLIDES.map((s, i) => `<div class="slide" ${i ? 'hidden' : ''} aria-label="${i + 1} de ${SLIDES.length}">
