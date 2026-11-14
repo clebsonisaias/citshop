@@ -12,6 +12,19 @@ import { ConectorMarketplace, ErroConector, ProvedorLinkAfiliado, executarComRet
 const ML_API_BASE = "https://api.mercadolibre.com";
 const SITE_ID = "MLB";
 
+// matt_tool do Gerador de links do painel de afiliados (o link oficial traz matt_word=<etiqueta>&matt_tool=<este número>).
+export const MATT_TOOL_PADRAO = "70471590";
+/** Põe a atribuição oficial (matt_tool + matt_word) num link do Mercado Livre; outros links passam iguais. */
+export function comAtribuicaoML(link, etiqueta = process.env.MERCADO_LIVRE_AFFILIATE_TAG, tool = process.env.MERCADO_LIVRE_MATT_TOOL || MATT_TOOL_PADRAO) {
+  try {
+    const u = new URL(link);
+    if (!etiqueta || !/(^|\.)mercadoli(vre|bre)\.com(\.br)?$/.test(u.hostname) || u.pathname.startsWith("/sec/")) return link;
+    u.searchParams.set("matt_tool", tool);
+    u.searchParams.set("matt_word", etiqueta);
+    return u.toString();
+  } catch { return link; }
+}
+
 export const BUSCAS_PADRAO_ML = [
   { termo: "furadeira parafusadeira", categoria: "ferr" },
   { termo: "creatina monohidratada", categoria: "esporte" },
@@ -81,9 +94,7 @@ export class ProvedorLinkMercadoLivre extends ProvedorLinkAfiliado {
     // Se houver tag de afiliado configurada, anexa os parâmetros oficiais autorizados
     if (this.tagAfiliado) {
       try {
-        const u = new URL(urlOriginal);
-        u.searchParams.set("matt_tool", "citshop");
-        u.searchParams.set("matt_word", this.tagAfiliado);
+        const u = new URL(comAtribuicaoML(urlOriginal, this.tagAfiliado));
         if (subId) u.searchParams.set("sub_id", subId);
         return u.toString();
       } catch {

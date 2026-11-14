@@ -106,3 +106,15 @@ Durante a data, a faixa e o banner aparecem no topo da home, e o ranking dá à 
 ## Histórico de preço na página do produto
 
 `GET /api/preco/:id` devolve até 30 dias de preço (`[dia, preço]`), tirados do `historico.json` da coleta. O `publico/historico-preco.js` desenha o gráfico em SVG no modal da home e na página `/p/<id>`. Com menos de 2 dias de histórico, o gráfico não aparece. Produto de loja local não tem histórico.
+
+## Busca ao vivo
+
+`GET /api/busca-ao-vivo?q=` completa a busca do site com o que o catálogo não tem:
+- **Shopee:** busca o termo na hora pela API oficial (`buscarPorTermo`) e mostra até 12 produtos com o link de afiliado (`offerLink`).
+- **Amazon:** botão para a busca da Amazon com a tag (`/s?k=<termo>&tag=`). Preço da Amazon só pode vir da API oficial, então não é mostrado.
+
+Nada é gravado: cada termo fica 1 h na memória (até 500 termos), com limite de 30 consultas por IP a cada 10 min.
+
+## Mercado Livre: atribuição
+
+O link oficial do Gerador de links traz `matt_word=<etiqueta>&matt_tool=70471590`. `comAtribuicaoML` põe esses dois parâmetros nos links gerados e corrige, na hora de servir a vitrine, os links já gravados com `matt_tool=citshop`. Para trocar o número, use a variável `MERCADO_LIVRE_MATT_TOOL`.

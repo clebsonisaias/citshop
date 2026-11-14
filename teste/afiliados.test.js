@@ -116,3 +116,12 @@ test("Amazon: categorias de comissão alta (13%) vêm antes; as outras lojas fic
   assert.deepEqual(ordenarAmazonPorComissao(lista).map((p) => p.id), ["perfume", "s1", "creme", "racao", "tv"]);
   assert.deepEqual([comissaoAmazonPct({ categoria: "saude" }), comissaoAmazonPct({ categoria: "calc" })], [13, 7]);
 });
+
+test("Mercado Livre: link sai com o matt_tool oficial do painel (70471590) e a etiqueta; link gravado com matt_tool=citshop é corrigido", async () => {
+  const { comAtribuicaoML, MATT_TOOL_PADRAO } = await import("../servidor/integracoes/mercado-livre/conector.js");
+  assert.equal(MATT_TOOL_PADRAO, "70471590");
+  const u = new URL(comAtribuicaoML("https://produto.mercadolivre.com.br/MLB-1-kit-_JM?matt_tool=citshop&matt_word=clebsonisaias138", "clebsonisaias138"));
+  assert.deepEqual([u.searchParams.get("matt_tool"), u.searchParams.get("matt_word")], ["70471590", "clebsonisaias138"]);
+  assert.equal(comAtribuicaoML("https://s.shopee.com.br/x", "clebsonisaias138"), "https://s.shopee.com.br/x");
+  assert.equal(comAtribuicaoML("https://www.mercadolivre.com.br/p/MLB1", undefined), "https://www.mercadolivre.com.br/p/MLB1", "sem etiqueta não inventa atribuição");
+});

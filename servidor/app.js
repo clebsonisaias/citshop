@@ -22,7 +22,9 @@ import { MARKETPLACE, criarClienteAmazon } from "./amazon.js";
 import { TAG_AMAZON_PADRAO, atualizarAfiliados, comTagAmazon, comissaoAmazonPct, ordenarAmazonPorComissao } from "./afiliados.js";
 import { ganhoEsperado } from "./motor-ofertas/ranking.js";
 import { instalarFood } from "./food.js";
-import { Buscas } from "./buscas.js";
+import { Buscas, normalizarBusca } from "./buscas.js";
+import { deShopee } from "./integracoes/shopee/conector.js";
+import { MATT_TOOL_PADRAO, comAtribuicaoML } from "./integracoes/mercado-livre/conector.js";
 import { HORARIOS_PADRAO, brasilia, escolherPelaBusca, escolherProduto, horarioDaVez, lerHorarios, pareceTapado, prepararToken, semSegredos } from "./instagram-diario.js";
 import { CanaisAfiliado, canalValido, filtrarCampanhas, lancarComissoesShopee, postValido, vendasPorCanal, vendasPorPost } from "./afiliados-canal.js";
 import { MonitoramentoMotor } from "./tarefas/monitoramento.js";
@@ -294,7 +296,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const ids = new Set(frescos.map((p) => p.id));
     // Links gravados com a tag antiga passam a usar a do Associado atual.
     const tag = env.AMAZON_TAG || TAG_AMAZON_PADRAO;
-    const comTag = (p) => (p.loja === "amazon" ? { ...p, link: comTagAmazon(p.link, tag) } : p);
+    const comTag = (p) => (p.loja === "amazon" ? { ...p, link: comTagAmazon(p.link, tag) } : p.loja === "mercado-livre" ? { ...p, link: comAtribuicaoML(p.link, env.MERCADO_LIVRE_AFFILIATE_TAG, env.MERCADO_LIVRE_MATT_TOOL || MATT_TOOL_PADRAO) } : p);
     return { atualizadoEm: af.atualizadoEm, produtos: ordenarAmazonPorComissao([...frescos, ...af.produtos.filter((p) => !ids.has(p.id))].map(comTag)) };
   }
   // Loja que paga por venda (comissão) vende só pelo Mercado Pago, para a comissão da CIT cair em toda venda:
@@ -1674,6 +1676,29 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   // ---------- comissão de afiliado por canal (servidor/afiliados-canal.js) ----------
   const canais = new CanaisAfiliado({ dadosDir, agora, log });
   const conectorShopee = () => (canais.shopee ??= agendadorOfertas.coletor?.conectores?.shopee ?? null);
+  // Busca ao vivo para o que o cliente procurou e o catálogo não tem (ex.: "geladeira"). Shopee pela API oficial;
+  // Amazon só pelo link de busca com a nossa tag (comissão de qualquer compra nas 24 h seguintes; preço da Amazon
+  // só pode vir da API oficial). Nada é gravado: o resultado fica 1 h na memória para não repetir a consulta.
+  const cacheAoVivo = new Map();
+  const limiteAoVivo = new S.Limitador({ maximo: 30, janelaMs: 10 * 60_000 });
+  app.get("/api/busca-ao-vivo", a(async (req, res) => {
+    const termo = normalizarBusca(req.query.q);
+    if (!termo) return res.json({ produtos: [], amazon: null });
+    const amazonDesligada = env.AMAZON_DESATIVADA === "true" || env.DESATIVAR_AMAZON === "true";
+    const amazon = amazonDesligada ? null : `https://www.amazon.com.br/s?${new URLSearchParams({ k: termo, tag: env.AMAZON_TAG || TAG_AMAZON_PADRAO })}`;
+    let c = cacheAoVivo.get(termo);
+    if (!c || agora() - c.em > 3600_000) {
+      const shopee = conectorShopee();
+      if (!shopee?.estaConfigurado?.() || !limiteAoVivo.registrar(`v|${S.ipDe(req)}`).permitido) return res.json({ produtos: c?.produtos ?? [], amazon });
+      const itens = await shopee.buscarPorTermo(termo, 12).catch(() => []);
+      const produtos = itens.filter((i) => i.offerLink).map((i) => deShopee(i, null, i.offerLink)).filter((p) => p?.imagem)
+        .map(({ id, nome, categoria, preco, precoAntigo, nota, vendidos, imagem, link }) => ({ id, nome, dept: DEPTS.includes(categoria) ? categoria : "casa", loja: "shopee", preco, precoAntigo, nota, vendidos, fotos: [imagem], link }));
+      c = { em: agora(), produtos };
+      if (cacheAoVivo.size >= 500) cacheAoVivo.delete(cacheAoVivo.keys().next().value); // ponytail: o mais antigo sai primeiro, sem LRU
+      cacheAoVivo.set(termo, c);
+    }
+    res.set("Cache-Control", "public, max-age=600").json({ produtos: c.produtos, amazon });
+  }));
   // Todo "Comprar" de afiliado passa aqui: conta o clique por canal e manda para o link com a origem marcada.
   app.get("/ir/:id", a(async (req, res) => {
     const id = req.params.id;

@@ -127,6 +127,7 @@ import { desenharHistorico } from './historico-preco.js';
   function showResults(title, list, head = '', { naLoja = false, rodape = '', ...filtros } = {}) {
     document.body.classList.toggle('na-loja', naLoja);
     $('rfoot').innerHTML = rodape;
+    $('raovivo').hidden = true; $('raovivo').innerHTML = '';
     Object.assign(view, { list, ordem: 'relevancia', cidade: '', sub: '', origem: '', marca: '', precoMin: '', precoMax: '', q: '', dept: '' }, filtros);
     $('rsort').value = view.ordem;
     $('rcidade').value = '';
@@ -486,7 +487,23 @@ import { desenharHistorico } from './historico-preco.js';
     // Só o texto da busca (sem dado de quem buscou): o "mais buscado da semana" vira post no Instagram.
     if (q.length >= 3) fetch('/api/busca', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ q }), keepalive: true }).catch(() => {});
     showResults(q ? `Resultados para "${q}"` : dep ? D[dep].n : 'Todos os produtos', P, '', { q, dept: dep });
+    if (q.length >= 3) buscarAoVivo(q);
   });
+
+  // Busca ao vivo: o que o catálogo não tem vem da Shopee na hora (API oficial) e da busca da Amazon com a nossa tag.
+  // Nada é gravado na vitrine; os cards levam direto ao link de afiliado.
+  async function buscarAoVivo(q) {
+    let d;
+    try { d = await fetch(`/api/busca-ao-vivo?q=${encodeURIComponent(q)}`).then((r) => r.json()); } catch { return; }
+    if (view.q !== q || $('resultsview').hidden) return; // a pessoa já buscou outra coisa
+    const cards = (d.produtos ?? []).map((x) => `<a class="card" href="${esc(x.link)}" target="_blank" rel="sponsored nofollow noopener">${shot(x)}</div>
+      <div class="body"><h3>${esc(x.nome)}</h3>${x.nota ? `<div class="rate"><b>★ ${x.nota.toFixed(1).replace('.', ',')}</b>${x.vendidos ? ` · ${num.format(x.vendidos)} vendidos` : ''}</div>` : ''}${off(x) ? `<div class="old">${brl.format(x.precoAntigo)}</div>` : ''}
+      <div class="price">${preco(x)}</div><div class="vendido">Vendido por Shopee</div></div></a>`).join('');
+    const amazon = d.amazon ? `<p class="aovivo-amazon"><a class="btn sec" href="${esc(d.amazon)}" target="_blank" rel="sponsored nofollow noopener">Ver "${esc(q)}" na Amazon ↗</a></p>` : '';
+    if (!cards && !amazon) return;
+    $('raovivo').innerHTML = `<h2>Mais opções para "${esc(q)}"</h2>${cards ? `<p class="aovivo-ajuda">Direto da Shopee, agora. O preço é confirmado lá.</p><div class="results-grid">${cards}</div>` : ''}${amazon}`;
+    $('raovivo').hidden = false;
+  }
 
   fetch('/api/vitrine')
     .then((r) => r.json())
