@@ -752,17 +752,16 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const slot = horarioDaVez(horarios, reg.feitos, agora());
     if (!slot) return { postado: false, motivo: "fora do horário" };
     const indice = Object.keys(reg.feitos).length;
-    // Produto local com o tipo da loja no texto (ex.: "Laços e Acessórios Infantis"), para a busca achar.
-    const categoriaLoja = new Map(banco.lojas.map((l) => [l.slug, l.categoria ?? ""]));
     // Ganho esperado (comissão em R$, e na Shopee vezes a prova de venda) só aqui dentro, para escolher o post: não vai para a vitrine pública.
     const comissao = new Map(afiliados().produtos.map((p) => [p.id, p.loja === "amazon" ? (p.preco * comissaoAmazonPct(p)) / 100 : ganhoEsperado(p)]));
     const ativas = temporadasAtivas(agora()); // na temporada, fim de ano da Shopee/SHEIN vai primeiro (foco)
     const programados = new Set((lerAgenda().posts ?? []).filter((p) => String(p.quando).startsWith(hoje)).map((p) => p.produtoId)); // já têm hora certa hoje
-    const produtos = vitrine().produtos.filter((p) => !programados.has(p.id)).map((p) => (p.loja === "local" ? { ...p, descricao: `${p.descricao ?? ""} ${categoriaLoja.get(p.lojaSlug) ?? ""}` }
-      : { ...p, comissao: comissao.get(p.id) ?? 0, foco: FOCO_TEMPORADA.includes(p.loja) && temporadaDo(p, ativas) != null }));
+    // Só oferta de afiliado: produto das lojas da cidade sai na agenda própria, 1 por loja por dia (locaisDoDia).
+    const produtos = vitrine().produtos.filter((p) => p.loja !== "local" && !programados.has(p.id))
+      .map((p) => ({ ...p, comissao: comissao.get(p.id) ?? 0, foco: FOCO_TEMPORADA.includes(p.loja) && temporadaDo(p, ativas) != null }));
     const pelaBusca = escolherPelaBusca(produtos, reg.historico, buscas.top(7, 15), agora());
     const x = pelaBusca?.produto ?? escolherProduto(produtos, reg.historico, indice, agora());
-    const motivo = pelaBusca ? `mais buscado da semana: "${pelaBusca.termo}"` : indice % 2 === 0 ? "rodízio: loja da cidade" : x?.foco ? "temporada: fim de ano Shopee/SHEIN" : "rodízio: oferta de maior comissão";
+    const motivo = pelaBusca ? `mais buscado da semana: "${pelaBusca.termo}"` : x?.foco ? "temporada: fim de ano Shopee/SHEIN" : "rodízio: oferta de maior comissão";
     const registrar = (extra) => { reg.historico.push({ em: iso(), slot, produtoId: x?.id ?? null, nome: x?.nome ?? null, lojaSlug: x?.lojaSlug ?? null, termo: pelaBusca?.termo ?? null, motivo, ...extra }); reg.historico = reg.historico.slice(-200); };
     if (!x) { reg.feitos[slot] = "sem produto"; registrar({ ok: false, erro: "nenhum produto com foto disponível" }); banco.salvar(); return { postado: false, motivo: "sem produto" }; }
     try {
@@ -790,6 +789,27 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   const arqAgenda = env.AGENDA_POSTS ?? join(RAIZ, "agenda-posts.json");
   let agendaLida = null; // o arquivo vem na imagem: muda só com deploy
   const lerAgenda = () => (agendaLida ??= (() => { try { return JSON.parse(readFileSync(arqAgenda, "utf8")); } catch { return { posts: [] }; } })());
+  // Lojas da cidade: todo dia 1 produto de cada loja visível (até 10), cada loja no seu horário; produtos em rodízio
+  // (não repete até passar por todos). O plano do dia é feito uma vez e fica no banco, para não postar duas vezes.
+  const HORARIOS_LOCAIS = ["10:30", "12:30", "14:30", "16:00", "17:30", "18:30", "20:30", "21:30", "09:30", "08:30"];
+  function locaisDoDia(t) {
+    const hoje = brasilia(t).data, reg = (banco.d.locaisDoDia ??= { dia: null, posts: [], porLoja: {} });
+    if (reg.dia === hoje) return reg.posts;
+    const lojas = banco.lojas.filter((l) => lojaVisivel(l, t))
+      .map((l) => ({ l, produtos: banco.produtos.filter((p) => p.lojaId === l.id && p.ativo && !p.bloqueado && p.fotos?.length && p.preco > 0 && temEstoque(p, l)) }))
+      .filter((c) => c.produtos.length)
+      .sort((a, b) => String(reg.porLoja[a.l.id]?.dia ?? "").localeCompare(String(reg.porLoja[b.l.id]?.dia ?? ""))) // mais de 10 lojas: rodízio
+      .slice(0, HORARIOS_LOCAIS.length);
+    reg.posts = lojas.map(({ l, produtos }, i) => {
+      const ja = new Set(reg.porLoja[l.id]?.produtos ?? []);
+      const p = produtos.find((x) => !ja.has(x.id)) ?? produtos[0];
+      reg.porLoja[l.id] = { dia: hoje, produtos: [...(ja.has(p.id) ? [] : ja), p.id].slice(-500) };
+      return { quando: `${hoje}T${HORARIOS_LOCAIS[i]}`, produtoId: `l-${p.id}`, titulo: `📍 Achado local: ${l.nome}${l.cidade ? ` (${l.cidade})` : ""}` };
+    });
+    reg.dia = hoje;
+    banco.salvar();
+    return reg.posts;
+  }
   const daAgenda = (id) => { const p = (lerAgenda().posts ?? []).find((x) => x.produto?.id === id)?.produto; return p ? comPrecoAoVivo(p) : null; };
   const horaDe = (quando) => Date.parse(`${quando}:00-03:00`);
   function textoWhatsapp(x, titulo) {
@@ -801,7 +821,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   async function postarAgendados() {
     const agenda = lerAgenda(), t = agora(), reg = (banco.d.agendaPosts ??= {}), erros = [];
     let postados = 0;
-    for (const { quando, produtoId, titulo, produto } of agenda.posts ?? []) {
+    for (const { quando, produtoId, titulo, produto } of [...(agenda.posts ?? []), ...locaisDoDia(t)]) {
       const h = horaDe(quando);
       if (!(t >= h && t - h <= 3 * 3600_000)) continue;
       const feito = (reg[`${quando}|${produtoId}`] ??= {});
@@ -814,6 +834,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
         try {
           if (!x) throw new Error(`${produtoId} saiu do catálogo`);
           if (semPreco) throw new Error(`${produtoId}: a Shopee não confirmou o preço de agora`);
+          if (x.esgotado) throw new Error(`${produtoId}: esgotado`);
           if (d === "instagram") await conectorInstagram.publicarFeed({ urlImagem: `${urlPublica}/api/instagram/card/${encodeURIComponent(x.id)}`, legenda: conectorInstagram.formatarLegenda(x, { urlPublica }), produtoId: x.id });
           else await conectorWaha.enviarTexto({ chatId: d, texto: textoWhatsapp(x, titulo ?? agenda.titulo) });
           feito[d] = "ok";

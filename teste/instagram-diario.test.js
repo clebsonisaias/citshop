@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
@@ -95,9 +95,10 @@ test("token: de Página passa direto; de usuário vira longo e de Página; invá
   assert.deepEqual(semSegredos({ instagram: { accessToken: "EAAabcd1234", accountId: "17" }, telegram: { botToken: "123:xyz9" } }), { instagram: { accessToken: "••••1234", accountId: "17" }, telegram: { botToken: "••••xyz9" } });
 });
 
-test("postagem diária ponta a ponta (Meta simulada): conecta, posta 1 vez no horário, registra o motivo; campo vazio não apaga token; admin não vê token", async (t) => {
+test("postagem diária ponta a ponta (Meta simulada): conecta, posta 1 vez no horário, registra o motivo; só oferta de afiliado (loja da cidade tem agenda própria); campo vazio não apaga token; admin não vê token", async (t) => {
   const dir = mkdtempSync(join(tmpdir(), "cit-insta-"));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
+  writeFileSync(join(dir, "afiliados.json"), JSON.stringify({ produtos: [{ id: "shopee-123456", loja: "shopee", nome: "Roupinha de menina vestido rosa", categoria: "moda", preco: 49.9, imagem: "https://down-br.img.susercontent.com/file/r.jpg", link: "https://s.shopee.com.br/r" }] }));
   const publicados = [];
   const fetchImpl = async (url, init) => {
     const u = String(url);
@@ -129,7 +130,7 @@ test("postagem diária ponta a ponta (Meta simulada): conecta, posta 1 vez no ho
   assert.deepEqual(buscas.top(7)[0], { termo: "roupinha de menina", n: 3, palavras: ["roupinha", "menina"] });
 
   const r = await postarInstagramDoDia();
-  assert.deepEqual([r.postado, r.produto], [true, "l-laco"]);
+  assert.deepEqual([r.postado, r.produto], [true, "shopee-123456"], "o laço da loja da cidade também combina com a busca, mas sai na agenda das lojas");
   assert.equal((await postarInstagramDoDia()).postado, false, "o mesmo horário não posta de novo");
   const st = await (await fetch(`${base}/api/admin/instagram/status`, { headers: { cookie: admin } })).json();
   assert.match(st.historicoDiario[0].motivo, /mais buscado da semana: "roupinha de menina"/);

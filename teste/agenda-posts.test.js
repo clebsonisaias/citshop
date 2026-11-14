@@ -81,3 +81,37 @@ test("agenda de posts: produto fora do catálogo vem da cópia na agenda (págin
   await assert.rejects(postarAgendados(), /shopee-888888: a Shopee não confirmou o preço de agora/);
   assert.equal(zap.length, 1);
 });
+
+test("lojas da cidade: todo dia 1 produto de cada loja visível, cada loja no seu horário, produtos em rodízio; esgotado e loja sem produto ficam de fora", async (t) => {
+  const dir = mkdtempSync(join(tmpdir(), "cit-locais-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  writeFileSync(join(dir, "afiliados.json"), JSON.stringify({ produtos: [] }));
+  writeFileSync(join(dir, "agenda.json"), JSON.stringify({ whatsapp: ["123@newsletter"], posts: [] }));
+  const zap = [];
+  const fetchImpl = async (url, init) => (String(url).includes("/api/sendText") ? (zap.push(JSON.parse(init.body)), Response.json({ id: "z" })) : Response.json({}));
+  let agora = sp("2026-11-15T00:05");
+  const { postarAgendados, banco } = criarApp({ env: { SESSAO_SEGREDO: "s".repeat(40), DADOS_DIR: dir, AGENDA_POSTS: join(dir, "agenda.json"), WAHA_API_URL: "http://waha" }, fetchImpl, agora: () => agora, log: { info() {}, warn() {}, error() {} } });
+  const loja = (id, nome) => ({ id, slug: id, nome, cidade: "Macaíba", categoria: "Moda", whatsapp: "5584900000001", criadaEm: "2026-11-01T00:00:00Z", testeAte: "2999-01-01T00:00:00Z" });
+  banco.lojas.push(loja("delly", "Mimos da Delly"), loja("vazia", "Loja Sem Foto"));
+  const produto = (id, lojaId, extra = {}) => ({ id, lojaId, nome: `Laço ${id}`, dept: "moda", preco: 5.9, fotos: ["/x.webp"], ativo: true, bloqueado: false, criadoEm: "2026-11-01T00:00:00Z", ...extra });
+  banco.produtos.push(produto("a", "delly"), produto("b", "delly"), produto("c", "delly", { ativo: false }), produto("d", "vazia", { fotos: [] }));
+
+  assert.deepEqual(await postarAgendados(), { postados: 0 }, "antes das 10h30 nada sai");
+  agora = sp("2026-11-15T10:31");
+  assert.deepEqual(await postarAgendados(), { postados: 1 }, "só a Delly tem produto: sai 1");
+  assert.match(zap[0].text, /^📍 Achado local: Mimos da Delly \(Macaíba\)\n\n\*Laço a\*\nPor \*R\$\s5,90\*\n\n👉 http:\/\/localhost:3000\/p\/l-a$/);
+  assert.deepEqual(await postarAgendados(), { postados: 0 }, "não repete no mesmo dia");
+
+  agora = sp("2026-11-16T10:31");
+  await postarAgendados();
+  assert.match(zap[1].text, /\*Laço b\*/, "no outro dia, o próximo produto da loja");
+  agora = sp("2026-11-17T10:31");
+  await postarAgendados();
+  assert.match(zap[2].text, /\*Laço a\*/, "passou por todos: recomeça");
+
+  banco.lojas.push(loja("bia", "Bia Modas"));
+  banco.produtos.push(produto("e", "bia"));
+  agora = sp("2026-11-18T12:31");
+  assert.deepEqual(await postarAgendados(), { postados: 2 }, "duas lojas: uma às 10h30, outra às 12h30");
+  assert.deepEqual(zap.slice(3).map((m) => m.text.split("\n")[0]).sort(), ["📍 Achado local: Bia Modas (Macaíba)", "📍 Achado local: Mimos da Delly (Macaíba)"]);
+});
