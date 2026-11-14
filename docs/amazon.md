@@ -48,3 +48,17 @@ A documentação lida não deixa claro, então o primeiro teste no admin vai con
 - Qual versão da credencial vale para o Brasil.
 - Os nomes de recursos pedidos (`offersV2.listings.savingBasis` principalmente). Se a Amazon recusar algum, o erro aparece no admin.
 - Se o preço volta em BRL.
+
+## Prioridade por comissão
+
+Na vitrine e no post diário do Instagram, os produtos da Amazon são ordenados pela comissão da categoria. A tabela fica em `COMISSAO_AMAZON`, em `servidor/afiliados.js`:
+
+| Comissão | Categorias |
+|---|---|
+| 13% | Beleza, saúde, bebê e mercado |
+| 11% | Moda e pets |
+| 10% | Livros |
+| 8% | Eletrônicos, casa e a maioria das categorias |
+| 7% | Calçados, automotivo e outras |
+
+No empate, vem primeiro quem rende mais R$ por venda.

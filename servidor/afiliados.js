@@ -41,6 +41,21 @@ export function deShopee(n, categoria) {
 // Mercado Livre e Shopee não pagam comissão em link de carrinho; lá vai pro produto.
 /** ID de Associado da Amazon (conta nova). AMAZON_TAG no Coolify, quando definida, vale por cima. */
 export const TAG_AMAZON_PADRAO = "citshop0e-20";
+// Comissão da Amazon Brasil por departamento da vitrine (regulamento de comissões padrão do Programa de Associados).
+const COMISSAO_AMAZON = {
+  beleza: 13, saude: 13, bebe: 13, mercado: 13, moda: 11, pets: 11, livros: 10,
+  tec: 8, cel: 8, info: 8, games: 8, eletro: 8, cozinha: 8, casa: 8, cama: 8, moveis: 8, jardim: 8, ferr: 8,
+  brinq: 8, esporte: 8, camping: 8, papel: 8, musica: 8,
+}; // calçados (calc), automotivo e o resto: 7%
+export const comissaoAmazonPct = (p) => COMISSAO_AMAZON[p.categoria ?? p.dept] ?? 7;
+/** Amazon: maior % da categoria primeiro; no empate, quem rende mais R$ por venda. Ordem entre si, sem mexer no resto. */
+export function ordenarAmazonPorComissao(lista) {
+  const amz = lista.filter((p) => p.loja === "amazon")
+    .sort((a, b) => comissaoAmazonPct(b) - comissaoAmazonPct(a) || comissaoAmazonPct(b) * b.preco - comissaoAmazonPct(a) * a.preco);
+  let i = 0;
+  return lista.map((p) => (p.loja === "amazon" ? amz[i++] : p));
+}
+
 /** Troca a tag de associado de um link da Amazon (tag= ou AssociateTag=) pela atual; outros links passam iguais. */
 export function comTagAmazon(link, tag) {
   try {

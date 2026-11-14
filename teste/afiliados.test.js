@@ -103,3 +103,16 @@ test("Amazon: link gravado com a tag antiga sai com o ID de Associado atual", as
   assert.equal(comTagAmazon("https://www.amazon.com.br/dp/B02", "citshop0e-20"), "https://www.amazon.com.br/dp/B02?tag=citshop0e-20");
   assert.equal(comTagAmazon("https://s.shopee.com.br/x?tag=y", "citshop0e-20"), "https://s.shopee.com.br/x?tag=y", "outras lojas não mudam");
 });
+
+test("Amazon: categorias de comissão alta (13%) vêm antes; as outras lojas ficam no lugar", async () => {
+  const { ordenarAmazonPorComissao, comissaoAmazonPct } = await import("../servidor/afiliados.js");
+  const lista = [
+    { id: "tv", loja: "amazon", categoria: "tec", preco: 2000 },
+    { id: "s1", loja: "shopee", categoria: "casa", preco: 10 },
+    { id: "creme", loja: "amazon", categoria: "beleza", preco: 60 },
+    { id: "racao", loja: "amazon", categoria: "pets", preco: 150 },
+    { id: "perfume", loja: "amazon", categoria: "beleza", preco: 300 },
+  ];
+  assert.deepEqual(ordenarAmazonPorComissao(lista).map((p) => p.id), ["perfume", "s1", "creme", "racao", "tv"]);
+  assert.deepEqual([comissaoAmazonPct({ categoria: "saude" }), comissaoAmazonPct({ categoria: "calc" })], [13, 7]);
+});
