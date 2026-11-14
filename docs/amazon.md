@@ -26,9 +26,9 @@ Regras seguidas:
 |---|---|---|---|
 | `AMAZON_CREDENCIAL_ID` | sim | — | Credential ID da Creators API |
 | `AMAZON_CREDENCIAL_SEGREDO` | sim | — | Credential Secret (a Amazon mostra uma vez só) |
-| `AMAZON_PARTNER_TAG` | sim | `citshop-20` | Store/Tracking ID do marketplace brasileiro |
+| `AMAZON_PARTNER_TAG` | sim | `citshop0e-20` | Store/Tracking ID do marketplace brasileiro |
 | `AMAZON_CREDENCIAL_VERSAO` | não | `3.1` | Versão da credencial mostrada na Amazon (3.1 NA, 3.2 EU, 3.3 FE) |
-| `AMAZON_TAG` | já existe | `citshop-20` | Links de carrinho dos itens manuais (não muda) |
+| `AMAZON_TAG` | já existe | `citshop0e-20` | Links de carrinho dos itens manuais (não muda) |
 
 Sem as três obrigatórias, a integração fica desligada e o resto do site funciona normalmente.
 

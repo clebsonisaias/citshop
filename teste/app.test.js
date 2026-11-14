@@ -224,7 +224,7 @@ test("Amazon da API fica na vitrine por até 1 hora e substitui o item manual de
   // O "Comprar" passa pelo /ir (clique contado no canal "produto") e cai no link de afiliado da loja.
   assert.match(paginaAfiliada, /href="\/ir\/amazon-X\?c=produto" target="_blank" rel="sponsored nofollow noopener"/);
   const ir = await req("/ir/amazon-X?c=produto", { redirect: "manual" });
-  assert.deepEqual([ir.status, ir.headers.get("location")], [302, "https://www.amazon.com.br/dp/X?tag=citshop-20"]);
+  assert.deepEqual([ir.status, ir.headers.get("location")], [302, "https://www.amazon.com.br/dp/X?tag=citshop0e-20"], "link gravado com a tag antiga sai com a atual");
   assert.equal((await req("/ir/nao-existe", { redirect: "manual" })).headers.get("location"), "/");
   assert.equal((await req("/contato/amazon-X", { redirect: "manual" })).status, 404);
   assert.equal(Object.keys(JSON.parse(readFileSync(join(dir, "citshop.json"), "utf8")).metricasContato).length, 2);

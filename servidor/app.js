@@ -19,7 +19,7 @@ import {
 } from "./planos.js";
 import { TIPOS_LANCAMENTO, estornarComissao, lancar, lancarComissao, registrarEvento, resumoLivro, retratoFinanceiro } from "./financeiro.js";
 import { MARKETPLACE, criarClienteAmazon } from "./amazon.js";
-import { atualizarAfiliados } from "./afiliados.js";
+import { TAG_AMAZON_PADRAO, atualizarAfiliados, comTagAmazon } from "./afiliados.js";
 import { instalarFood } from "./food.js";
 import { Buscas } from "./buscas.js";
 import { HORARIOS_PADRAO, brasilia, escolherPelaBusca, escolherProduto, horarioDaVez, lerHorarios, pareceTapado, prepararToken, semSegredos } from "./instagram-diario.js";
@@ -291,7 +291,10 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const amz = ler("amazon.json", { produtos: [] });
     const frescos = amz.atualizadoEm && agora() - Date.parse(amz.atualizadoEm) <= IDADE_MAXIMA_AMAZON ? amz.produtos : [];
     const ids = new Set(frescos.map((p) => p.id));
-    return { atualizadoEm: af.atualizadoEm, produtos: [...frescos, ...af.produtos.filter((p) => !ids.has(p.id))] };
+    // Links gravados com a tag antiga passam a usar a do Associado atual.
+    const tag = env.AMAZON_TAG || TAG_AMAZON_PADRAO;
+    const comTag = (p) => (p.loja === "amazon" ? { ...p, link: comTagAmazon(p.link, tag) } : p);
+    return { atualizadoEm: af.atualizadoEm, produtos: [...frescos, ...af.produtos.filter((p) => !ids.has(p.id))].map(comTag) };
   }
   // Loja que paga por venda (comissão) vende só pelo Mercado Pago, para a comissão da CIT cair em toda venda:
   // sem pedido pelo WhatsApp e sem o número dela no site.

@@ -39,6 +39,18 @@ export function deShopee(n, categoria) {
 
 // Formulário "Add to Cart" da Amazon: cai direto no carrinho com a tag de afiliado.
 // Mercado Livre e Shopee não pagam comissão em link de carrinho; lá vai pro produto.
+/** ID de Associado da Amazon (conta nova). AMAZON_TAG no Coolify, quando definida, vale por cima. */
+export const TAG_AMAZON_PADRAO = "citshop0e-20";
+/** Troca a tag de associado de um link da Amazon (tag= ou AssociateTag=) pela atual; outros links passam iguais. */
+export function comTagAmazon(link, tag) {
+  try {
+    const u = new URL(link);
+    if (!tag || !/(^|\.)amazon\.com\.br$/.test(u.hostname)) return link;
+    u.searchParams.set(u.searchParams.has("AssociateTag") ? "AssociateTag" : "tag", tag);
+    return u.toString();
+  } catch { return link; }
+}
+
 export function carrinhoAmazon(asin, tag) {
   const q = new URLSearchParams({ "ASIN.1": asin, "Quantity.1": "1", AssociateTag: tag });
   return `https://www.amazon.com.br/gp/aws/cart/add.html?${q}`;

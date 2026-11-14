@@ -51,7 +51,7 @@ Configure no painel do Coolify (**Projects** → **CITmax - CITshop** → **prod
 |---|---|---|---|
 | **Amazon** | `AMAZON_CREDENCIAL_ID` | Sim (p/ Creators API) | Credential ID gerado no Associates Central |
 | **Amazon** | `AMAZON_CREDENCIAL_SEGREDO` | Sim (p/ Creators API) | Credential Secret da Creators API |
-| **Amazon** | `AMAZON_PARTNER_TAG` | Sim | Tag de afiliado (ex: `citshop-20`) |
+| **Amazon** | `AMAZON_PARTNER_TAG` | Sim | Tag de afiliado (ex: `citshop0e-20`) |
 | **Amazon** | `AMAZON_TAG` | Sim (fallback) | Tag de afiliado para links manuais de carrinho |
 | **Shopee** | `SHOPEE_APP_ID` | Sim (p/ Open API) | App ID da Shopee Affiliate Open API |
 | **Shopee** | `SHOPEE_SECRET` | Sim (p/ Open API) | Secret da Shopee Affiliate Open API |

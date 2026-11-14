@@ -64,7 +64,7 @@ export class ConectorAmazon extends ConectorMarketplace {
     credencialId = process.env.AMAZON_CREDENCIAL_ID,
     credencialSegredo = process.env.AMAZON_CREDENCIAL_SEGREDO,
     versao = process.env.AMAZON_CREDENCIAL_VERSAO || "3.1",
-    parceiro = process.env.AMAZON_PARTNER_TAG || process.env.AMAZON_TAG || "citshop-20",
+    parceiro = process.env.AMAZON_PARTNER_TAG || process.env.AMAZON_TAG || "citshop0e-20",
     base = API_PADRAO,
     fetchImpl = fetch,
     agora = Date.now,

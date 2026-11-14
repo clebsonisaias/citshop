@@ -11,7 +11,7 @@
  */
 import { readFile, writeFile, rename } from "node:fs/promises";
 import { join } from "node:path";
-import { atualizarAfiliados } from "./afiliados.js";
+import { TAG_AMAZON_PADRAO, atualizarAfiliados } from "./afiliados.js";
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 const SHOPEE_LISTA = "https://affiliate.shopee.com.br/api/v3/offer/product/list";
@@ -402,7 +402,7 @@ export async function rodarColeta({ env, dadosDir, manual, fetchImpl = fetch, lo
 
   let amazon = daLoja("amazon");
   try {
-    const r = await coletarAmazon(env.AMAZON_TAG || "citshop-20", fetchImpl, log, amazon, { cursor, ...opcoesAmazon });
+    const r = await coletarAmazon(env.AMAZON_TAG || TAG_AMAZON_PADRAO, fetchImpl, log, amazon, { cursor, ...opcoesAmazon });
     ({ produtos: amazon, cursor } = r);
     Object.assign(status, { amazon: amazon.length, paginas: r.visitadas, bloqueadas: r.bloqueadas });
   } catch (e) { status.erros.push(`Amazon: ${e.message}`); }

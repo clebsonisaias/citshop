@@ -94,3 +94,12 @@ test("robô de afiliados: com o motor de ofertas ativo, não grava por cima da l
   assert.equal(chamou, false, "nem gasta chamada na API da Shopee");
   assert.equal(readFileSync(join(dir, "afiliados.json"), "utf8"), doMotor, "lista do motor intacta");
 });
+
+test("Amazon: link gravado com a tag antiga sai com o ID de Associado atual", async () => {
+  const { comTagAmazon, TAG_AMAZON_PADRAO } = await import("../servidor/afiliados.js");
+  assert.equal(TAG_AMAZON_PADRAO, "citshop0e-20");
+  assert.equal(comTagAmazon("https://www.amazon.com.br/dp/B01?tag=citshop-20", "citshop0e-20"), "https://www.amazon.com.br/dp/B01?tag=citshop0e-20");
+  assert.match(comTagAmazon("https://www.amazon.com.br/gp/aws/cart/add.html?ASIN.1=B01&Quantity.1=1&AssociateTag=citshop-20", "citshop0e-20"), /AssociateTag=citshop0e-20/);
+  assert.equal(comTagAmazon("https://www.amazon.com.br/dp/B02", "citshop0e-20"), "https://www.amazon.com.br/dp/B02?tag=citshop0e-20");
+  assert.equal(comTagAmazon("https://s.shopee.com.br/x?tag=y", "citshop0e-20"), "https://s.shopee.com.br/x?tag=y", "outras lojas não mudam");
+});
