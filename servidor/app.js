@@ -757,7 +757,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     // Ganho esperado (comissão em R$, e na Shopee vezes a prova de venda) só aqui dentro, para escolher o post: não vai para a vitrine pública.
     const comissao = new Map(afiliados().produtos.map((p) => [p.id, p.loja === "amazon" ? (p.preco * comissaoAmazonPct(p)) / 100 : ganhoEsperado(p)]));
     const ativas = temporadasAtivas(agora()); // na temporada, fim de ano da Shopee/SHEIN vai primeiro (foco)
-    const produtos = vitrine().produtos.map((p) => (p.loja === "local" ? { ...p, descricao: `${p.descricao ?? ""} ${categoriaLoja.get(p.lojaSlug) ?? ""}` }
+    const programados = new Set((lerAgenda().posts ?? []).filter((p) => String(p.quando).startsWith(hoje)).map((p) => p.produtoId)); // já têm hora certa hoje
+    const produtos = vitrine().produtos.filter((p) => !programados.has(p.id)).map((p) => (p.loja === "local" ? { ...p, descricao: `${p.descricao ?? ""} ${categoriaLoja.get(p.lojaSlug) ?? ""}` }
       : { ...p, comissao: comissao.get(p.id) ?? 0, foco: FOCO_TEMPORADA.includes(p.loja) && temporadaDo(p, ativas) != null }));
     const pelaBusca = escolherPelaBusca(produtos, reg.historico, buscas.top(7, 15), agora());
     const x = pelaBusca?.produto ?? escolherProduto(produtos, reg.historico, indice, agora());
@@ -778,6 +779,51 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       banco.salvar();
       throw e;
     }
+  }
+
+  // ---------- Postagens programadas (agenda-posts.json na raiz) ----------
+  // { titulo, whatsapp: [canais/grupos], posts: [{ quando: "AAAA-MM-DDTHH:MM" (Brasília), produtoId }] }. Na hora (até 3 h depois)
+  // confere o preço na Shopee e posta o card no Feed do Instagram e o produto com link em cada canal/grupo do WhatsApp.
+  // Cada destino sai uma vez; falha tenta de novo na volta seguinte, até 3 vezes (erro aparece em /saude).
+  // ponytail: agenda vem por commit; tela no /admin quando alguém precisar agendar sem programador.
+  const arqAgenda = env.AGENDA_POSTS ?? join(RAIZ, "agenda-posts.json");
+  const lerAgenda = () => { try { return JSON.parse(readFileSync(arqAgenda, "utf8")); } catch { return { posts: [] }; } };
+  const horaDe = (quando) => Date.parse(`${quando}:00-03:00`);
+  function textoWhatsapp(x, titulo) {
+    const brl = (n) => Number(n).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    const desc = x.precoAntigo > x.preco ? Math.round(((x.precoAntigo - x.preco) / x.precoAntigo) * 100) : 0;
+    return [...(titulo ? [titulo, ""] : []), `*${x.nome}*`, desc ? `De ~${brl(x.precoAntigo)}~ por *${brl(x.preco)}* (${desc}% OFF)` : `Por *${brl(x.preco)}*`,
+      ...(x.vendidos > 0 ? [`⭐ Mais de ${Number(x.vendidos).toLocaleString("pt-BR")} vendidos`] : []), "", `👉 ${urlPublica}/p/${encodeURIComponent(x.id)}`].join("\n");
+  }
+  async function postarAgendados() {
+    const agenda = lerAgenda(), t = agora(), reg = (banco.d.agendaPosts ??= {}), erros = [];
+    let postados = 0;
+    for (const { quando, produtoId } of agenda.posts ?? []) {
+      const h = horaDe(quando);
+      if (!(t >= h && t - h <= 3 * 3600_000)) continue;
+      const feito = (reg[`${quando}|${produtoId}`] ??= {});
+      const pendentes = [...(conectorInstagram.estaConfigurado() ? ["instagram"] : []), ...(agenda.whatsapp ?? [])].filter((d) => typeof (feito[d] ?? 0) === "number");
+      if (!pendentes.length) continue;
+      await comPrazo(precoNaHora(produtoId), 5000); // posta com o preço de agora
+      const x = produtoPorId(produtoId);
+      for (const d of pendentes) {
+        try {
+          if (!x) throw new Error(`${produtoId} saiu do catálogo`);
+          if (d === "instagram") await conectorInstagram.publicarFeed({ urlImagem: `${urlPublica}/api/instagram/card/${encodeURIComponent(x.id)}`, legenda: conectorInstagram.formatarLegenda(x, { urlPublica }), produtoId: x.id });
+          else await conectorWaha.enviarTexto({ chatId: d, texto: textoWhatsapp(x, agenda.titulo) });
+          feito[d] = "ok";
+          postados++;
+          log.info?.(`[agenda] ${quando} ${d}: ${x.nome}`);
+        } catch (e) {
+          feito[d] = !x || (feito[d] ?? 0) >= 2 ? "falhou" : (feito[d] ?? 0) + 1;
+          erros.push(`${quando} ${d}: ${e.message}`);
+        }
+      }
+      banco.salvar();
+    }
+    for (const k of Object.keys(reg)) if (t - horaDe(k.split("|")[0]) > 30 * DIA) delete reg[k];
+    if (erros.length) throw new Error(erros.join("; ").slice(0, 500));
+    return { postados };
   }
 
   // Link antigo/sem JavaScript: vai direto ao WhatsApp, sem registrar pedido.
@@ -2508,5 +2554,5 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     erro(res, 500, "Algo deu errado do nosso lado. Tente de novo.");
   });
 
-  return { app, banco, dadosDir, sincronizarAssinaturas, verificarAlertas, publicarStoryDoDia, monitoramentoMotor, agendadorOfertas, tarefa, tarefas, canais, sincronizarComissoesShopee, atualizarCampanhasShopee, postarInstagramDoDia, buscas };
+  return { app, banco, dadosDir, sincronizarAssinaturas, verificarAlertas, publicarStoryDoDia, monitoramentoMotor, agendadorOfertas, tarefa, tarefas, canais, sincronizarComissoesShopee, atualizarCampanhasShopee, postarInstagramDoDia, postarAgendados, buscas };
 }

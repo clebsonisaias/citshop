@@ -11,7 +11,7 @@ RUN npm ci --omit=dev && npm cache clean --force
 
 COPY servidor/ ./servidor/
 COPY publico/  ./publico/
-COPY manual.json ./
+COPY manual.json agenda-posts.json ./
 
 # Lojas, produtos, fotos e afiliados vivem aqui: TEM de ser volume persistente no Coolify.
 ENV DADOS_DIR=/app/dados

@@ -6,9 +6,9 @@ import { rodarColeta } from "./coletor.js";
 
 const PORTA = Number(process.env.PORT ?? 3000);
 
-let app, banco, dadosDir, sincronizarAssinaturas, verificarAlertas, publicarStoryDoDia, agendadorOfertas, tarefa, canais, sincronizarComissoesShopee, atualizarCampanhasShopee, postarInstagramDoDia, buscas;
+let app, banco, dadosDir, sincronizarAssinaturas, verificarAlertas, publicarStoryDoDia, agendadorOfertas, tarefa, canais, sincronizarComissoesShopee, atualizarCampanhasShopee, postarInstagramDoDia, postarAgendados, buscas;
 try {
-  ({ app, banco, dadosDir, sincronizarAssinaturas, verificarAlertas, publicarStoryDoDia, agendadorOfertas, tarefa, canais, sincronizarComissoesShopee, atualizarCampanhasShopee, postarInstagramDoDia, buscas } = criarApp({ log: { info: console.log, warn: console.warn, error: console.error } }));
+  ({ app, banco, dadosDir, sincronizarAssinaturas, verificarAlertas, publicarStoryDoDia, agendadorOfertas, tarefa, canais, sincronizarComissoesShopee, atualizarCampanhasShopee, postarInstagramDoDia, postarAgendados, buscas } = criarApp({ log: { info: console.log, warn: console.warn, error: console.error } }));
 } catch (e) {
   console.error(`[fatal] ${e.message}`);
   process.exit(1);
@@ -66,6 +66,10 @@ setInterval(campanhas, 3 * 60 * 60 * 1000).unref();
 const instagramDiario = tarefa("instagram", () => postarInstagramDoDia());
 setTimeout(instagramDiario, 90_000).unref();
 setInterval(instagramDiario, 10 * 60_000).unref();
+// Postagens programadas (agenda-posts.json): confere a cada 5 min; cada post sai no Instagram e nos canais do WhatsApp da lista.
+const agendados = tarefa("agenda", () => postarAgendados());
+setTimeout(agendados, 60_000).unref();
+setInterval(agendados, 5 * 60_000).unref();
 
 const servidor = app.listen(PORTA, () => console.log(`[citshop] ouvindo na porta ${PORTA}`));
 const encerrar = () => { try { canais.descarregar(); buscas.descarregar(); } catch { /* sem disco */ } servidor.close(() => process.exit(0)); };
