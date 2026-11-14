@@ -102,3 +102,7 @@ As duas primeiras correções mudam o que é publicado. Por isso ficam para apro
 - Volta às aulas: 1/1 a 28/2.
 
 Durante a data, a faixa e o banner aparecem no topo da home, e o ranking dá à temporada uma cota própria de 40 produtos.
+
+## Histórico de preço na página do produto
+
+`GET /api/preco/:id` devolve até 30 dias de preço (`[dia, preço]`), tirados do `historico.json` da coleta. O `publico/historico-preco.js` desenha o gráfico em SVG no modal da home e na página `/p/<id>`. Com menos de 2 dias de histórico, o gráfico não aparece. Produto de loja local não tem histórico.

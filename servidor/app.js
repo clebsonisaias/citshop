@@ -370,6 +370,14 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     };
   }
   app.get("/api/vitrine", (req, res) => res.set("Cache-Control", "no-cache").json(vitrine()));
+  // Preço de cada dia (até 30 dias) de um produto de marketplace, para o gráfico da página do produto.
+  // Vem do historico.json que a coleta já grava; produto de loja local não tem histórico.
+  app.get("/api/preco/:id", (req, res) => {
+    const id = String(req.params.id);
+    const lista = /^[a-z0-9_-]{3,80}$/i.test(id) && !id.startsWith("l-") ? ler("historico.json", {})[id] : null;
+    const pontos = (Array.isArray(lista) ? lista : []).filter(([d, v]) => /^\d{4}-\d{2}-\d{2}$/.test(d) && Number(v) > 0).slice(-30);
+    res.set("Cache-Control", "public, max-age=600").json({ pontos });
+  });
   // Um produto só, com as mesmas regras de visibilidade da vitrine, sem montar o catálogo inteiro.
   function produtoPorId(id) {
     if (id.startsWith("l-")) {
@@ -2309,6 +2317,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       DISPONIBILIDADE: local && x.restam ? `<p class="product-availability product-restam">Restam só ${x.restam} ${x.restam === 1 ? "unidade" : "unidades"}</p>` : local ? `<p class="product-availability">${attr(({ disponivel: "Disponível, conforme informado pela loja", "sob-encomenda": "Sob encomenda", consulte: "Consulte a disponibilidade com a loja" })[disponibilidade] ?? "Consulte a disponibilidade com a loja")}</p>` : "",
       LOCAL_DETALHES: localDetalhes ? `<p class="product-local-details">${localDetalhes}</p>` : "",
       SELETORES_VARIACOES: seletoresVariacoes,
+      HISTORICO: local ? "" : `<div class="hist" data-historico="${attr(x.id)}" hidden></div>`, // gráfico de preço (historico-preco.js)
       IMAGEM: imagemHtml, PRECO_ANTIGO: x.precoAntigo > x.preco ? `<del>${attr(x.precoAntigo.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }))}</del>` : "",
       PRECO: attr(x.preco.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })),
       DESCONTO: x.precoAntigo > x.preco ? `<span class="pct">${Math.round((1 - x.preco / x.precoAntigo) * 100)}% OFF</span>` : "",
@@ -2333,7 +2342,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
         ? `${attr(x.lojaNome)} vende pelo CIT Shopping com Pix ou cartão. A loja está ativando os pagamentos.`
         : local
         ? `Vendido por ${attr(x.lojaNome)}, em ${attr(x.cidade)}. Combine pagamento, disponibilidade e entrega diretamente com a loja.`
-        : `Você finaliza a compra no site da loja. Preço e frete são confirmados lá${x.atualizadoEm ? `; preço consultado em ${attr(new Date(x.atualizadoEm).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }))}` : ""}.`,
+        : `Você finaliza a compra no site da loja. Preço e frete são confirmados lá${x.atualizadoEm ? `; preço consultado em ${attr(new Date(x.atualizadoEm).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }))}` : ""}.${x.loja === "shopee" ? " Na Shopee pode sair menor no Pix ou com cupom." : ""}`,
       COMPARTILHAR: encodeURIComponent(`${x.nome} · ${canonical}`),
       DESCRICAO_LONGA: attr(descricao || "Consulte as informações e a disponibilidade com o vendedor."),
       AVISO_AFILIADO: local

@@ -1,4 +1,5 @@
 import { temporadaDo, temporadasAtivas } from "../../publico/temporadas.js";
+import { comissaoAmazonPct } from "../afiliados.js";
 
 /**
  * Motor de ranking de ofertas: calcula pontuação de relevância comercial e qualidade.
@@ -62,17 +63,19 @@ export function ranquearOfertas(produtos = [], { limitePorCategoria = 25, limite
   const selecionados = [];
   const selecionadosIds = new Set();
   const contagemPorCat = new Map(), contagemPorLojaCat = new Map();
-  const marketplaces = ["shopee", "mercado-livre", "shein"];
-  const cotaPorMp = { shopee: 350, "mercado-livre": 30, shein: 30 };
+  const marketplaces = ["shopee", "amazon", "mercado-livre", "shein"];
+  const cotaPorMp = { shopee: 300, amazon: 80, "mercado-livre": 30, shein: 30 };
 
   // Shopee: ganho esperado = comissão em R$ × prova de venda (log das vendas). Produto caro que ninguém compra
   // (comissão alta, 0 vendas) vai para o fim; sobe o que paga bem e vende. Empate: maior comissão, depois o score.
+  // Amazon: categoria de maior comissão primeiro (13% beleza/saúde/bebê/mercado, 11% moda/pets...), depois o score.
+  const amazonPorComissao = [...comScore].sort((a, b) => comissaoAmazonPct(b) - comissaoAmazonPct(a) || b.score - a.score);
   const porComissao = [...comScore].sort((a, b) => ganhoEsperado(b) - ganhoEsperado(a) || (b.comissaoEstimada ?? 0) - (a.comissaoEstimada ?? 0) || b.score - a.score);
 
   for (const mp of marketplaces) {
     let countMp = 0;
     const maxMp = cotaPorMp[mp] || 25;
-    for (const p of mp === "shopee" ? porComissao : comScore) {
+    for (const p of mp === "shopee" ? porComissao : mp === "amazon" ? amazonPorComissao : comScore) {
       if ((p.marketplace || p.loja) !== mp) continue;
       if (selecionadosIds.has(p.id)) continue;
       // Vagas por categoria contadas por loja: senão a Shopee (que vem primeiro) enche "moda" e a SHEIN fica de fora.

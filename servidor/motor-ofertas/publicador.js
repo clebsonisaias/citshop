@@ -43,7 +43,16 @@ export class PublicadorOfertas {
     const caminhoHistorico = join(this.dadosDir, "historico.json");
     const caminhoStatus = join(this.dadosDir, "motor-status.json");
 
-    const itensNovos = (novosColetados && novosColetados.length) ? novosColetados : ofertasColetadas;
+    let itensNovos = (novosColetados && novosColetados.length) ? novosColetados : ofertasColetadas;
+    // Amazon sem a API oficial: entra o que a coleta das páginas da Amazon (coletor.js) gravou em coleta.json.
+    if (!itensNovos.some((p) => (p.marketplace || p.loja) === "amazon")) {
+      const coleta = await this.lerJsonSeguro(join(this.dadosDir, "coleta.json"), { produtos: [] });
+      const amazon = (coleta?.produtos ?? []).filter((p) => p.loja === "amazon");
+      if (amazon.length) {
+        itensNovos = [...itensNovos, ...amazon];
+        statusPorLoja = { ...statusPorLoja, amazon: { ok: true, total: amazon.length, fonte: "coleta das páginas" } };
+      }
+    }
 
     // 1. Lê catálogo anterior (com fallback para coleta.json se afiliados.json ainda não estiver populado)
     let anterior = (await this.lerJsonSeguro(caminhoAfiliados, { produtos: [] }))?.produtos || [];

@@ -62,3 +62,7 @@ Na vitrine e no post diário do Instagram, os produtos da Amazon são ordenados 
 | 7% | Calçados, automotivo e outras |
 
 No empate, vem primeiro quem rende mais R$ por venda.
+
+## Origem dos produtos
+
+Sem as credenciais da API oficial (`AMAZON_CREDENCIAL_*`), o motor de ofertas usa os produtos que a coleta das páginas da Amazon (`servidor/coletor.js`) grava em `coleta.json`. No ranking, a Amazon tem cota própria de 80 vagas, preenchidas pela comissão da categoria.

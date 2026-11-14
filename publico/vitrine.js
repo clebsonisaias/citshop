@@ -1,5 +1,6 @@
 import { filtrarCatalogo } from './catalogo.js';
 import { TEMPORADAS, temporadasAtivas } from './temporadas.js';
+import { desenharHistorico } from './historico-preco.js';
 
 // Vitrine: lê /api/vitrine (lojas locais já vêm na frente dos afiliados) e monta a loja.
 (() => {
@@ -264,6 +265,7 @@ import { TEMPORADAS, temporadasAtivas } from './temporadas.js';
     $('msimBox').hidden = !parecidos.length;
     $('msim').innerHTML = parecidos.map(card).join('');
     $('modal').querySelector('.sheet').scrollTop = 0;
+    desenharHistorico($('mhist'), x.loja === 'local' ? null : x.id);
     $('msave').textContent = off(x) ? `Economia de ${brl.format(x.precoAntigo - x.preco)} (${off(x)}% off)` : x.menor30 ? 'Menor preço em 30 dias' : '';
     $('mdesc').textContent = x.descricao ?? '';
     // Link próprio do produto: o servidor monta a prévia (título, preço e foto) que o WhatsApp mostra.

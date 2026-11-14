@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { normalizarProduto, normalizarCategoria } from "../servidor/motor-ofertas/normalizador.js";
@@ -140,4 +140,18 @@ test("ranking: na Shopee, produto caro sem nenhuma venda não fica no topo; sobe
   const p = (id, comissaoEstimada, vendidos, preco) => ({ id, loja: "shopee", categoria: "casa", preco, comissaoEstimada, vendidos });
   const lista = [p("estacao-energia", 1500, 0, 19980), p("vela-1000", 80, 0, 1000), p("air-fryer", 25, 300, 350), p("fone", 4, 5000, 60)];
   assert.deepEqual(ranquearOfertas(lista).map((x) => x.id), ["air-fryer", "fone", "estacao-energia", "vela-1000"]);
+});
+
+test("publicador: sem a API da Amazon, usa a Amazon da coleta das páginas; ranking dá vaga à Amazon pela comissão da categoria", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "citshop-amz-coleta-"));
+  try {
+    const amz = (id, categoria, preco) => ({ id: `amazon-${id}`, asin: id, loja: "amazon", nome: `Produto ${id}`, categoria, preco, imagem: "https://m.media-amazon.com/images/I/x.jpg", link: `https://www.amazon.com.br/dp/${id}?tag=citshop0e-20` });
+    await writeFile(join(dir, "coleta.json"), JSON.stringify({ produtos: [amz("TV1", "tec", 2000), amz("CREME", "beleza", 50), amz("RACAO", "pets", 120)] }));
+    const publicador = new PublicadorOfertas({ dadosDir: dir, log: { warn: () => {} } });
+    await publicador.publicar({ novosColetados: [{ id: "shopee-1", externalId: "1", marketplace: "shopee", nome: "Fone", preco: 50, imagem: "https://img/f.jpg", link: "https://s.shopee.com.br/f", categoria: "cel" }], statusPorLoja: { shopee: { ok: true } } });
+    const { produtos } = JSON.parse(await readFile(join(dir, "afiliados.json"), "utf8"));
+    assert.deepEqual(produtos.filter((p) => (p.marketplace || p.loja) === "amazon").map((p) => p.id), ["amazon-CREME", "amazon-RACAO", "amazon-TV1"]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });

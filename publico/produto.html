@@ -28,6 +28,7 @@
 <script src="/alerta.js" defer></script>
 <script src="/favoritos.js" defer></script>
 <script src="/produto.js" defer></script>
+<script type="module" src="/historico-preco.js"></script>
 <!--structured-->
 </head>
 <body>
@@ -50,6 +51,7 @@
       {{AVALIACAO}}
       {{DESCRICAO}}
       <div class="product-prices">{{PRECO_ANTIGO}}<strong>{{PRECO}}</strong>{{DESCONTO}}</div>
+      {{HISTORICO}}
       {{SELETORES_VARIACOES}}
       {{BOTAO_COMPRA_ONLINE}}
       <a class="{{CLASSE_COMPRA}}" id="btn-comprar" {{ATTR_PEDIDO}} href="{{LINK_COMPRA}}" target="{{ALVO_COMPRA}}" rel="{{REL_COMPRA}}">{{TEXTO_COMPRA}}</a>
