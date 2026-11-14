@@ -56,8 +56,12 @@ export function escolherProduto(produtos, historico, indiceSlot, t) {
   const locais = ok.filter((p) => p.loja === "local"), afiliados = ok.filter((p) => p.loja !== "local");
   const ultimaVezLoja = (slug) => Math.max(0, ...historico.filter((h) => h.ok && h.lojaSlug === slug).map((h) => Date.parse(h.em)));
   const melhorLocal = () => [...locais].sort((a, b) => ultimaVezLoja(a.lojaSlug) - ultimaVezLoja(b.lojaSlug) || (b.precoAntigo > b.preco) - (a.precoAntigo > a.preco))[0];
-  // Oferta de afiliado: a que paga mais comissão por venda (p.comissao, R$) primeiro; empate, a melhor oferta.
-  const melhorAfiliado = () => [...afiliados].sort((a, b) => (b.comissao ?? 0) - (a.comissao ?? 0) || notaOferta(b) - notaOferta(a))[0];
+  // Oferta de afiliado: na temporada, produto de fim de ano da Shopee/SHEIN (p.foco) primeiro, alternando a loja
+  // que postou há mais tempo; depois a que paga mais comissão por venda (p.comissao, R$); empate, a melhor oferta.
+  const ultimaVezDaLoja = (loja) => Math.max(0, ...historico.filter((h) => h.ok && String(h.produtoId ?? "").startsWith(`${loja}-`)).map((h) => Date.parse(h.em)));
+  const melhorAfiliado = () => [...afiliados].sort((a, b) => (b.foco === true) - (a.foco === true)
+    || (a.foco ? ultimaVezDaLoja(a.loja) - ultimaVezDaLoja(b.loja) : 0)
+    || (b.comissao ?? 0) - (a.comissao ?? 0) || notaOferta(b) - notaOferta(a))[0];
   const escolhido = indiceSlot % 2 === 0 ? melhorLocal() ?? melhorAfiliado() : melhorAfiliado() ?? melhorLocal();
   if (escolhido) return escolhido;
   // Todo dia tem post: se tudo já saiu nos últimos 14 dias, repete o que foi postado há mais tempo.

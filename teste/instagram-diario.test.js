@@ -164,3 +164,14 @@ test("post diário: entre ofertas de afiliado, a de maior comissão ganha da de 
   const produtos = [of("desconto", 0.4, { precoAntigo: 120, menor30: true }), of("comissao", 6)];
   assert.equal(escolherProduto(produtos, [], 1, t).id, "comissao");
 });
+
+test("post diário na temporada: fim de ano da Shopee/SHEIN primeiro, alternando a loja que postou há mais tempo", () => {
+  const t = Date.parse("2026-11-20T15:00:00Z");
+  const of = (id, loja, extra = {}) => ({ id, loja, preco: 90, fotos: ["x"], ...extra });
+  const produtos = [of("amazon-TV", "amazon", { comissao: 40 }), of("shopee-arvore", "shopee", { foco: true, comissao: 6 }), of("shein-vestido", "shein", { foco: true, comissao: 0 })];
+  const ontemShopee = [{ ok: true, em: new Date(t - 86_400_000).toISOString(), produtoId: "shopee-pisca" }];
+  assert.equal(escolherProduto(produtos, ontemShopee, 1, t).id, "shein-vestido", "Shopee postou ontem: vez da SHEIN");
+  const ontemShein = [{ ok: true, em: new Date(t - 86_400_000).toISOString(), produtoId: "shein-saia" }];
+  assert.equal(escolherProduto(produtos, ontemShein, 1, t).id, "shopee-arvore", "SHEIN postou ontem: vez da Shopee");
+  assert.equal(escolherProduto(produtos.map((p) => ({ ...p, foco: false })), [], 1, t).id, "amazon-TV", "fora da temporada vale a comissão");
+});

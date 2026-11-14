@@ -43,3 +43,10 @@ test("ranking: na temporada, Natal tem cota própria e não perde vaga para o re
   const fora = ranquearOfertas([...casa, ...natal], { agora: em("2027-02-01") }).map((p) => p.id);
   assert.equal(fora.filter((id) => id.startsWith("n")).length, 0, "fora da data volta a disputar as 25 vagas de casa");
 });
+
+test("temporadas: toda roupa da SHEIN entra nos looks (mesmo sem cor no nome); na Shopee precisa da cor", () => {
+  const a = temporadasAtivas(em("2026-11-20"));
+  assert.equal(temporadaDo({ nome: "Vestido Curto Feminino Alessa com Alça Fina", loja: "shein" }, a), "looks");
+  assert.equal(temporadaDo({ nome: "Vestido Curto Feminino Alessa com Alça Fina", loja: "shopee" }, a), null);
+  assert.equal(temporadaDo({ nome: "Bolsa transversal", loja: "shein" }, a), null, "acessório que não é roupa não entra");
+});

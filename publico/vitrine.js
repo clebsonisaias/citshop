@@ -1,5 +1,5 @@
 import { filtrarCatalogo } from './catalogo.js';
-import { TEMPORADAS, temporadasAtivas } from './temporadas.js';
+import { FOCO_TEMPORADA, TEMPORADAS, combina, temporadasAtivas } from './temporadas.js';
 import { desenharHistorico } from './historico-preco.js';
 
 // Vitrine: lê /api/vitrine (lojas locais já vêm na frente dos afiliados) e monta a loja.
@@ -34,7 +34,12 @@ import { desenharHistorico } from './historico-preco.js';
     mercado: { t: 'Mercado, saúde e bebê', f: () => P.filter((x) => ['mercado', 'saude', 'bebe'].includes(x.dept)) },
     camping: { t: 'Camping e sobrevivência', f: () => P.filter((x) => x.dept === 'camping') },
     // Natal, looks de fim de ano e réveillon: só enquanto a data vale (publico/temporadas.js); fora dela a faixa some.
-    ...Object.fromEntries(TEMPORADAS.map((s) => [s.id, { t: s.titulo, f: () => (temporadasAtivas().some((a) => a.id === s.id) ? P.filter((x) => s.nome.test(x.nome)) : []) }])),
+    // Shopee e SHEIN (FOCO_TEMPORADA) vêm primeiro; o resto depois, na mesma ordem da vitrine.
+    ...Object.fromEntries(TEMPORADAS.map((s) => [s.id, { t: s.titulo, f: () => {
+      if (!temporadasAtivas().some((a) => a.id === s.id)) return [];
+      const l = P.filter((x) => combina(s, x));
+      return [...l.filter((x) => FOCO_TEMPORADA.includes(x.loja)), ...l.filter((x) => !FOCO_TEMPORADA.includes(x.loja))];
+    } }])),
   };
 
   // O desconto aparece ao lado do preço ("33% OFF"), como no Mercado Livre, e não em cima da foto.

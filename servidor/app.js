@@ -21,6 +21,7 @@ import { TIPOS_LANCAMENTO, estornarComissao, lancar, lancarComissao, registrarEv
 import { MARKETPLACE, criarClienteAmazon } from "./amazon.js";
 import { TAG_AMAZON_PADRAO, atualizarAfiliados, comTagAmazon, comissaoAmazonPct, ordenarAmazonPorComissao } from "./afiliados.js";
 import { ganhoEsperado } from "./motor-ofertas/ranking.js";
+import { FOCO_TEMPORADA, temporadaDo, temporadasAtivas } from "../publico/temporadas.js";
 import { instalarFood } from "./food.js";
 import { Buscas, normalizarBusca } from "./buscas.js";
 import { deShopee } from "./integracoes/shopee/conector.js";
@@ -731,10 +732,12 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const categoriaLoja = new Map(banco.lojas.map((l) => [l.slug, l.categoria ?? ""]));
     // Ganho esperado (comissão em R$, e na Shopee vezes a prova de venda) só aqui dentro, para escolher o post: não vai para a vitrine pública.
     const comissao = new Map(afiliados().produtos.map((p) => [p.id, p.loja === "amazon" ? (p.preco * comissaoAmazonPct(p)) / 100 : ganhoEsperado(p)]));
-    const produtos = vitrine().produtos.map((p) => (p.loja === "local" ? { ...p, descricao: `${p.descricao ?? ""} ${categoriaLoja.get(p.lojaSlug) ?? ""}` } : { ...p, comissao: comissao.get(p.id) ?? 0 }));
+    const ativas = temporadasAtivas(agora()); // na temporada, fim de ano da Shopee/SHEIN vai primeiro (foco)
+    const produtos = vitrine().produtos.map((p) => (p.loja === "local" ? { ...p, descricao: `${p.descricao ?? ""} ${categoriaLoja.get(p.lojaSlug) ?? ""}` }
+      : { ...p, comissao: comissao.get(p.id) ?? 0, foco: FOCO_TEMPORADA.includes(p.loja) && temporadaDo(p, ativas) != null }));
     const pelaBusca = escolherPelaBusca(produtos, reg.historico, buscas.top(7, 15), agora());
     const x = pelaBusca?.produto ?? escolherProduto(produtos, reg.historico, indice, agora());
-    const motivo = pelaBusca ? `mais buscado da semana: "${pelaBusca.termo}"` : indice % 2 === 0 ? "rodízio: loja da cidade" : "rodízio: oferta de maior comissão";
+    const motivo = pelaBusca ? `mais buscado da semana: "${pelaBusca.termo}"` : indice % 2 === 0 ? "rodízio: loja da cidade" : x?.foco ? "temporada: fim de ano Shopee/SHEIN" : "rodízio: oferta de maior comissão";
     const registrar = (extra) => { reg.historico.push({ em: iso(), slot, produtoId: x?.id ?? null, nome: x?.nome ?? null, lojaSlug: x?.lojaSlug ?? null, termo: pelaBusca?.termo ?? null, motivo, ...extra }); reg.historico = reg.historico.slice(-200); };
     if (!x) { reg.feitos[slot] = "sem produto"; registrar({ ok: false, erro: "nenhum produto com foto disponível" }); banco.salvar(); return { postado: false, motivo: "sem produto" }; }
     try {

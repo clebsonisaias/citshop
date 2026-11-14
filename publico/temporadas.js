@@ -4,7 +4,8 @@ export const TEMPORADAS = [
   {
     id: 'natal', titulo: 'Decoração de Natal', ate: [12, 24],
     nome: /\bnatal(in[oa]s?)?\b|papai noel|pisca.?pisca|guirlanda|pres[eé]pio/i,
-    buscas: ['decoracao de natal', 'arvore de natal', 'pisca pisca natal', 'enfeite natal', 'guirlanda natal', 'papai noel decoracao', 'toalha de mesa natal'],
+    buscas: ['decoracao de natal', 'arvore de natal', 'pisca pisca natal', 'enfeite natal', 'guirlanda natal', 'papai noel decoracao', 'toalha de mesa natal',
+      'bola de natal', 'cascata de luz natal', 'presepio', 'meia de natal', 'lembrancinha de natal'],
   },
   {
     // Mesa posta para as ceias: louça, taças, sousplat, guardanapos e decoração de mesa.
@@ -16,7 +17,10 @@ export const TEMPORADAS = [
     // Formaturas, Natal, confraternizações e réveillon: roupa branca, vermelha e amarela.
     id: 'looks', titulo: 'Looks de fim de ano', ate: [1, 1], categoria: 'moda',
     nome: /\b(vestidos?|blusas?|camisas?|camisetas?|conjuntos?|saias?|macac[aã]o|macaquinho|cropped|body|shorts?|cal[cç]as?|blazer|terno|bermudas?|regatas?)\b.*\b(branc|vermelh|amarel|off.?white)|formatura|confraterniza/i,
-    buscas: ['vestido branco reveillon', 'vestido vermelho festa', 'vestido amarelo', 'conjunto branco feminino', 'camisa branca masculina', 'vestido formatura', 'camisa social vermelha', 'saia amarela'],
+    // SHEIN é loja de roupa: toda peça dela entra nos looks, mesmo sem a cor no nome.
+    porLoja: { shein: /\b(vestidos?|blusas?|conjuntos?|saias?|macac[aã]o|macaquinho|cropped|body|camisas?|shorts?|cal[cç]as?|blazer)\b/i },
+    buscas: ['vestido branco reveillon', 'vestido vermelho festa', 'vestido amarelo', 'conjunto branco feminino', 'camisa branca masculina', 'vestido formatura', 'camisa social vermelha', 'saia amarela',
+      'vestido vermelho natal', 'conjunto branco reveillon', 'vestido amarelo reveillon', 'blusa vermelha natal'],
   },
   {
     id: 'anonovo', titulo: 'Réveillon e Ano Novo', ate: [1, 1],
@@ -40,5 +44,9 @@ export function temporadasAtivas(t = Date.now()) {
   });
 }
 
-/** Id da temporada ativa a que o produto pertence (pelo nome), ou null. */
-export const temporadaDo = (p, ativas) => ativas.find((s) => s.nome.test(p.nome ?? ''))?.id ?? null;
+/** O produto entra na temporada `s`? Pelo nome, ou pela regra própria da loja (ex.: roupa da SHEIN nos looks). */
+export const combina = (s, p) => s.nome.test(p.nome ?? '') || Boolean(s.porLoja?.[p.loja]?.test(p.nome ?? ''));
+/** Id da temporada ativa a que o produto pertence, ou null. */
+export const temporadaDo = (p, ativas) => ativas.find((s) => combina(s, p))?.id ?? null;
+/** Lojas em foco nas temporadas: vêm primeiro nas faixas e no post diário. */
+export const FOCO_TEMPORADA = ['shopee', 'shein'];

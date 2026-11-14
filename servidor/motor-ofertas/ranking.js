@@ -49,7 +49,7 @@ export function ranquearOfertas(produtos = [], { limitePorCategoria = 25, limite
   // Natal, Ano Novo etc. em vigor: cota própria (não disputam as 25 vagas de "casa" ou "moda").
   const ativas = temporadasAtivas(agora);
   const grupo = (p) => temporadaDo(p, ativas) ?? (p.categoria || p.dept || "casa");
-  const cota = (g) => (ativas.some((t) => t.id === g) ? Math.max(40, limitePorCategoria) : limitePorCategoria);
+  const cota = (g) => (ativas.some((t) => t.id === g) ? Math.max(60, limitePorCategoria) : limitePorCategoria); // por loja e temporada
   const comScore = produtos.map((p) => ({
     ...p,
     score: calcularScore(p),
