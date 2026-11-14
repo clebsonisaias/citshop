@@ -52,3 +52,32 @@ test("agenda de posts: na hora posta no Instagram e no canal do WhatsApp com o p
   assert.deepEqual(await postarAgendados(), { postados: 0 }, "produto que sumiu não fica tentando");
   assert.equal(insta.length + zap.length, 2);
 });
+
+test("agenda de posts: produto fora do catálogo vem da cópia na agenda (página /p/ e post), com título do dia; sem preço confirmado na Shopee não posta", async (t) => {
+  const dir = mkdtempSync(join(tmpdir(), "cit-agenda2-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  writeFileSync(join(dir, "afiliados.json"), JSON.stringify({ produtos: [] }));
+  const copia = (id, nome) => ({ id, externalId: id.slice(7), marketplace: "shopee", loja: "shopee", nome, categoria: "eletronicos", preco: 999, precoAntigo: 1500, nota: 4.9, vendidos: 300, imagem: "https://down-br.img.susercontent.com/file/tv.jpg", link: "https://s.shopee.com.br/tv" });
+  writeFileSync(join(dir, "agenda.json"), JSON.stringify({ titulo: "geral", whatsapp: ["123@newsletter"], posts: [
+    { quando: "2026-11-17T08:00", produtoId: "shopee-777777", titulo: "📺 Smart TV com preço bom", produto: copia("shopee-777777", "Smart TV 43") },
+    { quando: "2026-11-17T09:00", produtoId: "shopee-888888", titulo: "📺 Smart TV com preço bom", produto: copia("shopee-888888", "Smart TV 50") },
+  ] }));
+  const zap = [];
+  const fetchImpl = async (url, init) => (String(url).includes("/api/sendText") ? (zap.push(JSON.parse(init.body)), Response.json({ id: "z" })) : Response.json({}));
+  let agora = sp("2026-11-17T08:01");
+  const { app, postarAgendados, canais } = criarApp({ env: { SESSAO_SEGREDO: "s".repeat(40), DADOS_DIR: dir, AGENDA_POSTS: join(dir, "agenda.json"), WAHA_API_URL: "http://waha" }, fetchImpl, agora: () => agora, log: { info() {}, warn() {}, error() {} } });
+  canais.shopee = { estaConfigurado: () => true, precoAtual: async (itemId) => (itemId === "777777" ? { preco: 949.9, precoAntigo: 1500 } : null) };
+  const srv = await new Promise((ok) => { const s = app.listen(0, () => ok(s)); });
+  t.after(() => srv.close());
+
+  assert.deepEqual(await postarAgendados(), { postados: 1 });
+  assert.match(zap[0].text, /^📺 Smart TV com preço bom\n\n\*Smart TV 43\*\nDe ~R\$\s1\.500,00~ por \*R\$\s949,90\*/, "título do dia e preço confirmado agora");
+  const pagina = await fetch(`http://127.0.0.1:${srv.address().port}/p/shopee-777777`);
+  assert.equal(pagina.status, 200, "o link do post abre a página do produto");
+  assert.match(await pagina.text(), /949,90/);
+  assert.equal((await fetch(`http://127.0.0.1:${srv.address().port}/api/vitrine`).then((r) => r.json())).produtos.length, 0, "não entra na vitrine");
+
+  agora = sp("2026-11-17T09:01");
+  await assert.rejects(postarAgendados(), /shopee-888888: a Shopee não confirmou o preço de agora/);
+  assert.equal(zap.length, 1);
+});

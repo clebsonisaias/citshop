@@ -414,7 +414,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       const l = p && banco.loja(p.lojaId);
       return p && l && p.ativo && !p.bloqueado && lojaVisivel(l, agora()) ? produtoLocal(p, l) : null;
     }
-    const x = afiliados().produtos.find((y) => y.id === id);
+    const x = afiliados().produtos.find((y) => y.id === id) ?? daAgenda(id); // fora do catálogo: cópia da agenda de posts
     return x ? produtoAfiliado(x) : null;
   }
 
@@ -782,12 +782,15 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   }
 
   // ---------- Postagens programadas (agenda-posts.json na raiz) ----------
-  // { titulo, whatsapp: [canais/grupos], posts: [{ quando: "AAAA-MM-DDTHH:MM" (Brasília), produtoId }] }. Na hora (até 3 h depois)
-  // confere o preço na Shopee e posta o card no Feed do Instagram e o produto com link em cada canal/grupo do WhatsApp.
-  // Cada destino sai uma vez; falha tenta de novo na volta seguinte, até 3 vezes (erro aparece em /saude).
-  // ponytail: agenda vem por commit; tela no /admin quando alguém precisar agendar sem programador.
+  // { titulo, whatsapp: [canais/grupos], posts: [{ quando: "AAAA-MM-DDTHH:MM" (Brasília), produtoId, titulo?, produto? }] }. Na hora
+  // (até 3 h depois) confere o preço na Shopee e posta o card no Feed do Instagram e o produto com link em cada canal/grupo do WhatsApp.
+  // `produto` é a cópia do produto para o que não está no catálogo (TV, fogão...): a página /p/, o card e o /ir usam essa cópia,
+  // e o post só sai se a Shopee confirmar o preço de agora. Cada destino sai uma vez; falha tenta de novo na volta seguinte,
+  // até 3 vezes (erro aparece em /saude). ponytail: agenda vem por commit; tela no /admin quando alguém precisar agendar sem programador.
   const arqAgenda = env.AGENDA_POSTS ?? join(RAIZ, "agenda-posts.json");
-  const lerAgenda = () => { try { return JSON.parse(readFileSync(arqAgenda, "utf8")); } catch { return { posts: [] }; } };
+  let agendaLida = null; // o arquivo vem na imagem: muda só com deploy
+  const lerAgenda = () => (agendaLida ??= (() => { try { return JSON.parse(readFileSync(arqAgenda, "utf8")); } catch { return { posts: [] }; } })());
+  const daAgenda = (id) => { const p = (lerAgenda().posts ?? []).find((x) => x.produto?.id === id)?.produto; return p ? comPrecoAoVivo(p) : null; };
   const horaDe = (quando) => Date.parse(`${quando}:00-03:00`);
   function textoWhatsapp(x, titulo) {
     const brl = (n) => Number(n).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -798,19 +801,21 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   async function postarAgendados() {
     const agenda = lerAgenda(), t = agora(), reg = (banco.d.agendaPosts ??= {}), erros = [];
     let postados = 0;
-    for (const { quando, produtoId } of agenda.posts ?? []) {
+    for (const { quando, produtoId, titulo, produto } of agenda.posts ?? []) {
       const h = horaDe(quando);
       if (!(t >= h && t - h <= 3 * 3600_000)) continue;
       const feito = (reg[`${quando}|${produtoId}`] ??= {});
       const pendentes = [...(conectorInstagram.estaConfigurado() ? ["instagram"] : []), ...(agenda.whatsapp ?? [])].filter((d) => typeof (feito[d] ?? 0) === "number");
       if (!pendentes.length) continue;
-      await comPrazo(precoNaHora(produtoId), 5000); // posta com o preço de agora
+      const agoraNaShopee = await comPrazo(precoNaHora(produtoId), 5000); // posta com o preço de agora
       const x = produtoPorId(produtoId);
+      const semPreco = produto && !agoraNaShopee && !(afiliados().produtos ?? []).some((y) => y.id === produtoId); // cópia sem confirmação: não posta preço velho
       for (const d of pendentes) {
         try {
           if (!x) throw new Error(`${produtoId} saiu do catálogo`);
+          if (semPreco) throw new Error(`${produtoId}: a Shopee não confirmou o preço de agora`);
           if (d === "instagram") await conectorInstagram.publicarFeed({ urlImagem: `${urlPublica}/api/instagram/card/${encodeURIComponent(x.id)}`, legenda: conectorInstagram.formatarLegenda(x, { urlPublica }), produtoId: x.id });
-          else await conectorWaha.enviarTexto({ chatId: d, texto: textoWhatsapp(x, agenda.titulo) });
+          else await conectorWaha.enviarTexto({ chatId: d, texto: textoWhatsapp(x, titulo ?? agenda.titulo) });
           feito[d] = "ok";
           postados++;
           log.info?.(`[agenda] ${quando} ${d}: ${x.nome}`);
@@ -1847,7 +1852,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       canais.registrarClique(canal, "local", ua, post);
       return res.redirect(302, `/p/${encodeURIComponent(x.id)}`);
     }
-    const p = id.startsWith("campanha-") ? campanhasValidas().map((c) => ({ ...c, loja: "shopee" })).find((x) => x.id === id) : (afiliados().produtos ?? []).find((x) => x.id === id);
+    const p = id.startsWith("campanha-") ? campanhasValidas().map((c) => ({ ...c, loja: "shopee" })).find((x) => x.id === id) : ((afiliados().produtos ?? []).find((x) => x.id === id) ?? daAgenda(id));
     if (!p) return res.redirect(302, "/");
     conectorShopee();
     canais.registrarClique(canal, p.loja, ua, post);

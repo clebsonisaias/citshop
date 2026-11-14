@@ -1,16 +1,1677 @@
 {
-  "titulo": "🎄 Árvore de Natal com preço bom",
-  "whatsapp": ["120363433134588415@newsletter"],
-  "posts": [
-    { "quando": "2026-11-14T06:00", "produtoId": "shopee-22893267017", "nome": "Pinheiro 150/180/210 cm" },
-    { "quando": "2026-11-14T09:00", "produtoId": "shopee-19597981110", "nome": "Árvore de mesa luxo 60 cm decorada" },
-    { "quando": "2026-11-14T10:00", "produtoId": "shopee-41874811115", "nome": "Pinheiro canadense cheia luxo" },
-    { "quando": "2026-11-14T12:00", "produtoId": "shopee-23596783977", "nome": "Verde 150 cm 220 galhos" },
-    { "quando": "2026-11-14T13:30", "produtoId": "shopee-10997135504", "nome": "Branca 1,50 m" },
-    { "quando": "2026-11-14T15:00", "produtoId": "shopee-23797768981", "nome": "120 cm com enfeites" },
-    { "quando": "2026-11-14T16:30", "produtoId": "shopee-20198317042", "nome": "1,50 m premium tradicional" },
-    { "quando": "2026-11-14T18:00", "produtoId": "shopee-48216232287", "nome": "Nevada 1,80 m" },
-    { "quando": "2026-11-14T20:00", "produtoId": "shopee-21598313618", "nome": "Canadense 150 cm 350 galhos" },
-    { "quando": "2026-11-14T21:00", "produtoId": "shopee-22699684273", "nome": "Super cheia 1,80 a 3 m" }
-  ]
+ "titulo": "🎄 Árvore de Natal com preço bom",
+ "whatsapp": [
+  "120363433134588415@newsletter"
+ ],
+ "posts": [
+  {
+   "quando": "2026-11-14T06:00",
+   "produtoId": "shopee-22893267017"
+  },
+  {
+   "quando": "2026-11-14T09:00",
+   "produtoId": "shopee-19597981110"
+  },
+  {
+   "quando": "2026-11-14T10:00",
+   "produtoId": "shopee-41874811115"
+  },
+  {
+   "quando": "2026-11-14T12:00",
+   "produtoId": "shopee-23596783977"
+  },
+  {
+   "quando": "2026-11-14T13:30",
+   "produtoId": "shopee-10997135504"
+  },
+  {
+   "quando": "2026-11-14T15:00",
+   "produtoId": "shopee-23797768981"
+  },
+  {
+   "quando": "2026-11-14T16:30",
+   "produtoId": "shopee-20198317042"
+  },
+  {
+   "quando": "2026-11-14T18:00",
+   "produtoId": "shopee-48216232287"
+  },
+  {
+   "quando": "2026-11-14T20:00",
+   "produtoId": "shopee-21598313618"
+  },
+  {
+   "quando": "2026-11-14T21:00",
+   "produtoId": "shopee-22699684273"
+  },
+  {
+   "quando": "2026-11-15T08:00",
+   "produtoId": "shopee-44667747739",
+   "titulo": "🎄 Enfeite de Natal com preço bom",
+   "produto": {
+    "id": "shopee-44667747739",
+    "externalId": "44667747739",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Strobo Pisca Pisca Cordão Natal 500 Leds 50m Prova D'Água Bivolt  100 Flash  Decoração Enfeite Natal LuvinCo",
+    "categoria": "casa",
+    "preco": 159.99,
+    "precoAntigo": 695.61,
+    "nota": 5,
+    "vendidos": 3314,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-820lg-mu2deg1ohybl3b",
+    "link": "https://s.shopee.com.br/6Ama2CByEp",
+    "linkOriginal": "https://shopee.com.br/product/1495626487/44667747739",
+    "comissaoPct": 6
+   }
+  },
+  {
+   "quando": "2026-11-15T09:00",
+   "produtoId": "shopee-20099498532",
+   "titulo": "🎄 Enfeite de Natal com preço bom",
+   "produto": {
+    "id": "shopee-20099498532",
+    "externalId": "20099498532",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Pisca Pisca Natal Cordão 100 Leds 10m 8 Funções Varias Cores 110v / 220v ANJIN",
+    "categoria": "casa",
+    "preco": 13.9,
+    "precoAntigo": 30.22,
+    "nota": 4.9,
+    "vendidos": 16918,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-7rdyh-m0yj94qxv1hjb2",
+    "link": "https://s.shopee.com.br/1LhKHM2lCW",
+    "linkOriginal": "https://shopee.com.br/product/1294737459/20099498532",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-15T10:00",
+   "produtoId": "shopee-58218378540",
+   "titulo": "🎄 Enfeite de Natal com preço bom",
+   "produto": {
+    "id": "shopee-58218378540",
+    "externalId": "58218378540",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Capa de Porta Painel de Mesa Decoração de Natal Papai Noel Natalina",
+    "categoria": "casa",
+    "preco": 18.9,
+    "precoAntigo": 90,
+    "nota": 4.9,
+    "vendidos": 5415,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-820lx-ms4h9vh6zbph48",
+    "link": "https://s.shopee.com.br/5Au2qQIu8Z",
+    "linkOriginal": "https://shopee.com.br/product/1931620863/58218378540",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-15T12:00",
+   "produtoId": "shopee-27345998596",
+   "titulo": "🎄 Enfeite de Natal com preço bom",
+   "produto": {
+    "id": "shopee-27345998596",
+    "externalId": "27345998596",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Kit 8 Enfeites Árvore Natal em Acrílico Espelhado Estrelas Natalinas Gravadas e Cordão Decorativo",
+    "categoria": "casa",
+    "preco": 17.9,
+    "precoAntigo": 68.85,
+    "nota": 4.9,
+    "vendidos": 4105,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-820md-mtzv9qtncr9f7d",
+    "link": "https://s.shopee.com.br/3g5F3bLUJ2",
+    "linkOriginal": "https://shopee.com.br/product/1672422728/27345998596",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-15T13:30",
+   "produtoId": "shopee-46716892371",
+   "titulo": "🎄 Enfeite de Natal com preço bom",
+   "produto": {
+    "id": "shopee-46716892371",
+    "externalId": "46716892371",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Flores De Natal Premium  Arvore Artificial Decoração Enfeites Para Arvore de Natal Brilhante Luxo Pick Up",
+    "categoria": "casa",
+    "preco": 25.73,
+    "precoAntigo": 88.72,
+    "nota": 4.9,
+    "vendidos": 5552,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-8258x-msejixjr1ukke1",
+    "link": "https://s.shopee.com.br/3B8ySgNOJt",
+    "linkOriginal": "https://shopee.com.br/product/1158022763/46716892371",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-15T15:00",
+   "produtoId": "shopee-22399173523",
+   "titulo": "🎄 Enfeite de Natal com preço bom",
+   "produto": {
+    "id": "shopee-22399173523",
+    "externalId": "22399173523",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Papai Noel Subindo Na Corda Decoração Elétrica Automática Bonecas De Pelúcia Brinquedos",
+    "categoria": "esporte",
+    "preco": 69.79,
+    "precoAntigo": 232.63,
+    "nota": 4.9,
+    "vendidos": 1724,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-820m8-mrgqfqm8stfpdf",
+    "link": "https://s.shopee.com.br/2VtHfWT3YJ",
+    "linkOriginal": "https://shopee.com.br/product/1130732424/22399173523",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-15T16:30",
+   "produtoId": "shopee-58267468674",
+   "titulo": "🎄 Enfeite de Natal com preço bom",
+   "produto": {
+    "id": "shopee-58267468674",
+    "externalId": "58267468674",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "3M Bivolt 110V–220V Cortina de Luz Natal Estrela 5 Pontas, Pisca-pisca LED, Quintal KL-511",
+    "categoria": "casa",
+    "preco": 38.99,
+    "precoAntigo": 99.97,
+    "nota": 4.9,
+    "vendidos": 4261,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-820m8-msnpda76ji100f",
+    "link": "https://s.shopee.com.br/AKc8ztUUwT",
+    "linkOriginal": "https://shopee.com.br/product/1926490670/58267468674",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-15T18:00",
+   "produtoId": "shopee-45718109824",
+   "titulo": "🎄 Enfeite de Natal com preço bom",
+   "produto": {
+    "id": "shopee-45718109824",
+    "externalId": "45718109824",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Laço Veludo Grande Para Enfeite Arvore de Natal Vermelho Decoração Luxo Alta Qualidade Laço Gigante Estruturado",
+    "categoria": "casa",
+    "preco": 19.99,
+    "precoAntigo": 71.39,
+    "nota": 4.9,
+    "vendidos": 2073,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-820m0-mvc1r4bmxwcj06",
+    "link": "https://s.shopee.com.br/AKc8zqw6mi",
+    "linkOriginal": "https://shopee.com.br/product/1614832008/45718109824",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-15T20:00",
+   "produtoId": "shopee-22897389357",
+   "titulo": "🎄 Enfeite de Natal com preço bom",
+   "produto": {
+    "id": "shopee-22897389357",
+    "externalId": "22897389357",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Projetor Luzes Natalino Enfeites 16 Padrões Com Tema De Natal Com Movimento Para Quarto",
+    "categoria": "casa",
+    "preco": 42.99,
+    "precoAntigo": 119.42,
+    "nota": 4.8,
+    "vendidos": 3074,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-81z1k-mg22l1lf864k12",
+    "link": "https://s.shopee.com.br/6fiqd7A4Di",
+    "linkOriginal": "https://shopee.com.br/product/451371260/22897389357",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-15T21:00",
+   "produtoId": "shopee-22394461600",
+   "titulo": "🎄 Enfeite de Natal com preço bom",
+   "produto": {
+    "id": "shopee-22394461600",
+    "externalId": "22394461600",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Kit 100 Bolas de Natal com Estrela ou Kit 50 Enfeite Árvore Vermelha Dourada Mista Fosca Glitter",
+    "categoria": "casa",
+    "preco": 79.9,
+    "precoAntigo": 150.75,
+    "nota": 4.9,
+    "vendidos": 1837,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-82584-mu0wlh0ytywz41",
+    "link": "https://s.shopee.com.br/9zzI7Djz80"
+   }
+  },
+  {
+   "quando": "2026-11-16T08:00",
+   "produtoId": "shopee-53517112287",
+   "titulo": "✨ Look para Natal, Ano Novo e formatura",
+   "produto": {
+    "id": "shopee-53517112287",
+    "externalId": "53517112287",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Vestido Vermelho Longo Feminino Frente Unica Costa Nua de Festa Natal Ano Novo Casamento Madrinha Formatura  Plus Size",
+    "categoria": "moda",
+    "preco": 29.98,
+    "precoAntigo": 78.89,
+    "nota": 4.9,
+    "vendidos": 1000,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-820ly-mt1m004s9m2u20",
+    "link": "https://s.shopee.com.br/9fMSCiWEia",
+    "linkOriginal": "https://shopee.com.br/product/1330105172/53517112287",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-16T09:00",
+   "produtoId": "shopee-23797448983",
+   "titulo": "✨ Look para Natal, Ano Novo e formatura",
+   "produto": {
+    "id": "shopee-23797448983",
+    "externalId": "23797448983",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Vestido longo roupa feminino elegante festa natal fim de ano Várias Formas branco vermelho plus size",
+    "categoria": "moda",
+    "preco": 34.11,
+    "precoAntigo": 89.76,
+    "nota": 4.8,
+    "vendidos": 491,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-81ztc-mkb3nzs76nlu64",
+    "link": "https://s.shopee.com.br/80EEDeca6Q",
+    "linkOriginal": "https://shopee.com.br/product/1178057475/23797448983",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-16T10:00",
+   "produtoId": "shopee-19197670512",
+   "titulo": "✨ Look para Natal, Ano Novo e formatura",
+   "produto": {
+    "id": "shopee-19197670512",
+    "externalId": "19197670512",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Vestido para casamento convidada civil Feminino Longo Elegante de Festa Formatura Madrinha plus size",
+    "categoria": "moda",
+    "preco": 32.99,
+    "precoAntigo": 89.16,
+    "nota": 4.8,
+    "vendidos": 1833,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-7r98o-lu4zgqvo0mlcae",
+    "link": "https://s.shopee.com.br/9zzIbMC9ET",
+    "linkOriginal": "https://shopee.com.br/product/1178057475/19197670512",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-16T12:00",
+   "produtoId": "shein-487339164",
+   "titulo": "✨ Look para Natal, Ano Novo e formatura"
+  },
+  {
+   "quando": "2026-11-16T13:30",
+   "produtoId": "shopee-58257411262",
+   "titulo": "✨ Look para Natal, Ano Novo e formatura",
+   "produto": {
+    "id": "shopee-58257411262",
+    "externalId": "58257411262",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Dilomon Camisa Social Masculina Slim Não Amassa - Blusa Trabalho Branca Manga Longa Premium Brasil",
+    "categoria": "moda",
+    "preco": 79.2,
+    "precoAntigo": 180,
+    "nota": 4.9,
+    "vendidos": 665,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-820m9-mm5g6mwdbw1y02",
+    "link": "https://s.shopee.com.br/3VlorSixgh",
+    "linkOriginal": "https://shopee.com.br/product/1201093014/58257411262",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-16T15:00",
+   "produtoId": "shopee-56761958115",
+   "titulo": "✨ Look para Natal, Ano Novo e formatura",
+   "produto": {
+    "id": "shopee-56761958115",
+    "externalId": "56761958115",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Vestido Longo Feminino Midi Frente Unica Costa Nua de Festa Casamento Madrinha Formatura Branco Plus Size",
+    "categoria": "moda",
+    "preco": 29.89,
+    "precoAntigo": 80.78,
+    "nota": 4.8,
+    "vendidos": 3019,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-820m9-mpa71g3cy4nad0",
+    "link": "https://s.shopee.com.br/AAIinfBVtU",
+    "linkOriginal": "https://shopee.com.br/product/1330105172/56761958115",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-16T16:30",
+   "produtoId": "shein-593028194",
+   "titulo": "✨ Look para Natal, Ano Novo e formatura"
+  },
+  {
+   "quando": "2026-11-16T18:00",
+   "produtoId": "shopee-58202495403",
+   "titulo": "✨ Look para Natal, Ano Novo e formatura",
+   "produto": {
+    "id": "shopee-58202495403",
+    "externalId": "58202495403",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Vestido macaquinho Curto Alfaiataria Luxo Recortes com Detalhe em renda Dourada | Festa Balada",
+    "categoria": "moda",
+    "preco": 49.99,
+    "precoAntigo": 119.02,
+    "nota": 4.9,
+    "vendidos": 267,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-81ztc-mis7kiccne9u1a",
+    "link": "https://s.shopee.com.br/5q9jdiAULm",
+    "linkOriginal": "https://shopee.com.br/product/1579228094/58202495403",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-16T20:00",
+   "produtoId": "shein-580013425",
+   "titulo": "✨ Look para Natal, Ano Novo e formatura"
+  },
+  {
+   "quando": "2026-11-16T21:00",
+   "produtoId": "shopee-58252280133",
+   "titulo": "✨ Look para Natal, Ano Novo e formatura",
+   "produto": {
+    "id": "shopee-58252280133",
+    "externalId": "58252280133",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Vestido Feminino Longo Festa Um Ombro Só Gola Alta Fenda Suplex Elegante",
+    "categoria": "moda",
+    "preco": 43.9,
+    "precoAntigo": 99.77,
+    "nota": 4.9,
+    "vendidos": 1051,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-81z1k-mihft2svtsee50",
+    "link": "https://s.shopee.com.br/Lon5d4Djw",
+    "linkOriginal": "https://shopee.com.br/product/1550527605/58252280133",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-17T08:00",
+   "produtoId": "shopee-50858131149",
+   "titulo": "📺 Smart TV com preço bom",
+   "produto": {
+    "id": "shopee-50858131149",
+    "externalId": "50858131149",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Smart Tv AOC 32\" LED HD 32S5155/78G Roku Wifi HDMI Dolby Audio",
+    "categoria": "tec",
+    "preco": 927.99,
+    "precoAntigo": 2158.12,
+    "nota": 4.9,
+    "vendidos": 1289,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-820le-mmke20ryjfnof5",
+    "link": "https://s.shopee.com.br/906lPaAHbw",
+    "linkOriginal": "https://shopee.com.br/product/359168917/50858131149",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-17T09:00",
+   "produtoId": "shopee-58210633027",
+   "titulo": "📺 Smart TV com preço bom",
+   "produto": {
+    "id": "shopee-58210633027",
+    "externalId": "58210633027",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Smart TV 43\" Philco QLED HDR10 Roku TV P43KRB",
+    "categoria": "tec",
+    "preco": 1429.9,
+    "precoAntigo": 2199.85,
+    "nota": 5,
+    "vendidos": 1471,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-825at-mvc2n3j5qbyc1b",
+    "link": "https://s.shopee.com.br/AUvZCLvREU",
+    "linkOriginal": "https://shopee.com.br/product/811034337/58210633027",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-17T10:00",
+   "produtoId": "shopee-52118023642",
+   "titulo": "📺 Smart TV com preço bom",
+   "produto": {
+    "id": "shopee-52118023642",
+    "externalId": "52118023642",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Smart TV Semp 43” 43S42R Full HD Roku TV Dolby Audio Wi-Fi",
+    "categoria": "tec",
+    "preco": 1437.99,
+    "precoAntigo": 3687.15,
+    "nota": 5,
+    "vendidos": 695,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-820mb-mt9lcuvgzf9cd3",
+    "link": "https://s.shopee.com.br/8AXeQ44Jy4",
+    "linkOriginal": "https://shopee.com.br/product/359168917/52118023642",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-17T12:00",
+   "produtoId": "shopee-40717702468",
+   "titulo": "📺 Smart TV com preço bom",
+   "produto": {
+    "id": "shopee-40717702468",
+    "externalId": "40717702468",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Smart Tv  LS43F6000 Samsung LED 43\" Full HD Tizen Voice Ready",
+    "categoria": "cel",
+    "preco": 1617.99,
+    "precoAntigo": 4044.98,
+    "nota": 4.9,
+    "vendidos": 301,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-81z1k-mekh9q9s3vur84",
+    "link": "https://s.shopee.com.br/8fTv0z2PxF",
+    "linkOriginal": "https://shopee.com.br/product/359168917/40717702468",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-17T13:30",
+   "produtoId": "shopee-40983623796",
+   "titulo": "📺 Smart TV com preço bom",
+   "produto": {
+    "id": "shopee-40983623796",
+    "externalId": "40983623796",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "SMART TV PHILCO 50\" 4K UHD ROKU TV HDR10 DOLBY AUDIO P50CRB SPACE GRAY",
+    "categoria": "tec",
+    "preco": 2168.48,
+    "precoAntigo": 3554.89,
+    "nota": 4.9,
+    "vendidos": 261,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-820m0-mt5p9fs0gpaf6d",
+    "link": "https://s.shopee.com.br/5LDT2roNED",
+    "linkOriginal": "https://shopee.com.br/product/1009975506/40983623796",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-17T15:00",
+   "produtoId": "shopee-48217403916",
+   "titulo": "📺 Smart TV com preço bom",
+   "produto": {
+    "id": "shopee-48217403916",
+    "externalId": "48217403916",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Smart TV AOC 50\" DLED 4K UHD Roku TV - 50U7066/78G",
+    "categoria": "tec",
+    "preco": 1899.9,
+    "precoAntigo": 3015.71,
+    "nota": 5,
+    "vendidos": 135,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-820m5-msqfvsc4vbidf1",
+    "link": "https://s.shopee.com.br/6Ama2OlCXI",
+    "linkOriginal": "https://shopee.com.br/product/1343318906/48217403916",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-17T16:30",
+   "produtoId": "shopee-52118993857",
+   "titulo": "📺 Smart TV com preço bom",
+   "produto": {
+    "id": "shopee-52118993857",
+    "externalId": "52118993857",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Smart Tv Toshiba 50\" Qled Full Hd 60hz Vidaa com Wi-fi Dual Band e Bluetooth 50V45SS Bivolt",
+    "categoria": "tec",
+    "preco": 1944.57,
+    "precoAntigo": 3411.53,
+    "nota": 4.9,
+    "vendidos": 109,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-820m1-mui0shs68qv788",
+    "link": "https://s.shopee.com.br/6fiqdJjIWL",
+    "linkOriginal": "https://shopee.com.br/product/1009975506/52118993857",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-17T18:00",
+   "produtoId": "shopee-40275577235",
+   "titulo": "📺 Smart TV com preço bom",
+   "produto": {
+    "id": "shopee-40275577235",
+    "externalId": "40275577235",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Smart TV Samsung 32\" HD Tizen HDR Wi-Fi HDMI Bivolt Preta",
+    "categoria": "cel",
+    "preco": 1119,
+    "precoAntigo": 1621.74,
+    "nota": 5,
+    "vendidos": 262,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-81z1k-mg5gx2k4a9s06d",
+    "link": "https://s.shopee.com.br/6L60EgKR1g",
+    "linkOriginal": "https://shopee.com.br/product/564780452/40275577235",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-17T20:00",
+   "produtoId": "shopee-40823561069",
+   "titulo": "📺 Smart TV com preço bom",
+   "produto": {
+    "id": "shopee-40823561069",
+    "externalId": "40823561069",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Smart TV LED 43\" Tronos FHD – Wi-Fi, Bluetooth e Experiência Inteligente - Android 12",
+    "categoria": "tec",
+    "preco": 1434.1,
+    "precoAntigo": 1886.97,
+    "nota": 4.9,
+    "vendidos": 752,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-820ma-mqetuitau7lt7d",
+    "link": "https://s.shopee.com.br/80EEDl4xJ3",
+    "linkOriginal": "https://shopee.com.br/product/1494297971/40823561069",
+    "comissaoPct": 6
+   }
+  },
+  {
+   "quando": "2026-11-17T21:00",
+   "produtoId": "shopee-56611856308",
+   "titulo": "📺 Smart TV com preço bom",
+   "produto": {
+    "id": "shopee-56611856308",
+    "externalId": "56611856308",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Smart TV AOC 43\" Full HD LED Roku Wi-Fi USB HDMI 43S5155/78G",
+    "categoria": "tec",
+    "preco": 1427.98,
+    "precoAntigo": 2340.95,
+    "nota": 4.9,
+    "vendidos": 684,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-820lf-msykpyh2dc0729",
+    "link": "https://s.shopee.com.br/8Kr4cN3gd9",
+    "linkOriginal": "https://shopee.com.br/product/359168917/56611856308",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-18T08:00",
+   "produtoId": "shopee-55900808945",
+   "titulo": "🍽️ Mesa de jantar com cadeiras",
+   "produto": {
+    "id": "shopee-55900808945",
+    "externalId": "55900808945",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Conjunto Sala De Jantar Com 4 Lugares Cadeiras Estofadas Mesa Cindy Redonda Semelhante a Vidro",
+    "categoria": "casa",
+    "preco": 499,
+    "precoAntigo": 1061.7,
+    "nota": 4.8,
+    "vendidos": 96,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-81z1k-mgnp8f1maoef83",
+    "link": "https://s.shopee.com.br/1gKAg9Ee9s",
+    "linkOriginal": "https://shopee.com.br/product/402598512/55900808945",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-18T09:00",
+   "produtoId": "shopee-18497251333",
+   "titulo": "🍽️ Mesa de jantar com cadeiras",
+   "produto": {
+    "id": "shopee-18497251333",
+    "externalId": "18497251333",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Conjunto Sala de Jantar com Mesa e 6 Cadeiras Fênix Carraro",
+    "categoria": "casa",
+    "preco": 1066.85,
+    "precoAntigo": 2091.86,
+    "nota": 4.9,
+    "vendidos": 65,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-7qvdr-lkbe6j1e18ho93",
+    "link": "https://s.shopee.com.br/9AQBbvm5w9",
+    "linkOriginal": "https://shopee.com.br/product/952014476/18497251333",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-18T10:00",
+   "produtoId": "shopee-50767596380",
+   "titulo": "🍽️ Mesa de jantar com cadeiras",
+   "produto": {
+    "id": "shopee-50767596380",
+    "externalId": "50767596380",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Conjunto Mesa de Jantar 110x90 com 4 Cadeiras Gruvyer Industrial Moderna Amadeirada Sala Cozinha Apartamento",
+    "categoria": "cozinha",
+    "preco": 549.99,
+    "precoAntigo": 999.98,
+    "nota": 4.7,
+    "vendidos": 41,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-820m7-msveqqkd41z938",
+    "link": "https://s.shopee.com.br/9V320XkpGB",
+    "linkOriginal": "https://shopee.com.br/product/365399646/50767596380",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-18T12:00",
+   "produtoId": "shopee-47616038353",
+   "titulo": "🍽️ Mesa de jantar com cadeiras",
+   "produto": {
+    "id": "shopee-47616038353",
+    "externalId": "47616038353",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Conjunto Mesa Redonda Art Panta Nature Com 4 Cadeiras Inova Para Cozinha Sala De Jantar Cor Mel Liso",
+    "categoria": "cozinha",
+    "preco": 598.22,
+    "precoAntigo": 892.87,
+    "nota": 4.8,
+    "vendidos": 123,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-820md-msq1fu8wfmkm11",
+    "link": "https://s.shopee.com.br/5VWtFC03NH",
+    "linkOriginal": "https://shopee.com.br/product/333773458/47616038353",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-18T13:30",
+   "produtoId": "shopee-22597495116",
+   "titulo": "🍽️ Mesa de jantar com cadeiras",
+   "produto": {
+    "id": "shopee-22597495116",
+    "externalId": "22597495116",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Sala de Jantar Mesa Olímpia 120CM MDF Canto Copo com 4 Cadeiras Carol Moderna",
+    "categoria": "casa",
+    "preco": 1086.55,
+    "precoAntigo": 1468.31,
+    "nota": 4.8,
+    "vendidos": 144,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-7rd71-lv0r42oexa9of0",
+    "link": "https://s.shopee.com.br/6q2GpduyfP",
+    "linkOriginal": "https://shopee.com.br/product/1033307532/22597495116",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-18T15:00",
+   "produtoId": "shopee-23194018630",
+   "titulo": "🍽️ Mesa de jantar com cadeiras",
+   "produto": {
+    "id": "shopee-23194018630",
+    "externalId": "23194018630",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Conjunto Jogo Mesa Cozinha 4 Cadeiras Jantar Para Apartamento Pequeno Tubular Junco Fibra Sintética",
+    "categoria": "cozinha",
+    "preco": 484.9,
+    "precoAntigo": 655.27,
+    "nota": 4.6,
+    "vendidos": 182,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-81ztc-mjy17a5t0a2p93",
+    "link": "https://s.shopee.com.br/4VeM3MhnkK",
+    "linkOriginal": "https://shopee.com.br/product/1227043261/23194018630",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-18T16:30",
+   "produtoId": "shopee-23797540567",
+   "titulo": "🍽️ Mesa de jantar com cadeiras",
+   "produto": {
+    "id": "shopee-23797540567",
+    "externalId": "23797540567",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Conjunto Mesa Jantar Lupita MDF 120x80cm 4 Cadeiras Casa 812",
+    "categoria": "casa",
+    "preco": 977.17,
+    "precoAntigo": 1221.46,
+    "nota": 4.9,
+    "vendidos": 164,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-820lk-msycrbpp3zlzb6",
+    "link": "https://s.shopee.com.br/5fqJRVdMNR",
+    "linkOriginal": "https://shopee.com.br/product/1220316212/23797540567",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-18T18:00",
+   "produtoId": "shopee-23893371273",
+   "titulo": "🍽️ Mesa de jantar com cadeiras",
+   "produto": {
+    "id": "shopee-23893371273",
+    "externalId": "23893371273",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Jogo Mesa De Jantar 100x74 Com 4 Cadeiras Madeira Maciça",
+    "categoria": "casa",
+    "preco": 539.94,
+    "precoAntigo": 627.84,
+    "nota": 4.9,
+    "vendidos": 279,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-7r98o-mbfk2kwgknzsaa",
+    "link": "https://s.shopee.com.br/6L60EiwsgK",
+    "linkOriginal": "https://shopee.com.br/product/442385975/23893371273",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-18T20:00",
+   "produtoId": "shopee-52465819369",
+   "titulo": "🍽️ Mesa de jantar com cadeiras",
+   "produto": {
+    "id": "shopee-52465819369",
+    "externalId": "52465819369",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Conjunto Sala de Jantar Elo Mesa MDF 1 Mesa e 4 Cadeiras Estofadas Corino Moderno",
+    "categoria": "casa",
+    "preco": 531.2,
+    "precoAntigo": 717.84,
+    "nota": 4.7,
+    "vendidos": 95,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-824jk-mpyivb7onwg234",
+    "link": "https://s.shopee.com.br/9V320YtZ4t",
+    "linkOriginal": "https://shopee.com.br/product/625630511/52465819369",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-18T21:00",
+   "produtoId": "shopee-23197580408",
+   "titulo": "🍽️ Mesa de jantar com cadeiras",
+   "produto": {
+    "id": "shopee-23197580408",
+    "externalId": "23197580408",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Conjunto Mesa de Jantar 160cm com 6 Cadeiras Madeira Maciça Estilo Colonial Multimóveis CR50085",
+    "categoria": "casa",
+    "preco": 1906.85,
+    "precoAntigo": 2724.07,
+    "nota": 4.9,
+    "vendidos": 28,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-7repv-m90pmw1a0t0nc0",
+    "link": "https://s.shopee.com.br/6Ama2RSK19",
+    "linkOriginal": "https://shopee.com.br/product/308628919/23197580408",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-19T08:00",
+   "produtoId": "shopee-23393560547",
+   "titulo": "🔥 Fogão com preço bom",
+   "produto": {
+    "id": "shopee-23393560547",
+    "externalId": "23393560547",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Fogão Suggar Neo Glass 4 Bocas Prata FGVNG410 Bivolt",
+    "categoria": "casa",
+    "preco": 759.78,
+    "precoAntigo": 1117.32,
+    "nota": 4.9,
+    "vendidos": 705,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-7rfga-m36pfb12uhel52",
+    "link": "https://s.shopee.com.br/9V320aNxW4",
+    "linkOriginal": "https://shopee.com.br/product/1009975506/23393560547",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-19T09:00",
+   "produtoId": "shopee-41573420120",
+   "titulo": "🔥 Fogão com preço bom",
+   "produto": {
+    "id": "shopee-41573420120",
+    "externalId": "41573420120",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Fogão de Piso à Gás Braslar New Sirius 4 Bocas Preto Mesa Inox – Acendimento Manual",
+    "categoria": "casa",
+    "preco": 499.98,
+    "precoAntigo": 704.2,
+    "nota": 4.6,
+    "vendidos": 982,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-820l9-murreoag3ksh00",
+    "link": "https://s.shopee.com.br/8fTv13R8Cr",
+    "linkOriginal": "https://shopee.com.br/product/1334945356/41573420120",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-19T10:00",
+   "produtoId": "shopee-22694331709",
+   "titulo": "🔥 Fogão com preço bom",
+   "produto": {
+    "id": "shopee-22694331709",
+    "externalId": "22694331709",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Fogão Itatiaia 5 Bocas Electra Glass Plus Preto Bivolt",
+    "categoria": "casa",
+    "preco": 1053.27,
+    "precoAntigo": 1367.88,
+    "nota": 4.9,
+    "vendidos": 888,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-7rdxs-mdlwv2jr8eoae2",
+    "link": "https://s.shopee.com.br/3VlorZSSC0",
+    "linkOriginal": "https://shopee.com.br/product/1388709282/22694331709",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-19T12:00",
+   "produtoId": "shopee-46501574894",
+   "titulo": "🔥 Fogão com preço bom",
+   "produto": {
+    "id": "shopee-46501574894",
+    "externalId": "46501574894",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Fogão de Piso á Gás  FORCCI ESSENZA 4 Bocas Preto Mesa Inox Clarice - Acendimento Manual",
+    "categoria": "casa",
+    "preco": 549.99,
+    "precoAntigo": 901.62,
+    "nota": 4.5,
+    "vendidos": 241,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-820lo-mr69gpqsfpqedf",
+    "link": "https://s.shopee.com.br/50aceJf5eo",
+    "linkOriginal": "https://shopee.com.br/product/1334945356/46501574894",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-19T13:30",
+   "produtoId": "shopee-43729086179",
+   "titulo": "🔥 Fogão com preço bom",
+   "produto": {
+    "id": "shopee-43729086179",
+    "externalId": "43729086179",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Fogão de Mesa 4 Bocas Braslar Asiático Bf A Gas Branco Alta Performance",
+    "categoria": "cozinha",
+    "preco": 189.2,
+    "precoAntigo": 248.95,
+    "nota": 4.9,
+    "vendidos": 539,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-820m7-mlgff4ficrgk87",
+    "link": "https://s.shopee.com.br/3g5F3rkAMQ",
+    "linkOriginal": "https://shopee.com.br/product/1494297971/43729086179",
+    "comissaoPct": 6
+   }
+  },
+  {
+   "quando": "2026-11-19T15:00",
+   "produtoId": "shopee-21598148386",
+   "titulo": "🔥 Fogão com preço bom",
+   "produto": {
+    "id": "shopee-21598148386",
+    "externalId": "21598148386",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Fogão De Piso Atlas Coliseum Plus 4 Bocas Mesa Inox Forno 50 Litros",
+    "categoria": "casa",
+    "preco": 549.99,
+    "precoAntigo": 999.98,
+    "nota": 4.8,
+    "vendidos": 57,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-820lx-mt56vnrcwa9z24",
+    "link": "https://s.shopee.com.br/2LZrTRWUWI",
+    "linkOriginal": "https://shopee.com.br/product/1537868696/21598148386",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-19T16:30",
+   "produtoId": "shopee-41078603613",
+   "titulo": "🔥 Fogão com preço bom",
+   "produto": {
+    "id": "shopee-41078603613",
+    "externalId": "41078603613",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Fogão 4 Bocas Atlas Mônaco Plus Preto Com Mesa Inox E Acendimento Automático Bivolt",
+    "categoria": "casa",
+    "preco": 649.99,
+    "precoAntigo": 1203.69,
+    "nota": 4.7,
+    "vendidos": 59,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-820lj-moebqh9ccu86cc",
+    "link": "https://s.shopee.com.br/8fTv158Nfc",
+    "linkOriginal": "https://shopee.com.br/product/1537868696/41078603613",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-19T18:00",
+   "produtoId": "shopee-22294317588",
+   "titulo": "🔥 Fogão com preço bom",
+   "produto": {
+    "id": "shopee-22294317588",
+    "externalId": "22294317588",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Fogão Itatiaia 4 Bocas Electra Glass Plus Preto Bivolt",
+    "categoria": "casa",
+    "preco": 825,
+    "precoAntigo": 926.97,
+    "nota": 4.9,
+    "vendidos": 1033,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-7rdyp-md61mxi9v9pi15",
+    "link": "https://s.shopee.com.br/9KjboHOar3",
+    "linkOriginal": "https://shopee.com.br/product/1388709282/22294317588",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-19T20:00",
+   "produtoId": "shopee-18398114359",
+   "titulo": "🔥 Fogão com preço bom",
+   "produto": {
+    "id": "shopee-18398114359",
+    "externalId": "18398114359",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Fogão Itatiaia 4 Bocas Star New Branco - Bivolt",
+    "categoria": "casa",
+    "preco": 651.09,
+    "precoAntigo": 739.88,
+    "nota": 4.9,
+    "vendidos": 572,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-7rd3l-m7b6x70v5f7970",
+    "link": "https://s.shopee.com.br/1BNu5GtgQh",
+    "linkOriginal": "https://shopee.com.br/product/1388709282/18398114359",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-19T21:00",
+   "produtoId": "shopee-22894490253",
+   "titulo": "🔥 Fogão com preço bom",
+   "produto": {
+    "id": "shopee-22894490253",
+    "externalId": "22894490253",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Fogão Consul 4 Bocas cor Inox com Acendimento Automático - CFO4NAR",
+    "categoria": "casa",
+    "preco": 1306,
+    "nota": 4.9,
+    "vendidos": 428,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-8259r-mv0s6ouecnihc0",
+    "link": "https://s.shopee.com.br/AAIinoLQAG",
+    "linkOriginal": "https://shopee.com.br/product/1623409915/22894490253",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-20T08:00",
+   "produtoId": "shopee-23419547204",
+   "titulo": "🛋️ Sofá com preço bom",
+   "produto": {
+    "id": "shopee-23419547204",
+    "externalId": "23419547204",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Sofá Roma 3 lugares Suede - Sofá Casa",
+    "categoria": "casa",
+    "preco": 636.41,
+    "precoAntigo": 1060.68,
+    "nota": 4.8,
+    "vendidos": 235,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-820mb-mrd6eo21bdvoe5",
+    "link": "https://s.shopee.com.br/2BGRH9X8OY",
+    "linkOriginal": "https://shopee.com.br/product/648124788/23419547204",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-20T09:00",
+   "produtoId": "shopee-20997804398",
+   "titulo": "🛋️ Sofá com preço bom",
+   "produto": {
+    "id": "shopee-20997804398",
+    "externalId": "20997804398",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Sofá 3 Lugares Retrátil e Reclinável Cama inBox Compact 1,80m Velusoft Café",
+    "categoria": "cama",
+    "preco": 1085.87,
+    "precoAntigo": 1872.19,
+    "nota": 4.8,
+    "vendidos": 272,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-7rdwr-lzul5c390ltgd0",
+    "link": "https://s.shopee.com.br/50aceMMLeq",
+    "linkOriginal": "https://shopee.com.br/product/882904544/20997804398",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-20T10:00",
+   "produtoId": "shopee-22698950443",
+   "titulo": "🛋️ Sofá com preço bom",
+   "produto": {
+    "id": "shopee-22698950443",
+    "externalId": "22698950443",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Sofá Retrátil e Reclinável 2,10m com Molas e Espuma D33 Thunder. Velusoft Cama inBox",
+    "categoria": "cama",
+    "preco": 1293,
+    "precoAntigo": 2020.31,
+    "nota": 4.8,
+    "vendidos": 650,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-824g2-mfe207nivnrcf7",
+    "link": "https://s.shopee.com.br/3g5F3unUVs",
+    "linkOriginal": "https://shopee.com.br/product/882904544/22698950443",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-20T12:00",
+   "produtoId": "shopee-18399194308",
+   "titulo": "🛋️ Sofá com preço bom",
+   "produto": {
+    "id": "shopee-18399194308",
+    "externalId": "18399194308",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Sofá Retrátil e Reclinável 3 lugares com Molas 1,80m Livia Suede Adonai Estofados",
+    "categoria": "casa",
+    "preco": 899.91,
+    "precoAntigo": 1406.11,
+    "nota": 4.9,
+    "vendidos": 268,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-821d7-mgih44eeclxo30",
+    "link": "https://s.shopee.com.br/1gKAgEv6Zg",
+    "linkOriginal": "https://shopee.com.br/product/296813643/18399194308",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-20T13:30",
+   "produtoId": "shopee-20899840224",
+   "titulo": "🛋️ Sofá com preço bom",
+   "produto": {
+    "id": "shopee-20899840224",
+    "externalId": "20899840224",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Sofá Retrátil Reclinável 2,30m Essence. Velusoft Cama inBox",
+    "categoria": "cama",
+    "preco": 1352.66,
+    "precoAntigo": 2081.02,
+    "nota": 4.8,
+    "vendidos": 418,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-7rdyx-mbqrzfn8anh248",
+    "link": "https://s.shopee.com.br/2qW84NqfCp",
+    "linkOriginal": "https://shopee.com.br/product/882904544/20899840224",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-20T15:00",
+   "produtoId": "shopee-23794394409",
+   "titulo": "🛋️ Sofá com preço bom",
+   "produto": {
+    "id": "shopee-23794394409",
+    "externalId": "23794394409",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Sofá 2 Lugares 2,00m Retrátil e Reclinável Milano Bom Pastor",
+    "categoria": "casa",
+    "preco": 1629,
+    "precoAntigo": 2011.11,
+    "nota": 4.9,
+    "vendidos": 824,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-81z1k-mf1vbmdih72f6c",
+    "link": "https://s.shopee.com.br/3Vlorbo7qt",
+    "linkOriginal": "https://shopee.com.br/product/1563516628/23794394409",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-20T16:30",
+   "produtoId": "shopee-19397107622",
+   "titulo": "🛋️ Sofá com preço bom",
+   "produto": {
+    "id": "shopee-19397107622",
+    "externalId": "19397107622",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Sofá Retrátil Reclinável 2,30m Nivus Cinza c/ Molas Ensacadas - King House",
+    "categoria": "casa",
+    "preco": 2349,
+    "precoAntigo": 3355.71,
+    "nota": 4.9,
+    "vendidos": 248,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-825ak-mvbtew34v18obf",
+    "link": "https://s.shopee.com.br/2BGRH9tCYl",
+    "linkOriginal": "https://shopee.com.br/product/874507048/19397107622",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-20T18:00",
+   "produtoId": "shopee-23592806552",
+   "titulo": "🛋️ Sofá com preço bom",
+   "produto": {
+    "id": "shopee-23592806552",
+    "externalId": "23592806552",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Sofá Retrátil e Reclinável 3 lugares com Molas 1,80m Vegas Suede Adonai Estofados",
+    "categoria": "casa",
+    "preco": 1059.9,
+    "precoAntigo": 1605.91,
+    "nota": 4.9,
+    "vendidos": 76,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-822zq-mi7hb6b931mqc1",
+    "link": "https://s.shopee.com.br/9KjboKRv1S",
+    "linkOriginal": "https://shopee.com.br/product/296813643/23592806552",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-20T20:00",
+   "produtoId": "shopee-23893084170",
+   "titulo": "🛋️ Sofá com preço bom",
+   "produto": {
+    "id": "shopee-23893084170",
+    "externalId": "23893084170",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Sofá 3 Lugares Retrátil e Reclinável Cama inBox Senses 2,00m Velusoft Cinza",
+    "categoria": "cama",
+    "preco": 1411.96,
+    "precoAntigo": 2046.32,
+    "nota": 4.8,
+    "vendidos": 230,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-7rdxn-lzou0oyl6coa73",
+    "link": "https://s.shopee.com.br/2VtHflrvsn",
+    "linkOriginal": "https://shopee.com.br/product/882904544/23893084170",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-20T21:00",
+   "produtoId": "shopee-18364233357",
+   "titulo": "🛋️ Sofá com preço bom",
+   "produto": {
+    "id": "shopee-18364233357",
+    "externalId": "18364233357",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Sofá Retrátil/Reclinável Zurique 2,50m Suede Velut Cinza c/ Molas no Assento - King House",
+    "categoria": "casa",
+    "preco": 2195.54,
+    "precoAntigo": 3049.36,
+    "nota": 4.9,
+    "vendidos": 107,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-8262x-mmahcr8itb7m62",
+    "link": "https://s.shopee.com.br/9AQBc1SYMT",
+    "linkOriginal": "https://shopee.com.br/product/874507048/18364233357",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-21T08:00",
+   "produtoId": "shopee-15848213372",
+   "titulo": "🌀 Ventilador com preço bom",
+   "produto": {
+    "id": "shopee-15848213372",
+    "externalId": "15848213372",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Ventilador de mesa 30 cm 6 pás com 3 velocidades - VSP-30-B - Mondial",
+    "categoria": "eletro",
+    "preco": 129.9,
+    "precoAntigo": 164.43,
+    "nota": 4.9,
+    "vendidos": 4872,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-825a1-mtxw00fm6fwl7c",
+    "link": "https://s.shopee.com.br/5q9jdxD5jM",
+    "linkOriginal": "https://shopee.com.br/product/489001115/15848213372",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-21T09:00",
+   "produtoId": "shopee-58254966835",
+   "titulo": "🌀 Ventilador com preço bom",
+   "produto": {
+    "id": "shopee-58254966835",
+    "externalId": "58254966835",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Ventilador de Mesa 40Cm 6 Pás Preto Mondial VSP40 127V",
+    "categoria": "eletro",
+    "preco": 144.9,
+    "precoAntigo": 201.25,
+    "nota": 5,
+    "vendidos": 1748,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-8257w-muy2yss48uf68b",
+    "link": "https://s.shopee.com.br/1W0kTzTaWx",
+    "linkOriginal": "https://shopee.com.br/product/412968566/58254966835",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-21T10:00",
+   "produtoId": "shopee-52417354325",
+   "titulo": "🌀 Ventilador com preço bom",
+   "produto": {
+    "id": "shopee-52417354325",
+    "externalId": "52417354325",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Ventilador de Coluna 180W 8 Pás 50cm WAP FLOW TURBO WV04ES",
+    "categoria": "eletro",
+    "preco": 249.9,
+    "precoAntigo": 471.51,
+    "nota": 4.9,
+    "vendidos": 996,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-820m9-mspj6fi4yghy6a",
+    "link": "https://s.shopee.com.br/2gChs7GtA9",
+    "linkOriginal": "https://shopee.com.br/product/564780452/52417354325",
+    "comissaoPct": 6
+   }
+  },
+  {
+   "quando": "2026-11-21T12:00",
+   "produtoId": "shopee-40534196101",
+   "titulo": "🌀 Ventilador com preço bom",
+   "produto": {
+    "id": "shopee-40534196101",
+    "externalId": "40534196101",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Ventilador Mesa e Parede 180W 8 Pás 50cm WAP FLOW TURBO WV03ES 127V",
+    "categoria": "eletro",
+    "preco": 184.9,
+    "precoAntigo": 401.96,
+    "nota": 4.9,
+    "vendidos": 901,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-820ly-mso5ww0bo0lh89",
+    "link": "https://s.shopee.com.br/6L60EsBBiX",
+    "linkOriginal": "https://shopee.com.br/product/564780452/40534196101",
+    "comissaoPct": 6
+   }
+  },
+  {
+   "quando": "2026-11-21T13:30",
+   "produtoId": "shopee-22698144726",
+   "titulo": "🌀 Ventilador com preço bom",
+   "produto": {
+    "id": "shopee-22698144726",
+    "externalId": "22698144726",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Ventilador Torre Slim Cinza Fix 3 Velocidades 127v ou 220v 86cm",
+    "categoria": "eletro",
+    "preco": 229.9,
+    "precoAntigo": 359.22,
+    "nota": 4.8,
+    "vendidos": 1551,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-820md-muw7tqcb7rwj3f",
+    "link": "https://s.shopee.com.br/20x14wqvn3",
+    "linkOriginal": "https://shopee.com.br/product/534373048/22698144726",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-21T15:00",
+   "produtoId": "shopee-23899022188",
+   "titulo": "🌀 Ventilador com preço bom",
+   "produto": {
+    "id": "shopee-23899022188",
+    "externalId": "23899022188",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Ventilador de Coluna Mallory Max Control 40cm Preto e Grafite",
+    "categoria": "eletro",
+    "preco": 279.9,
+    "precoAntigo": 559.8,
+    "nota": 4.9,
+    "vendidos": 306,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-825ag-mfy4z4chdij3d0",
+    "link": "https://s.shopee.com.br/W8DI8P8Z0",
+    "linkOriginal": "https://shopee.com.br/product/554629856/23899022188",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-21T16:30",
+   "produtoId": "shopee-54456334030",
+   "titulo": "🌀 Ventilador com preço bom",
+   "produto": {
+    "id": "shopee-54456334030",
+    "externalId": "54456334030",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Ventilador de Pé 110v Coluna Grande 130cm 3 Pás Turbo Silencioso Vento Forte 3 Velocidades Preto",
+    "categoria": "eletro",
+    "preco": 123.96,
+    "precoAntigo": 229.56,
+    "nota": 4.7,
+    "vendidos": 886,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-8259i-muwk8cry27eyd5",
+    "link": "https://s.shopee.com.br/7VHxczyUM1",
+    "linkOriginal": "https://shopee.com.br/product/1101178064/54456334030",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-21T18:00",
+   "produtoId": "shopee-58269890210",
+   "titulo": "🌀 Ventilador com preço bom",
+   "produto": {
+    "id": "shopee-58269890210",
+    "externalId": "58269890210",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Ventilador de Teto com Luminária LED 3 Pás Moderno",
+    "categoria": "eletro",
+    "preco": 79.99,
+    "precoAntigo": 210.5,
+    "nota": 4.9,
+    "vendidos": 408,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-825ax-mtzn6xffn2m9f3",
+    "link": "https://s.shopee.com.br/2BGRHEMNre",
+    "linkOriginal": "https://shopee.com.br/product/574679875/58269890210",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-21T20:00",
+   "produtoId": "shopee-51606352089",
+   "titulo": "🌀 Ventilador com preço bom",
+   "produto": {
+    "id": "shopee-51606352089",
+    "externalId": "51606352089",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Ventilador de Teto Retrátil Lâmpada 3 Cores Silencioso 60W ou 100W Pás Design Sofisticado Bivolt",
+    "categoria": "eletro",
+    "preco": 39.9,
+    "precoAntigo": 102.31,
+    "nota": 4.8,
+    "vendidos": 1202,
+    "imagem": "https://cf.shopee.com.br/file/cn-11134207-820l4-msd3ma9n0wli87",
+    "link": "https://s.shopee.com.br/BVMtYTzvC",
+    "linkOriginal": "https://shopee.com.br/product/1283675544/51606352089",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-21T21:00",
+   "produtoId": "shopee-58218004530",
+   "titulo": "🌀 Ventilador com preço bom",
+   "produto": {
+    "id": "shopee-58218004530",
+    "externalId": "58218004530",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Ventilador de Mesa Prime Air Maxx Force 6 pás 60W AVTE01",
+    "categoria": "eletro",
+    "preco": 129,
+    "precoAntigo": 258,
+    "nota": 4.6,
+    "vendidos": 337,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-820m7-mtqprp8oeq694d",
+    "link": "https://s.shopee.com.br/1qdasbSJqz",
+    "linkOriginal": "https://shopee.com.br/product/1929669048/58218004530",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-22T08:00",
+   "produtoId": "shopee-45865434089",
+   "titulo": "❄️ Ar-condicionado com preço bom",
+   "produto": {
+    "id": "shopee-45865434089",
+    "externalId": "45865434089",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Ar Condicionado Split Midea Inverter Lite 12000 Btu R32 Frio 42ebvcb12m5 Branco 220v",
+    "categoria": "casa",
+    "preco": 2172.83,
+    "precoAntigo": 3243.03,
+    "nota": 5,
+    "vendidos": 441,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-82582-mrhbhz7r77d102",
+    "link": "https://s.shopee.com.br/ql3gphqYn",
+    "linkOriginal": "https://shopee.com.br/product/1009975506/45865434089",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-22T09:00",
+   "produtoId": "shopee-21498106010",
+   "titulo": "❄️ Ar-condicionado com preço bom",
+   "produto": {
+    "id": "shopee-21498106010",
+    "externalId": "21498106010",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Ar Condicionado Split Philco Hi Wall Inverter 12.000 BTU/h Frio Monofásico Branco PAC12FC 220V",
+    "categoria": "casa",
+    "preco": 2009.59,
+    "precoAntigo": 2912.45,
+    "nota": 4.9,
+    "vendidos": 352,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-7renn-m8c0rntbwsoma2",
+    "link": "https://s.shopee.com.br/4B1VewMlGy",
+    "linkOriginal": "https://shopee.com.br/product/1388709282/21498106010",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-22T10:00",
+   "produtoId": "shopee-57213355028",
+   "titulo": "❄️ Ar-condicionado com preço bom",
+   "produto": {
+    "id": "shopee-57213355028",
+    "externalId": "57213355028",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Ar Condicionado Split Philco 24.000 Btus Pac24qi Quente e Frio 220v",
+    "categoria": "casa",
+    "preco": 3038.04,
+    "precoAntigo": 5149.22,
+    "nota": 4.9,
+    "vendidos": 280,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-82583-mq7wmof6eyha0b",
+    "link": "https://s.shopee.com.br/W8DICaiiQ",
+    "linkOriginal": "https://shopee.com.br/product/1009975506/57213355028",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-22T12:00",
+   "produtoId": "shopee-57266777354",
+   "titulo": "❄️ Ar-condicionado com preço bom",
+   "produto": {
+    "id": "shopee-57266777354",
+    "externalId": "57266777354",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Ar Condicionado Split Elgin 12000 Btus Eco Inverter Ii Wi-fi Frio Hjfc12c2wece 220v",
+    "categoria": "casa",
+    "preco": 2064.13,
+    "precoAntigo": 3175.58,
+    "nota": 5,
+    "vendidos": 199,
+    "imagem": "https://cf.shopee.com.br/file/br-11134201-820ln-msk2gasrydj8c2",
+    "link": "https://s.shopee.com.br/114Tt8hDDq",
+    "linkOriginal": "https://shopee.com.br/product/1009975506/57266777354",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-22T13:30",
+   "produtoId": "shopee-42284144255",
+   "titulo": "❄️ Ar-condicionado com preço bom",
+   "produto": {
+    "id": "shopee-42284144255",
+    "externalId": "42284144255",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Ar Condicionado Split Hi-efficiency Hisense 12000 Btus Frio As-12tw2rluhb00 Inverter Wi-fi 220v",
+    "categoria": "casa",
+    "preco": 2064.13,
+    "precoAntigo": 3685.95,
+    "nota": 5,
+    "vendidos": 152,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-825az-msn68ils153e9e",
+    "link": "https://s.shopee.com.br/2LZrTac8WE",
+    "linkOriginal": "https://shopee.com.br/product/1009975506/42284144255",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-22T15:00",
+   "produtoId": "shopee-58117240567",
+   "titulo": "❄️ Ar-condicionado com preço bom",
+   "produto": {
+    "id": "shopee-58117240567",
+    "externalId": "58117240567",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Ar Condicionado Split Hi-efficiency Hisense 9000 Btus Frio As-09tw2rlchb00 Inverter Wi-fi 220v",
+    "categoria": "casa",
+    "preco": 1846.74,
+    "precoAntigo": 3419.89,
+    "nota": 4.9,
+    "vendidos": 106,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-825az-msn68ils153e9e",
+    "link": "https://s.shopee.com.br/5LDT374Awp",
+    "linkOriginal": "https://shopee.com.br/product/1009975506/58117240567",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-22T16:30",
+   "produtoId": "shopee-53567584126",
+   "titulo": "❄️ Ar-condicionado com preço bom",
+   "produto": {
+    "id": "shopee-53567584126",
+    "externalId": "53567584126",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "AR CONDICIONADO SPLIT LG DUAL VOICE 9000 BTUS FRIO 220V WIFI ",
+    "categoria": "casa",
+    "preco": 2105.9,
+    "precoAntigo": 3828.91,
+    "nota": 4.8,
+    "vendidos": 130,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-8258v-msvq4dtou9kw37",
+    "link": "https://s.shopee.com.br/4VeM3a7Le0",
+    "linkOriginal": "https://shopee.com.br/product/1051446617/53567584126",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-22T18:00",
+   "produtoId": "shopee-58214792212",
+   "titulo": "❄️ Ar-condicionado com preço bom",
+   "produto": {
+    "id": "shopee-58214792212",
+    "externalId": "58214792212",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Ar Condicionado Split Electrolux Hi Wall MaxComfort Full Inverter 9.000 Btu/h Frio Monofásico Branco NI09F/NE09F 220V",
+    "categoria": "casa",
+    "preco": 1955.43,
+    "precoAntigo": 5013.92,
+    "nota": 5,
+    "vendidos": 90,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-82598-mqxrt1xwen0m7f",
+    "link": "https://s.shopee.com.br/40i5SdNObx",
+    "linkOriginal": "https://shopee.com.br/product/1388709282/58214792212",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-22T20:00",
+   "produtoId": "shopee-51917229799",
+   "titulo": "❄️ Ar-condicionado com preço bom",
+   "produto": {
+    "id": "shopee-51917229799",
+    "externalId": "51917229799",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Ar Condicionado Split Hi-efficiency Hisense 18000 Btus Frio As-18tw2rwphb00 Inverter Wi-fi 220v",
+    "categoria": "casa",
+    "preco": 2929.35,
+    "precoAntigo": 5050.6,
+    "nota": 5,
+    "vendidos": 62,
+    "imagem": "https://cf.shopee.com.br/file/sg-11134201-825az-msn68ils153e9e",
+    "link": "https://s.shopee.com.br/3LSOfRTO8R",
+    "linkOriginal": "https://shopee.com.br/product/1009975506/51917229799",
+    "comissaoPct": 3
+   }
+  },
+  {
+   "quando": "2026-11-22T21:00",
+   "produtoId": "shopee-58220150378",
+   "titulo": "❄️ Ar-condicionado com preço bom",
+   "produto": {
+    "id": "shopee-58220150378",
+    "externalId": "58220150378",
+    "marketplace": "shopee",
+    "loja": "shopee",
+    "nome": "Ar Condicionado Split Hi Wall Inverter Midea AI Ecomaster 9.000 Btus Frio 220v R-32",
+    "categoria": "casa",
+    "preco": 2049,
+    "precoAntigo": 4017.65,
+    "nota": 5,
+    "vendidos": 40,
+    "imagem": "https://cf.shopee.com.br/file/br-11134207-820lm-mtjxi8x5m2o396",
+    "link": "https://s.shopee.com.br/1BwhHccjJ",
+    "linkOriginal": "https://shopee.com.br/product/832653363/58220150378",
+    "comissaoPct": 3
+   }
+  }
+ ]
 }
