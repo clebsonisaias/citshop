@@ -10,20 +10,15 @@
   let restaurantes = [], tipo = '', atual = null, itens = [], sacola = ler(), escolhendo = null, qtd = 1, ponto = null, frete = null;
 
   // ---------- lista ----------
-  function cartaoRest(r) {
-    const entrega = r.entrega ? (r.taxaEntregaDesde == null ? 'Entrega' : r.taxaEntregaDesde === 0 ? 'Entrega grátis' : `Entrega ${r.entregaPorKm ? 'a partir de ' : ''}${brl(r.taxaEntregaDesde)}`) : 'Só retirada';
-    return `<a class="food-rest${r.aberto ? '' : ' fechado'}" href="/alimentacao/${esc(r.slug)}" data-rest="${esc(r.slug)}">
-      <span class="avatar" style="background:${esc(r.cor || '#036271')};color:${window.CIT.textoSobre(r.cor || '#036271')}">${r.logo ? `<img src="${esc(r.logo)}" alt="">` : esc(window.CIT.iniciais(r.nome))}</span>
-      <span><b>${esc(r.nome)}</b><small>${esc(r.tipo)} · ${esc(r.cidade)}${r.avaliacao ? ` · ★ ${String(r.avaliacao.media).replace('.', ',')}` : ''}</small>
-      <small class="${r.aberto ? 'ok' : 'off'}">${esc(r.situacao)}</small>
-      <small>${r.preparoMin} min · ${entrega}${r.pedidoMinimo ? ` · mínimo ${brl(r.pedidoMinimo)}` : ''}</small></span></a>`;
-  }
+  const cartaoRest = window.CIT.cartaoRestaurante;
   function renderLista() {
     const q = $('fBusca').value.trim().toLowerCase(), so = $('fAbertos').checked;
     const tipos = [...new Set(restaurantes.map((r) => r.tipo))].sort();
     $('fTipos').innerHTML = tipos.length > 1 ? [['', 'Todos'], ...tipos.map((t) => [t, t])].map(([k, n]) => `<button class="chip" data-tipo="${esc(k)}" aria-pressed="${tipo === k}">${esc(n)}</button>`).join('') : '';
     const lista = restaurantes.filter((r) => (!so || r.aberto) && (!tipo || r.tipo === tipo) && (!q || `${r.nome} ${r.tipo} ${r.cidade}`.toLowerCase().includes(q)));
     $('fRestaurantes').innerHTML = lista.length ? lista.map(cartaoRest).join('') : '<p class="empty">Nenhum restaurante encontrado. Tente outra busca.</p>';
+    $('fTitulo').textContent = tipo || 'Restaurantes da praça';
+    $('fContagem').textContent = lista.length === 1 ? '1 restaurante' : `${lista.length} restaurantes`;
   }
 
   // ---------- restaurante e cardápio ----------
@@ -33,14 +28,17 @@
     if (!r) { $('fCab').innerHTML = '<p class="empty">Restaurante não encontrado.</p>'; $('fCardapio').innerHTML = ''; return; }
     atual = r.restaurante; itens = r.itens;
     document.title = `${atual.nome} · CITshop Food`;
-    $('fCab').innerHTML = `<div class="food-cab"><h1>${esc(atual.nome)}</h1><p class="note">${esc(atual.tipo)} · ${esc(atual.cidade)}${atual.localEndereco ? ` · ${esc(atual.localEndereco)}` : ''}</p>
-      <p><b class="${atual.aberto ? 'ok' : 'off'}">${esc(atual.situacao)}</b> · preparo ~${atual.preparoMin} min${atual.pedidoMinimo ? ` · pedido mínimo ${brl(atual.pedidoMinimo)}` : ''}${atual.retirada ? ' · retirada no local' : ''}</p>
-      ${atual.sobre ? `<p>${esc(atual.sobre)}</p>` : ''}</div>`;
+    const corRest = atual.cor || '#036271';
+    $('fCab').innerHTML = `<div class="food-cab">
+      <div class="food-cab-id"><span class="avatar" style="background:${esc(corRest)};color:${window.CIT.textoSobre(corRest)}">${atual.logo ? `<img src="${esc(atual.logo)}" alt="">` : esc(window.CIT.iniciais(atual.nome))}</span>
+        <div><h1>${esc(atual.nome)}</h1><p class="note">${esc(atual.tipo)} · ${esc(atual.cidade)}${atual.localEndereco ? ` · ${esc(atual.localEndereco)}` : ''}</p></div></div>
+      <div class="food-chips"><span class="tag ${atual.aberto ? 'ok' : 'off'}">${esc(atual.situacao)}</span><span class="tag">Preparo ~${atual.preparoMin} min</span>${atual.pedidoMinimo ? `<span class="tag">Pedido mínimo ${brl(atual.pedidoMinimo)}</span>` : ''}${atual.retirada ? '<span class="tag">Retirada no local</span>' : ''}</div>
+      ${atual.sobre ? `<p class="food-sobre">${esc(atual.sobre)}</p>` : ''}</div>`;
     const cats = [...new Set(itens.map((i) => i.categoria))];
     $('fCats').innerHTML = cats.length > 1 ? cats.map((c, n) => `<a class="chip" href="#cat-${n}">${esc(c)}</a>`).join('') : '';
     $('fCardapio').innerHTML = itens.length ? cats.map((c, n) => `<h2 class="food-cat" id="cat-${n}">${esc(c)}</h2><div class="food-itens">${itens.filter((i) => i.categoria === c).map((i) => `
       <button type="button" class="food-item" data-item="${esc(i.id)}" ${atual.aberto && !i.esgotado && !i.foraDoHorario ? '' : 'aria-disabled="true"'}>
-        <span><b>${esc(i.nome)}</b>${i.descricao ? `<small>${esc(i.descricao)}</small>` : ''}<strong>${(i.variacoes ?? []).length || i.grupos.some((g) => g.min > 0) ? 'a partir de ' : ''}${brl(i.aPartirDe ?? i.preco)}</strong>${i.esgotado ? '<small class="off">Esgotado</small>' : i.foraDoHorario ? '<small class="off">Fora do horário</small>' : ''}</span>
+        <span><b>${esc(i.nome)}</b>${i.descricao ? `<small>${esc(i.descricao)}</small>` : ''}<span class="food-preco"><strong>${(i.variacoes ?? []).length || i.grupos.some((g) => g.min > 0) ? 'a partir de ' : ''}${brl(i.aPartirDe ?? i.preco)}</strong>${atual.aberto && !i.esgotado && !i.foraDoHorario ? '<span class="food-add" aria-hidden="true">Adicionar</span>' : ''}</span>${i.esgotado ? '<small class="off">Esgotado</small>' : i.foraDoHorario ? '<small class="off">Fora do horário</small>' : ''}</span>
         ${i.foto ? `<img src="${esc(i.foto)}" alt="" loading="lazy" width="96" height="96">` : ''}</button>`).join('')}</div>`).join('') : '<p class="empty">Cardápio ainda vazio.</p>';
     pintarSacola();
   }

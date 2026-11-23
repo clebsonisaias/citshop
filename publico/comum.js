@@ -84,5 +84,16 @@ window.CIT = (() => {
       </div>
     </section>`;
   }
-  return { ICON, DEPTS, D, esc, brl, svg, textoSobre, iniciais, cabecalhoLoja, textoEntrega };
+  // Cartão de restaurante da Praça de Alimentação (usado em /alimentacao e na home).
+  function cartaoRestaurante(r) {
+    const cor = r.cor || '#036271';
+    const entrega = r.entrega ? (r.taxaEntregaDesde == null ? 'Entrega' : r.taxaEntregaDesde === 0 ? 'Entrega grátis' : `Entrega ${r.entregaPorKm ? 'a partir de ' : ''}${brl.format(r.taxaEntregaDesde)}`) : 'Só retirada';
+    return `<a class="food-rest${r.aberto ? '' : ' fechado'}" href="/alimentacao/${esc(r.slug)}" data-rest="${esc(r.slug)}">
+      <span class="food-capa" style="--cor:${esc(cor)}"><span class="food-situacao ${r.aberto ? 'ok' : 'off'}">${esc(r.situacao)}</span>
+        <span class="avatar" style="background:${esc(cor)};color:${textoSobre(cor)}">${r.logo ? `<img src="${esc(r.logo)}" alt="">` : esc(iniciais(r.nome))}</span></span>
+      <span class="food-info"><b>${esc(r.nome)}</b><small>${esc(r.tipo)} · ${esc(r.cidade)}${r.avaliacao ? ` · ★ ${String(r.avaliacao.media).replace('.', ',')}` : ''}</small>
+        <span class="food-tags"><span>${r.preparoMin} min</span><span>${entrega}</span></span>
+        ${r.pedidoMinimo ? `<small>Pedido mínimo ${brl.format(r.pedidoMinimo)}</small>` : ''}</span></a>`;
+  }
+  return { ICON, DEPTS, D, esc, brl, svg, textoSobre, iniciais, cabecalhoLoja, textoEntrega, cartaoRestaurante };
 })();

@@ -89,6 +89,7 @@ import { desenharHistorico } from './historico-preco.js';
 
   // Carrossel
   const SLIDES = [
+    { k: 'O shopping virtual de Parnamirim', h: 'Passeie pelo shopping sem sair de casa.', p: 'Lojas da cidade, ofertas dos grandes marketplaces e uma praça de alimentação para pedir seu lanche. Tudo num lugar só.', c: 'Pedir na Praça de Alimentação →', a: 'shop', href: '/alimentacao' },
     { k: 'Black Friday', h: 'Black Friday CIT Shopping', p: 'Contagem regressiva e os produtos que mais baixaram de preço.', c: 'Ver ofertas →', a: 'bag', href: '/black-friday' },
     { k: 'Compre perto', h: 'As lojas da sua cidade estão aqui', p: 'Escolha, chame a loja no WhatsApp e receba rápido.', c: 'Ver lojas →', a: 'shop', show: 'local' },
     { k: 'Venda na CIT Shopping', h: 'Sua loja na frente das gigantes', p: '30 dias grátis pra testar. Depois, R$ 99,90 por mês.', c: 'Cadastrar minha loja →', a: 'shop', href: '/painel' },
@@ -100,13 +101,13 @@ import { desenharHistorico } from './historico-preco.js';
     mesa: { k: 'Ceia', h: 'Mesa posta de Natal e Ano Novo', p: 'Taças, sousplat, guardanapos e louças para a ceia.', c: 'Montar a mesa →', a: 'bag' },
     looks: { k: 'Fim de ano', h: 'Looks para formatura, Natal e réveillon', p: 'Branco, vermelho e amarelo para as festas.', c: 'Ver looks →', a: 'bag' },
   };
-  SLIDES.unshift(...temporadasAtivas().filter((s) => BANNER_TEMPORADA[s.id]).map((s) => ({ ...BANNER_TEMPORADA[s.id], show: s.id })));
+  SLIDES.splice(1, 0, ...temporadasAtivas().filter((s) => BANNER_TEMPORADA[s.id]).map((s) => ({ ...BANNER_TEMPORADA[s.id], show: s.id })));
   let cur = 0, timer;
   function renderSlides() {
     $('slides').innerHTML = SLIDES.map((s, i) => `<div class="slide" ${i ? 'hidden' : ''} aria-label="${i + 1} de ${SLIDES.length}">
       <div><span class="kicker">${s.k}</span><h2>${s.h}</h2><p>${s.p}</p>
       ${s.href ? `<a class="cta" href="${s.href}" ${s.ext ? 'target="_blank" rel="sponsored nofollow noopener"' : ''}>${s.c}</a>` : `<button class="cta" data-show="${s.show}">${s.c}</button>`}</div>
-      <div class="art">${svg(s.a)}</div></div>`).join('') +
+      </div>`).join('') +
       `<div class="dots">${SLIDES.map((_, i) => `<button aria-label="Banner ${i + 1}" aria-current="${!i}"></button>`).join('')}</div>
        <button class="arr prev" aria-label="Banner anterior">‹</button><button class="arr next" aria-label="Próximo banner">›</button>`;
     $('slides').querySelectorAll('.dots button').forEach((b, i) => (b.onclick = () => go(i, true)));
@@ -424,7 +425,7 @@ import { desenharHistorico } from './historico-preco.js';
     montarCampanhas();
     const lojasFav = new Set((window.CITFavoritos?.ler() ?? []).filter((id) => id.startsWith('loja:')).map((id) => id.slice(5)));
     const lojasHome = [...LOJAS.filter((l) => lojasFav.has(l.slug)), ...LOJAS.filter((l) => !lojasFav.has(l.slug))];
-    $('sellers').innerHTML = lojasHome.slice(0, 12).map((l) => `<a class="seller" href="/loja/${esc(l.slug)}" data-seller="${esc(l.slug)}" style="border-top:4px solid ${esc(l.cor || '#036271')}">
+    $('sellers').innerHTML = lojasHome.slice(0, 12).map((l) => `<a class="seller" href="/loja/${esc(l.slug)}" data-seller="${esc(l.slug)}">
         <div class="top"><span class="avatar" style="background:${esc(l.cor || '#036271')};color:${window.CIT.textoSobre(l.cor || '#036271')}">${l.logo ? `<img src="${esc(l.logo)}" alt="">` : esc(iniciais(l.nome))}</span><span><b>${lojasFav.has(l.slug) ? '<span class="seller-fav" aria-label="Loja favorita">♥</span> ' : ''}${esc(l.nome)}</b><small>${esc(l.categoria || 'Loja local')}${l.avaliacao ? ` · ★ ${String(l.avaliacao.media).replace('.', ',')}` : ''}</small></span></div>
         <div class="meta"><span>${P.filter((x) => x.lojaSlug === l.slug).length} produtos</span><span>${esc(l.cidade)}</span></div></a>`).join('') +
       `<a class="seller cta" href="/painel"><div class="top"><span class="avatar">+</span><span><b>Sua loja aqui</b><small>30 dias grátis pra testar</small></span></div></a>`;
@@ -454,9 +455,8 @@ import { desenharHistorico } from './historico-preco.js';
 
   // Montagem estática
   $('megalist').innerHTML = DEPTS.map(([k, n]) => `<button data-dept="${k}">${svg(k)}${n}</button>`).join('');
-  $('depts').innerHTML = DEPTS.map(([k, n, h]) => `<button class="dept" data-dept="${k}" style="--hue:${h}"><span class="c">${svg(k)}</span>${n}</button>`).join('');
+  $('depts').innerHTML = DEPTS.map(([k, n, h]) => `<button class="dept" data-dept="${k}">${n}<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>`).join('');
   $('sdept').insertAdjacentHTML('beforeend', DEPTS.map(([k, n]) => `<option value="${k}">${n}</option>`).join(''));
-  $('navlinks').insertAdjacentHTML('beforeend', DEPTS.slice(0, 10).map(([k, n]) => `<button data-dept="${k}">${n}</button>`).join(''));
   $('fdepts').innerHTML = DEPTS.slice(0, 8).map(([k, n]) => `<li><a href="#" data-dept="${k}">${n}</a></li>`).join('');
   document.querySelectorAll('.promo').forEach((b) => (b.querySelector('svg').innerHTML = ICON[b.dataset.dept]));
   renderSlides();

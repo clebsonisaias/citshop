@@ -88,37 +88,42 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400..800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="/estilo.css">
 <script src="/comum.js" defer></script>
 <script src="/favoritos.js" defer></script>
 <script type="module" src="/vitrine.js"></script>
 <script src="/comprar.js" defer></script>
 <script src="/alerta.js" defer></script>
+<script src="/praca-home.js" defer></script>
 </head>
 <body>
 <div class="topline"><div class="wrap">
-  <span><b>Ofertas novas todos os dias</b></span>
-  <span>Lojas da sua cidade vendendo aqui também</span>
-  <span>Um serviço da <b>CITmax</b></span>
+  <span>Um serviço da <b>CITmax Telecom</b> · Parnamirim / RN</span>
+  <span class="links">
+    <a class="destaque" href="/painel">Venda aqui · 30 dias grátis</a>
+    <a href="https://whatsapp.com/channel/0029VbDyNjvIyPtZGJ6HTs3i" target="_blank" rel="noopener">Canal de ofertas no WhatsApp</a>
+  </span>
 </div></div>
 
 <header class="site">
   <div class="wrap bar">
-    <a class="logo" href="/" aria-label="CIT Shopping, página inicial"><img src="/marca-cit-shopping.png" alt="CIT Shopping" width="140" height="36"></a>
+    <a class="logo" href="/" aria-label="CIT Shopping, página inicial"><span class="marca" aria-hidden="true">CIT</span><span class="marca-nome" aria-hidden="true">Shopping</span><span class="sr-only">CIT Shopping</span></a>
     <form class="search" id="sf" role="search">
       <select id="sdept" aria-label="Departamento"><option value="">Todos</option></select>
-      <input id="q" type="search" placeholder="O que você procura hoje?" aria-label="Buscar produtos">
-      <button aria-label="Buscar"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" style="stroke-width:2.4"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
+      <input id="q" type="search" placeholder="Busque lojas, produtos ou lanches" aria-label="Buscar produtos">
+      <button aria-label="Buscar"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" style="stroke-width:2.4" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Buscar</span></button>
     </form>
     <a class="sell" href="/painel"><svg class="ic" width="22" height="22" viewBox="0 0 64 64"><path d="M8 26l4-14h40l4 14M8 26h48v28H8zM24 54V38h16v16"/></svg><span class="t"><b>Venda aqui</b>30 dias grátis</span></a>
   </div>
   <nav class="nav" aria-label="Departamentos">
     <div class="wrap" id="navlinks">
       <button class="all" id="allbtn" aria-expanded="false"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" style="stroke-width:2.4"><path d="M4 7h16M4 12h16M4 17h16"/></svg>Todos os departamentos</button>
-      <a class="bf" href="/black-friday">Black Friday</a>
-      <a class="bf" href="/cupons">Cupons do dia</a>
+      <a class="piso-food" href="/alimentacao"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" style="stroke-width:2" aria-hidden="true"><path d="M6 3v7a2 2 0 004 0V3M8 10v11M17 3c-2 2-3 4-3 7h3v11"/></svg>Praça de Alimentação</a>
       <button data-show="local">Lojas da região</button>
+      <button data-show="ofertas">Ofertas do dia</button>
+      <a href="/cupons">Cupons do dia</a>
+      <a href="/black-friday">Black Friday</a>
     </div>
     <div class="mega" id="mega" hidden><div class="wrap" id="megalist"></div></div>
   </nav>
@@ -141,14 +146,40 @@
         Entrar no Canal Oficial ↗
       </a>
     </div>
-    <div class="wrap hero"><div class="slides" id="slides" aria-roledescription="carrossel"></div></div>
-
-    <div class="wrap trust">
-      <div><svg class="ic" viewBox="0 0 64 64"><path d="M32 6l20 8v16c0 14-9 22-20 28-11-6-20-14-20-28V14z"/><path d="M22 32l7 7 13-14"/></svg><span><b>Compra segura</b>Pagamento na loja que vende</span></div>
-      <div><svg class="ic" viewBox="0 0 64 64"><path d="M6 18h32v24H6zM38 26h12l8 8v8H38z"/><circle cx="16" cy="46" r="5"/><circle cx="48" cy="46" r="5"/></svg><span><b>Entrega ou retirada</b>Lojas locais entregam na cidade</span></div>
-      <div><svg class="ic" viewBox="0 0 64 64"><circle cx="32" cy="32" r="24"/><path d="M32 18v14l9 6"/></svg><span><b>Preços conferidos</b>Atualizados todos os dias</span></div>
-      <div><svg class="ic" viewBox="0 0 64 64"><path d="M10 50l3-10a22 22 0 1 1 8 7z"/></svg><span><b>Fale com a loja</b>Pedido direto no WhatsApp</span></div>
+    <div class="wrap hero">
+      <div class="hero-grid">
+        <div class="slides" id="slides" aria-roledescription="carrossel"></div>
+        <aside class="diretorio" aria-labelledby="tDiretorio">
+          <div class="head"><h2 id="tDiretorio">Diretório do shopping</h2><span>Escolha um piso</span></div>
+          <ul class="pisos">
+            <li><a class="piso-link praca" href="/alimentacao"><span class="num" aria-hidden="true">P3</span><span class="txt"><strong>Praça de Alimentação</strong><span>Hambúrguer, pizza, açaí, marmita e mais</span></span><span class="ir">Pedir</span></a></li>
+            <li><button class="piso-link" type="button" data-show="local"><span class="num" aria-hidden="true">P2</span><span class="txt"><strong>Lojas da cidade</strong><span>Compre direto com quem vende aqui perto</span></span><span class="ir">Visitar</span></button></li>
+            <li><button class="piso-link" type="button" data-show="ofertas"><span class="num" aria-hidden="true">P1</span><span class="txt"><strong>Ofertas dos marketplaces</strong><span>Shopee, Mercado Livre e SHEIN conferidos todo dia</span></span><span class="ir">Ver</span></button></li>
+            <li><a class="piso-link terreo" href="/black-friday"><span class="num" aria-hidden="true">T</span><span class="txt"><strong>Térreo · Cupons e Black Friday</strong><span>Os maiores descontos logo na entrada</span></span><span class="ir">Ver</span></a></li>
+          </ul>
+        </aside>
+      </div>
     </div>
+
+    <div class="wrap">
+      <section class="trust" aria-label="Como funciona a compra">
+        <div><b>Compra segura</b><span>Pagamento na loja que vende</span></div>
+        <div><b>Entrega ou retirada</b><span>Lojas locais entregam na cidade</span></div>
+        <div><b>Preços conferidos</b><span>Atualizados todos os dias</span></div>
+        <div><b>Fale com a loja</b><span>Pedido direto no WhatsApp</span></div>
+      </section>
+    </div>
+
+    <section class="wrap block" id="sPraca" hidden aria-labelledby="tPraca">
+      <div class="praca-home">
+        <div class="head">
+          <div><span class="piso">Piso 3</span><h2 id="tPraca">Bateu a fome? A praça está aberta.</h2><p class="sub">Escolha o restaurante, monte o pedido e receba em casa.</p></div>
+          <a class="btn praca" href="/alimentacao">Ver toda a praça</a>
+        </div>
+        <div class="chips" id="hCozinhas"></div>
+        <div class="food-lista" id="hRestaurantes"></div>
+      </div>
+    </section>
 
     <section class="wrap block temporada t-aulas" data-rail="aulas" hidden>
       <div class="head"><h2>Volta às aulas</h2><button class="more" data-show="aulas">Ver todos</button></div>
@@ -186,17 +217,17 @@
     </section>
 
     <section class="wrap block" data-rail="quedas">
-      <div class="head"><h2>Baixou de preço</h2><button class="more" data-show="quedas">Ver todos</button></div>
+      <div class="head"><div><span class="piso">Piso 1</span><h2>Baixou de preço</h2></div><button class="more" data-show="quedas">Ver todas as ofertas</button></div>
       <div class="rail"><div class="track" id="r-quedas"></div></div>
     </section>
 
     <section class="wrap block">
-      <div class="head"><h2>Departamentos</h2><button class="more" data-open-mega>Ver todos</button></div>
+      <div class="head"><h2>Corredores do shopping</h2><button class="more" data-open-mega>Ver todos</button></div>
       <div class="depts" id="depts"></div>
     </section>
 
     <section class="wrap block">
-      <div class="head"><h2>Lojas da região</h2><button class="more" data-show="local">Ver produtos</button></div>
+      <div class="head"><div><span class="piso">Piso 2</span><h2>Lojas da cidade</h2><p class="sub">Você escolhe aqui e fecha o pedido direto com a loja, pelo WhatsApp.</p></div><button class="more" data-show="local">Ver produtos</button></div>
       <div class="sellers" id="sellers"></div>
     </section>
 
@@ -254,7 +285,7 @@
 
     <section class="wrap block">
       <div class="sellbox">
-        <div><h2>Tem uma loja? Venda na CIT Shopping</h2><p>Coloque seus produtos na vitrine, na frente das grandes lojas. O cliente da sua cidade encontra, chama no seu WhatsApp e compra com você. 30 dias grátis, depois R$ 99,90 por mês.</p><a class="btn" href="/painel">Quero vender aqui →</a></div>
+        <div><h2>Tem uma loja ou lanchonete? Abra as portas no CIT Shopping.</h2><p>30 dias grátis, depois R$ 99,90 por mês. O cliente da sua cidade encontra, chama no seu WhatsApp e compra com você.</p><a class="btn" href="/painel">Cadastrar minha loja</a></div>
         <div class="steps">
           <div class="step"><span>1</span><b>Cadastre a loja</b><small>Nome, WhatsApp e cidade. Leva 2 minutos.</small></div>
           <div class="step"><span>2</span><b>Publique produtos</b><small>Foto, preço e descrição pelo celular.</small></div>
@@ -321,10 +352,10 @@
 
 <footer class="site">
   <div class="wrap cols">
-    <div><a class="logo" href="/"><img src="/marca-cit-shopping.png" alt="CIT Shopping" width="140" height="36"></a><p>De tudo um pouco, e as lojas da sua cidade, num lugar só.</p></div>
+    <div><a class="logo" href="/"><span class="marca" aria-hidden="true">CIT</span><span class="marca-nome" aria-hidden="true">Shopping</span><span class="sr-only">CIT Shopping</span></a><p>De tudo um pouco, e as lojas da sua cidade, num lugar só.</p></div>
     <div><h4>Departamentos</h4><ul id="fdepts"></ul></div>
     <div><h4>Venda na CIT Shopping</h4><ul><li><a href="/painel">Cadastre sua loja</a></li><li><a href="/painel">Entrar no painel</a></li><li><a href="/termos">Termos para lojas</a></li><li><a href="#faq">Perguntas Frequentes (FAQ)</a></li></ul></div>
-    <div><h4>Sobre o CIT Shopping</h4><ul><li>Um serviço da <b>CITmax Telecom</b></li><li>Parnamirim / RN</li><li><a href="https://whatsapp.com/channel/0029VbDyNjvIyPtZGJ6HTs3i" target="_blank" rel="noopener" style="color:#25d366;font-weight:700">📢 Canal no WhatsApp</a></li><li><a href="/sitemap.xml" target="_blank">Mapa do Site (Sitemap)</a></li></ul></div>
+    <div><h4>Sobre o CIT Shopping</h4><ul><li>Um serviço da <b>CITmax Telecom</b></li><li>Parnamirim / RN</li><li><a href="https://whatsapp.com/channel/0029VbDyNjvIyPtZGJ6HTs3i" target="_blank" rel="noopener" style="color:var(--mint);font-weight:700">Canal de ofertas no WhatsApp</a></li><li><a href="/sitemap.xml" target="_blank">Mapa do Site (Sitemap)</a></li></ul></div>
   </div>
   <div class="wrap legal">O CIT Shopping participa dos programas de afiliados da Shopee, Mercado Livre e SHEIN e pode receber comissão pelas compras feitas pelos links, sem custo extra pra você. Produtos de lojas da região são vendidos e entregues pela própria loja. Preços e estoque podem mudar.</div>
 </footer>
