@@ -1,0 +1,17 @@
+{
+  "name": "CIT shop Lojista",
+  "short_name": "Lojista",
+  "description": "Painel da loja no CIT shop: pedidos, cardápio e produtos.",
+  "lang": "pt-BR",
+  "id": "/painel",
+  "start_url": "/painel",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#036271",
+  "theme_color": "#036271",
+  "icons": [
+    { "src": "/marca/icone-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/marca/icone-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/marca/icone-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

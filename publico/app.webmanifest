@@ -1,0 +1,20 @@
+{
+  "name": "CIT shop",
+  "short_name": "CIT shop",
+  "description": "O shopping virtual da cidade: lojas locais, praça de alimentação e ofertas conferidas.",
+  "lang": "pt-BR",
+  "start_url": "/?origem=app",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#036271",
+  "theme_color": "#036271",
+  "icons": [
+    { "src": "/marca/icone-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/marca/icone-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/marca/icone-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Praça de Alimentação", "url": "/alimentacao", "icons": [{ "src": "/marca/icone-192.png", "sizes": "192x192" }] },
+    { "name": "Cupons do dia", "url": "/cupons", "icons": [{ "src": "/marca/icone-192.png", "sizes": "192x192" }] }
+  ]
+}
