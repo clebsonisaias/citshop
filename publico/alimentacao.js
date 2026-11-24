@@ -1,13 +1,23 @@
-// Praça de alimentação (CITshop Food): lista de restaurantes, cardápio com opções, sacola de UM restaurante,
-// pedido e acompanhamento. O preço mostrado aqui é só prévia: o servidor recalcula tudo.
+// Praça de alimentação (CITshop Food): lista de restaurantes, cardápio com opções, sacola com vários restaurantes
+// (cada restaurante fecha o seu pedido, com a sua entrega e o seu pagamento), pedido e acompanhamento. O preço mostrado aqui é só prévia: o servidor recalcula tudo.
 (() => {
   const $ = (id) => document.getElementById(id);
   const { esc } = window.CIT;
   const brl = (n) => window.CIT.brl.format(Number(n) || 0);
-  const CHAVE = 'cit-food-sacola';
-  const ler = () => { try { return JSON.parse(localStorage.getItem(CHAVE)) || null; } catch { return null; } };
-  const gravar = (v) => { try { v ? localStorage.setItem(CHAVE, JSON.stringify(v)) : localStorage.removeItem(CHAVE); } catch { /* modo privado */ } };
-  let restaurantes = [], tipo = '', atual = null, itens = [], sacola = ler(), escolhendo = null, qtd = 1, ponto = null, frete = null;
+  // Sacolas por restaurante: { slug: { loja, nome, itens } }. A chave antiga (uma sacola só) vira a primeira.
+  const CHAVE = 'cit-food-sacolas';
+  const ler = () => {
+    try {
+      const v = JSON.parse(localStorage.getItem(CHAVE)); if (v) return v;
+      const velha = JSON.parse(localStorage.getItem('cit-food-sacola')); return velha?.itens?.length ? { [velha.loja]: velha } : {};
+    } catch { return {}; }
+  };
+  const gravar = () => {
+    for (const k of Object.keys(sacolas)) if (!sacolas[k].itens.length) delete sacolas[k];
+    try { localStorage.setItem(CHAVE, JSON.stringify(sacolas)); localStorage.removeItem('cit-food-sacola'); } catch { /* modo privado */ }
+  };
+  // `loja` e `sacola`: o restaurante cujo pedido está sendo fechado agora (pode não ser o da página aberta).
+  let restaurantes = [], tipo = '', atual = null, itens = [], sacolas = ler(), loja = null, sacola = null, escolhendo = null, qtd = 1, ponto = null, frete = null;
 
   // ---------- lista ----------
   function cartaoRest(r) {
@@ -112,22 +122,44 @@
     ev.preventDefault();
     const r = calculo();
     if (r.erro) { $('fItemErro').textContent = r.erro; return; }
-    if (sacola && sacola.loja !== atual.slug && sacola.itens.length && !confirm(`Sua sacola tem itens de ${sacola.nome}. Começar uma nova com ${atual.nome}?`)) return;
-    if (!sacola || sacola.loja !== atual.slug) sacola = { loja: atual.slug, nome: atual.nome, itens: [] };
+    const daLoja = (sacolas[atual.slug] ??= { loja: atual.slug, nome: atual.nome, itens: [] });
     const nomes = [...(r.variacao ? [r.variacao.nome] : []), ...r.opcoes.map((o) => `${o.tipo === 'remover' ? 'sem ' : ''}${o.qtd > 1 ? `${o.qtd}x ` : ''}${o.nome}`)];
-    sacola.itens.push({ itemId: escolhendo.id, nome: escolhendo.nome, variacaoId, escolhas: JSON.parse(JSON.stringify(sel)), opcoes: nomes, quantidade: qtd, observacao: $('fItemForm').obs.value.trim(), unitario: r.unitarioC / 100 });
-    gravar(sacola); $('fItem').close(); pintarSacola();
+    daLoja.itens.push({ itemId: escolhendo.id, nome: escolhendo.nome, variacaoId, escolhas: JSON.parse(JSON.stringify(sel)), opcoes: nomes, quantidade: qtd, observacao: $('fItemForm').obs.value.trim(), unitario: r.unitarioC / 100 });
+    gravar(); $('fItem').close(); pintarSacola();
   });
 
   // ---------- sacola e pedido ----------
-  const subtotal = () => (sacola?.itens ?? []).reduce((s, i) => s + i.unitario * i.quantidade, 0);
+  const somaDe = (s) => (s?.itens ?? []).reduce((t, i) => t + i.unitario * i.quantidade, 0);
+  const subtotal = () => somaDe(sacola);
+  const linhaItem = (i, attr) => `<li><span><b>${i.quantidade}x ${esc(i.nome)}</b>${i.opcoes.length ? `<small>${esc(i.opcoes.join(', '))}</small>` : ''}${i.observacao ? `<small>Obs.: ${esc(i.observacao)}</small>` : ''}</span><span>${brl(i.unitario * i.quantidade)} <button type="button" class="food-x" ${attr} aria-label="Remover ${esc(i.nome)}">×</button></span></li>`;
   function pintarSacola() {
-    const n = (sacola?.itens ?? []).reduce((s, i) => s + i.quantidade, 0);
-    $('fSacola').hidden = !n || !atual || sacola.loja !== atual.slug;
-    $('fSacola').textContent = `Ver sacola · ${n} ${n === 1 ? 'item' : 'itens'} · ${brl(subtotal())}`;
+    const lista = Object.values(sacolas), n = lista.reduce((t, s) => t + s.itens.reduce((u, i) => u + i.quantidade, 0), 0);
+    $('fSacola').hidden = !n;
+    $('fSacola').textContent = `Ver sacola · ${n} ${n === 1 ? 'item' : 'itens'}${lista.length > 1 ? ` de ${lista.length} restaurantes` : ''} · ${brl(lista.reduce((t, s) => t + somaDe(s), 0))}`;
+  }
+  // Sacola com todos os restaurantes: cada um tem o seu botão de fechar pedido.
+  function renderSacolas() {
+    const lista = Object.values(sacolas);
+    if (!lista.length) { $('fSacolas').close(); return pintarSacola(); }
+    $('fSacLista').innerHTML = lista.map((s) => `<section class="food-sac"><h3>${esc(s.nome)}</h3>
+      <ul class="food-car">${s.itens.map((i, n) => linhaItem(i, `data-tirar="${esc(s.loja)}" data-n="${n}"`)).join('')}</ul>
+      <p class="food-total">Itens ${brl(somaDe(s))}</p>
+      <button type="button" class="btn" data-finalizar="${esc(s.loja)}">Fechar pedido de ${esc(s.nome)}</button></section>`).join('');
+  }
+  function abrirSacolas() {
+    const lista = Object.keys(sacolas);
+    if (lista.length === 1) return finalizar(lista[0]); // um restaurante só: direto para o pedido
+    renderSacolas(); $('fSacolas').showModal();
+  }
+  async function finalizar(slug) {
+    loja = atual?.slug === slug ? atual : (await fetch(`/api/food/restaurantes/${encodeURIComponent(slug)}`).then((x) => (x.ok ? x.json() : null)).catch(() => null))?.restaurante ?? null;
+    if (!loja) return alert('Não deu para abrir este restaurante agora. Tente de novo.');
+    sacola = sacolas[slug];
+    if ($('fSacolas').open) $('fSacolas').close();
+    abrirCarrinho();
   }
   function renderCarrinho() {
-    $('fCarItens').innerHTML = sacola.itens.map((i, n) => `<li><span><b>${i.quantidade}x ${esc(i.nome)}</b>${i.opcoes.length ? `<small>${esc(i.opcoes.join(', '))}</small>` : ''}${i.observacao ? `<small>Obs.: ${esc(i.observacao)}</small>` : ''}</span><span>${brl(i.unitario * i.quantidade)} <button type="button" class="food-x" data-remover="${n}" aria-label="Remover ${esc(i.nome)}">×</button></span></li>`).join('');
+    $('fCarItens').innerHTML = sacola.itens.map((i, n) => linhaItem(i, `data-remover="${n}"`)).join('');
     const entrega = $('fPedido').receber.value === 'entrega';
     $('fEntrega').hidden = !entrega;
     $('fTrocoL').hidden = $('fPag').value !== 'dinheiro';
@@ -136,15 +168,17 @@
   }
   function abrirCarrinho() {
     const f = $('fPedido');
-    f.querySelector('[value="entrega"]').disabled = !atual.entrega; f.querySelector('[value="retirada"]').disabled = !atual.retirada;
-    if (!atual.entrega) f.receber.value = 'retirada';
-    if (atual.pagamentoOnline && !$('fPag').querySelector('[value="online"]')) $('fPag').insertAdjacentHTML('afterbegin', '<option value="online">Pagar agora (Pix ou cartão · Mercado Pago)</option>');
-    frete = null; $('fFrete').textContent = atual.entregaPorKm ? 'A taxa depende da distância: use sua localização ou calcule pelo endereço.' : '';
-    if (!atual.entregaPorKm) calcularFrete();
+    $('fCarTitulo').textContent = `Pedido · ${loja.nome}`;
+    f.querySelector('[value="entrega"]').disabled = !loja.entrega; f.querySelector('[value="retirada"]').disabled = !loja.retirada;
+    f.receber.value = loja.entrega ? 'entrega' : 'retirada';
+    $('fPag').querySelector('[value="online"]')?.remove(); // cada restaurante decide se aceita pagar online
+    if (loja.pagamentoOnline) $('fPag').insertAdjacentHTML('afterbegin', '<option value="online">Pagar agora (Pix ou cartão · Mercado Pago)</option>');
+    ponto = null; frete = null; $('fFrete').textContent = loja.entregaPorKm ? 'A taxa depende da distância: use sua localização ou calcule pelo endereço.' : '';
+    if (!loja.entregaPorKm) calcularFrete();
     $('fErro').textContent = ''; renderCarrinho(); $('fCarrinho').showModal();
   }
   async function calcularFrete(extra = {}) {
-    const r = await fetch('/api/food/frete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ loja: atual.slug, subtotal: subtotal(), ...extra }) }).then((x) => x.json()).catch(() => ({}));
+    const r = await fetch('/api/food/frete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ loja: loja.slug, subtotal: subtotal(), ...extra }) }).then((x) => x.json()).catch(() => ({}));
     if (r.naoEncontrado) { $('fFrete').textContent = 'Endereço não encontrado. Confira ou use sua localização.'; return; }
     if (r.fora) { frete = null; $('fFrete').textContent = `Fora da área de entrega (${String(r.km).replace('.', ',')} km).`; return renderCarrinho(); }
     frete = { valor: r.valor ?? 0 };
@@ -161,7 +195,7 @@
     const f = $('fPedido'), bt = $('fEnviar');
     bt.disabled = true; $('fErro').textContent = '';
     const corpo = {
-      loja: atual.slug, receber: f.receber.value, pagamento: f.pagamento.value, troco: f.troco.value.replace(/[^\d,.]/g, '').replace(',', '.'), ponto,
+      loja: loja.slug, receber: f.receber.value, pagamento: f.pagamento.value, troco: f.troco.value.replace(/[^\d,.]/g, '').replace(',', '.'), ponto,
       itens: sacola.itens.map(({ itemId, variacaoId, quantidade, escolhas, observacao }) => ({ itemId, variacaoId, quantidade, escolhas, observacao })),
       comprador: { nome: f.nome.value, whatsapp: f.whatsapp.value, endereco: f.endereco.value, observacao: f.observacao.value },
     };
@@ -169,7 +203,7 @@
     const d = await r?.json().catch(() => ({})) ?? {};
     bt.disabled = false;
     if (!r?.ok) { $('fErro').textContent = d.erro || 'Não deu para enviar. Tente de novo.'; return; }
-    sacola = null; gravar(null);
+    delete sacolas[loja.slug]; sacola = null; gravar(); // os outros restaurantes continuam na sacola
     if (d.initPoint) { location.href = d.initPoint; return; }
     location.href = d.acompanhar;
   });
@@ -177,6 +211,7 @@
   // ---------- acompanhamento ----------
   async function acompanhar(id, t) {
     $('fLista').hidden = true; $('fRest').hidden = true; $('fAcomp').hidden = false;
+    pintarSacola(); // outros restaurantes que ainda estão na sacola continuam à vista
     const d = await fetch(`/api/food/acompanhar/${encodeURIComponent(id)}?t=${encodeURIComponent(t)}`).then((x) => (x.ok ? x.json() : null)).catch(() => null);
     if (!d) { $('fAcomp').innerHTML = '<p class="empty">Pedido não encontrado.</p>'; return; }
     const pago = d.pagamento === 'approved' ? 'Pagamento aprovado' : d.pagamento === 'na_entrega' ? 'Pagamento na entrega' : 'Aguardando o pagamento';
@@ -191,10 +226,12 @@
     const i = e.target.closest('[data-item]'); if (i) return abrirItem(i.dataset.item);
     const tp = e.target.closest('[data-tipo]'); if (tp) { tipo = tp.dataset.tipo; return renderLista(); }
     const q = e.target.closest('[data-qtd]'); if (q) { qtd = Math.min(50, Math.max(1, qtd + Number(q.dataset.qtd))); return atualizarItem(); }
-    const rm = e.target.closest('[data-remover]'); if (rm) { sacola.itens.splice(Number(rm.dataset.remover), 1); gravar(sacola.itens.length ? sacola : null); if (!sacola.itens.length) { sacola = null; $('fCarrinho').close(); } else renderCarrinho(); return pintarSacola(); }
+    const rm = e.target.closest('[data-remover]'); if (rm) { sacola.itens.splice(Number(rm.dataset.remover), 1); gravar(); if (!sacola.itens.length) { sacola = null; $('fCarrinho').close(); } else renderCarrinho(); return pintarSacola(); }
+    const ti = e.target.closest('[data-tirar]'); if (ti) { sacolas[ti.dataset.tirar].itens.splice(Number(ti.dataset.n), 1); gravar(); renderSacolas(); return pintarSacola(); }
+    const fi = e.target.closest('[data-finalizar]'); if (fi) return finalizar(fi.dataset.finalizar);
     if (e.target.closest('[data-fechar]')) e.target.closest('dialog').close();
   });
-  $('fSacola').addEventListener('click', abrirCarrinho);
+  $('fSacola').addEventListener('click', abrirSacolas);
   $('fBusca').addEventListener('input', renderLista);
   $('fAbertos').addEventListener('change', renderLista);
   async function rota() {
@@ -202,7 +239,7 @@
     if (q.get('pedido')) return acompanhar(q.get('pedido'), q.get('t') || '');
     const m = location.pathname.match(/^\/alimentacao\/([a-z0-9-]+)/);
     if (m) return abrirRest(m[1]);
-    $('fRest').hidden = true; $('fAcomp').hidden = true; $('fLista').hidden = false; $('fSacola').hidden = true;
+    $('fRest').hidden = true; $('fAcomp').hidden = true; $('fLista').hidden = false; pintarSacola();
     document.title = 'Alimentação · CITshop Food';
     restaurantes = await fetch('/api/food/restaurantes').then((x) => x.json()).catch(() => []);
     renderLista();
