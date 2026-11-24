@@ -51,15 +51,37 @@
     const imp = food.impressao;
     if (imp.configurada && !imp.online) aviso('Impressão automática indisponível: o CITshop Print não responde. Os pedidos continuam na tela da cozinha.', false);
   }
+  // Pedidos em colunas (como no novo design): cada cartão tem o próximo passo num botão; o resto fica em "Mais opções".
+  const COLUNAS = [['Novos', ['aguardando']], ['Em preparo', ['aceito', 'preparo']], ['Prontos e entrega', ['pronto', 'aguardando_saida', 'saiu']], ['Concluídos', ['entregue', 'concluido', 'cancelado']]];
+  const ativo = (p) => p.status === 'na_entrega' || p.status === 'approved';
+  const proximo = (p) => ({ aguardando: ['aceito', 'Aceitar pedido'], aceito: ['preparo', 'Começar preparo'], preparo: ['pronto', 'Marcar como pronto'],
+    pronto: p.receber === 'entrega' ? ['saiu', 'Saiu para entrega'] : ['concluido', 'Cliente retirou'], aguardando_saida: p.receber === 'entrega' ? ['saiu', 'Saiu para entrega'] : ['concluido', 'Cliente retirou'],
+    saiu: ['entregue', 'Marcar como entregue'] })[p.situacao];
   function renderPedidos() {
-    $('rPedidos').innerHTML = food.pedidos.length ? food.pedidos.map((p) => `<div class="item-adm">
+    const colunaDe = (p) => (ativo(p) ? COLUNAS.findIndex(([, s]) => s.includes(p.situacao)) : 3);
+    $('rPedidos').innerHTML = food.pedidos.length ? `<div class="kanban">${COLUNAS.map(([nome], c) => {
+      const lista = food.pedidos.filter((p) => colunaDe(p) === c).slice(0, c === 3 ? 20 : 100);
+      return `<section class="kanban-col"><header><h2>${nome}</h2><span>${lista.length}</span></header>${lista.map((p) => cartaoPedido(p, c)).join('') || '<p class="note">Nada aqui.</p>'}</section>`;
+    }).join('')}</div>` : '<p class="note">Nenhum pedido ainda. Divulgue o link do restaurante.</p>';
+  }
+  function cartaoPedido(p, c) {
+    const prox = c < 3 ? proximo(p) : null;
+    return `<article class="kanban-card">
+      <header><b>#${p.numero}</b><span>${new Date(p.criadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span></header>
+      <p class="kanban-itens">${p.itens.map((i) => `${i.quantidade}x ${esc(i.nome)}${i.opcoes.length || i.variacao ? ` <small>(${esc([i.variacao?.nome, ...i.opcoes.map((o) => `${o.tipo === 'remover' ? 'sem ' : ''}${(o.qtd ?? 1) > 1 ? `${o.qtd}x ` : ''}${o.nome}`)].filter(Boolean).join(', '))})</small>` : ''}${i.observacao ? ` — <b>${esc(i.observacao)}</b>` : ''}`).join('<br>')}</p>
+      ${p.comprador?.observacao ? `<p class="kds-obs">⚠ ${esc(p.comprador.observacao)}</p>` : ''}
+      <p class="kanban-pe"><span class="pilula">${p.receber === 'entrega' ? 'Entrega' : 'Retirada'}</span><b>${brl(p.valorTotal)}</b></p>
+      ${c === 3 ? `<p class="note">${esc(ativo(p) ? SIT[p.situacao] : p.status === 'approved' ? SIT[p.situacao] : 'Pagamento não concluído')}</p>` : ''}
+      ${prox ? `<button class="btn" type="button" data-avancar="${esc(p.id)}" data-para="${prox[0]}">${prox[1]}</button>` : ''}
+      <details class="kanban-mais"><summary>Mais opções</summary><div class="item-adm">
       <p><b>#${p.numero}</b> · ${esc(SIT[p.situacao])} · ${new Date(p.criadoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })} · ${esc(PAG[p.pagamentoForma] ?? '')}${p.status === 'approved' ? ' (pago)' : ''}</p>
       <p>${p.itens.map((i) => `${i.quantidade}x ${esc(i.nome)}${i.opcoes.length || i.variacao ? ` (${esc([i.variacao?.nome, ...i.opcoes.map((o) => `${o.tipo === 'remover' ? 'sem ' : ''}${(o.qtd ?? 1) > 1 ? `${o.qtd}x ` : ''}${o.nome}`)].filter(Boolean).join(', '))})` : ''}${i.observacao ? ` — <b>${esc(i.observacao)}</b>` : ''}`).join('<br>')}</p>
       <p class="note">${esc(p.comprador?.nome)} · ${p.receber === 'entrega' ? `Entrega: ${esc(p.comprador?.endereco)}` : 'Retirada'} · total ${brl(p.valorTotal)}${p.troco ? ` · troco para ${brl(p.troco)}` : ''}</p>
       ${p.comprador?.observacao ? `<p class="kds-obs">⚠ ${esc(p.comprador.observacao)}</p>` : ''}
       <p class="rest-acoes"><label class="food-campo">Situação<select data-situacao="${esc(p.id)}">${Object.entries(SIT).map(([k, v]) => `<option value="${k}" ${k === p.situacao ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
       ${p.comprador?.whatsapp ? `<a class="btn sec" href="https://wa.me/${esc(p.comprador.whatsapp)}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
-      ${food.impressao.configurada ? `<button class="btn sec" type="button" data-imprimir="${esc(p.id)}" data-tipo="completa">Reimprimir</button><button class="btn sec" type="button" data-imprimir="${esc(p.id)}" data-tipo="cozinha">Via da cozinha</button>` : ''}</p></div>`).join('') : '<p class="note">Nenhum pedido ainda. Divulgue o link do restaurante.</p>';
+      ${food.impressao.configurada ? `<button class="btn sec" type="button" data-imprimir="${esc(p.id)}" data-tipo="completa">Reimprimir</button><button class="btn sec" type="button" data-imprimir="${esc(p.id)}" data-tipo="cozinha">Via da cozinha</button>` : ''}</p></div></details>
+    </article>`;
   }
   function renderItens() {
     const cats = [...new Set(food.itens.map((i) => i.categoria))];
@@ -205,6 +227,8 @@
       if (ma && confirm('Apagar este modelo? Os produtos que usaram continuam com as opções.')) { food = await api(`/api/food/painel/modelos/${encodeURIComponent(ma.dataset.modeloApagar)}`, 'DELETE'); return renderModelos(); }
       const ap = t.closest('[data-apagar]');
       if (ap && confirm('Apagar este item do cardápio? Os pedidos antigos continuam guardados.')) { food = await api(`/api/food/painel/itens/${encodeURIComponent(ap.dataset.apagar)}`, 'DELETE'); return renderItens(); }
+      const av = t.closest('[data-avancar]');
+      if (av) { av.disabled = true; await api(`/api/food/painel/pedidos/${encodeURIComponent(av.dataset.avancar)}`, 'PATCH', { situacao: av.dataset.para }); return recarregarFood(); }
       const im = t.closest('[data-imprimir]');
       if (im) { food = await api(`/api/food/painel/pedidos/${encodeURIComponent(im.dataset.imprimir)}/imprimir`, 'POST', { tipo: im.dataset.tipo }); renderTudo(); return aviso('Enviado para a fila de impressão.'); }
       const ci = t.closest('[data-cancelar-imp]');

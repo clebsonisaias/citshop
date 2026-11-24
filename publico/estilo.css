@@ -1166,3 +1166,90 @@ button.link { border: 0; background: none; padding: 0; color: var(--brand); font
 .entr-pago { color: var(--good); font-weight: 700; }
 .entr-acoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px !important; }
 .entr-acoes .btn { flex: 1 1 auto; }
+
+/* Praça, restaurante, acompanhar e painel no layout do novo design (marca CIT shop) */
+.migalha { display: flex; flex-wrap: wrap; gap: 8px; font-size: 14px; color: var(--muted); margin-bottom: 8px; }
+.migalha a { color: var(--brand); }
+.praca-abre { background: var(--deep); color: var(--on-deep); border-radius: 20px; padding: 28px 28px 30px; display: grid; gap: 8px; margin-bottom: 8px; }
+.praca-abre .migalha, .praca-abre .migalha a { color: var(--mint-texto); }
+.praca-abre h1 { font-size: clamp(32px, 4vw, 48px); line-height: 1.05; margin: 0; }
+.praca-abre p { margin: 0; max-width: 36em; color: #DCEFED; font-size: 16px; }
+.praca-titulo { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px; margin-top: 18px; }
+.praca-titulo h2 { font-size: 26px; }
+.food-lista { grid-template-columns: repeat(auto-fill, minmax(min(270px, 100%), 1fr)); gap: 18px; }
+.food-rest { display: flex; flex-direction: column; padding: 0; overflow: hidden; border-radius: 16px; gap: 0; }
+.food-rest .corpo { display: flex; flex-direction: column; gap: 2px; padding: 14px 16px 16px; }
+.food-rest .corpo b { font-family: var(--titulo); font-weight: 400; font-size: 19px; }
+.pilulas { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
+.pilulas span { padding: 4px 10px; border-radius: 999px; background: #EEF5F4; font-size: 13px; font-weight: 700; color: var(--ink); }
+.pilulas span.ok { background: #DDF5EC; color: #075E42; }
+.pilulas span.off { background: #FBE6DE; color: #8A2C0B; }
+.rest-capa { position: relative; display: grid; place-items: center; height: 140px; overflow: hidden; }
+.rest-capa.grande { height: 170px; border-radius: 20px 20px 0 0; }
+.rest-capa img { max-height: 70%; max-width: 60%; object-fit: contain; border-radius: 16px; }
+.rest-capa .iniciais { font-family: var(--titulo); font-size: 56px; opacity: .9; }
+.selo-sit { position: absolute; top: 12px; left: 12px; background: #FFFFFF; color: var(--ink); font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: 999px; }
+.selo-sit.off { color: #8A2C0B; }
+.praca-como { margin-top: 40px; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 28px; display: grid; gap: 18px; }
+.praca-como ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 18px 28px; }
+.praca-como li { display: flex; gap: 14px; }
+.praca-como li > span:last-child { display: flex; flex-direction: column; color: var(--muted); font-size: 14px; }
+.praca-como li b { color: var(--ink); font-size: 15px; }
+.praca-como .num { flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--mint); color: var(--deep); display: grid; place-items: center; font-family: var(--titulo); font-size: 18px; }
+.food-cab { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; overflow: hidden; margin-bottom: 14px; }
+.food-cab-info { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px 28px; padding: 20px 24px 22px; }
+.food-cab-info h1 { font-size: clamp(28px, 3.4vw, 42px); line-height: 1.05; }
+.food-cab-info p { margin: 4px 0 0; }
+.rest-layout { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+.rest-layout > #fCardapio { flex: 999 1 540px; min-width: 0; }
+.rest-aside { flex: 1 1 320px; min-width: 0; position: sticky; top: 96px; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 20px; display: none; gap: 12px; }
+.com-aside .rest-aside { display: grid; }
+.rest-aside h2 { font-size: 24px; }
+.aside-itens { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.aside-itens li { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.aside-itens li > span:first-child { display: flex; flex-direction: column; min-width: 0; }
+.aside-itens small { color: var(--muted); font-size: 13px; }
+.food-qtd.mini button { min-width: 40px; min-height: 40px; font-size: 20px; color: var(--deep); }
+.aside-sub { display: flex; justify-content: space-between; align-items: baseline; margin: 0; padding-top: 12px; border-top: 1px solid var(--line); }
+.aside-sub b { font-family: var(--titulo); font-weight: 400; font-size: 26px; }
+.aside-aviso { margin: 0; padding: 10px 12px; border-radius: 12px; background: #FFF4D6; font-size: 14px; }
+.aside-vazia { margin: 0; padding: 24px 14px; border: 1.5px dashed var(--line); border-radius: 14px; text-align: center; display: grid; gap: 4px; color: var(--muted); font-size: 14px; }
+.aside-vazia b { color: var(--ink); font-size: 15px; }
+.rest-aside .btn { min-height: 52px; }
+.food-item { border-radius: 16px; padding: 16px; }
+.food-item > span:first-child { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.item-pe { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: auto; padding-top: 10px; }
+.item-pe strong { font-family: var(--titulo); font-weight: 400; font-size: 20px; margin: 0; }
+.item-pe strong small { display: inline; font-family: var(--font); font-size: 12px; margin: 0; }
+.item-pe .add { background: var(--deep); color: #FFFFFF; font-weight: 800; font-size: 14px; padding: 10px 16px; border-radius: 10px; }
+.food-cat { font-size: 24px; }
+@media (min-width: 1000px) { .com-aside .food-sacola { display: none; } }
+@media (max-width: 999px) { .com-aside .rest-aside { display: none; } }
+.acomp-card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 22px; display: grid; gap: 16px; max-width: 760px; }
+#fAcomp h1 { font-size: clamp(26px, 3.2vw, 40px); line-height: 1.1; margin: 4px 0 16px; }
+.etapas { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; font-size: 14px; font-weight: 700; color: var(--muted); }
+.etapas li { display: grid; gap: 8px; }
+.etapas li span { height: 8px; border-radius: 999px; background: var(--line); }
+.etapas li.feito { color: var(--ink); }
+.etapas li.feito span { background: var(--deep); }
+.etapas li.atual { color: var(--ink); }
+.etapas li.atual span { background: var(--mint); }
+@media (max-width: 560px) { .etapas { grid-template-columns: 1fr 1fr; } }
+.kanban { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; align-items: start; }
+.kanban-col { background: #E8EFEE; border-radius: 16px; padding: 12px; display: grid; gap: 10px; }
+.kanban-col > header { display: flex; justify-content: space-between; align-items: center; padding: 2px 4px; }
+.kanban-col h2 { font-family: var(--font); font-weight: 800; font-size: 15px; }
+.kanban-col > header span { min-width: 28px; height: 28px; padding: 0 8px; border-radius: 999px; background: #FFFFFF; font-weight: 800; font-size: 13px; display: grid; place-items: center; }
+.kanban-card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 8px; }
+.kanban-card > header { display: flex; justify-content: space-between; align-items: baseline; }
+.kanban-card > header b { font-family: var(--titulo); font-weight: 400; font-size: 20px; }
+.kanban-card > header span { color: var(--muted); font-size: 13px; }
+.kanban-itens { margin: 0; font-size: 14px; line-height: 1.4; }
+.kanban-itens small { color: var(--muted); }
+.kanban-pe { display: flex; justify-content: space-between; align-items: center; margin: 0; }
+.kanban-pe .pilula { padding: 3px 10px; border-radius: 999px; background: #EEF5F4; font-size: 13px; font-weight: 700; }
+.kanban-card .btn { width: 100%; }
+.kanban-mais summary { cursor: pointer; color: var(--brand); font-weight: 700; font-size: 13px; min-height: 32px; display: flex; align-items: center; }
+.kanban-mais .item-adm { margin-top: 6px; }
+@media (max-width: 1100px) { .kanban { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 620px) { .kanban { grid-template-columns: 1fr; } }

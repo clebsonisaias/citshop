@@ -16,22 +16,37 @@
 <header class="site"><div class="wrap bar" style="grid-template-columns:auto 1fr auto"><a class="logo" href="/"><img src="/marca-cit-shopping.png" alt="CIT Shopping" width="140" height="36"></a><span></span><a class="food-topo-link" href="/alimentacao">Alimentação</a></div></header>
 <main class="wrap food">
   <section id="fLista">
-    <h1>Praça de alimentação</h1>
-    <p class="note">Restaurantes da região. Peça para entregar ou retire no local.</p>
+    <div class="praca-abre">
+      <nav class="migalha" aria-label="Você está em"><a href="/">CIT shop</a><span aria-hidden="true">/</span><span>Piso 3</span></nav>
+      <h1>Praça de Alimentação</h1>
+      <p>Os restaurantes da cidade lado a lado. Escolha, monte o pedido e receba em casa ou retire no balcão.</p>
+    </div>
     <div class="food-busca">
       <label class="sr-only" for="fBusca">Buscar</label>
       <input id="fBusca" type="search" placeholder="Buscar restaurante ou tipo de comida" autocomplete="off">
       <label class="food-check"><input type="checkbox" id="fAbertos"> Só abertos</label>
     </div>
-    <div class="chips" id="fTipos"></div>
+    <div class="chips" id="fTipos" role="group" aria-label="Filtrar por tipo de comida"></div>
+    <div class="praca-titulo"><h2 id="fTituloLista">Restaurantes da praça</h2><span class="note" id="fContagem"></span></div>
     <div id="fRestaurantes" class="food-lista" aria-live="polite"><p class="note">Carregando…</p></div>
+    <section class="praca-como" aria-labelledby="fComo">
+      <h2 id="fComo">Como pedir</h2>
+      <ol>
+        <li><span class="num" aria-hidden="true">1</span><span><b>Escolha o restaurante</b>Veja quem está aberto e entrega no seu endereço.</span></li>
+        <li><span class="num" aria-hidden="true">2</span><span><b>Monte o pedido</b>Adicione os itens, escolha os adicionais e confira o total.</span></li>
+        <li><span class="num" aria-hidden="true">3</span><span><b>Pague e acompanhe</b>Na entrega ou online, quando o restaurante aceita. Cada etapa chega no seu WhatsApp.</span></li>
+      </ol>
+    </section>
   </section>
 
   <section id="fRest" hidden>
-    <p><a href="/alimentacao" id="fVoltar">← Todos os restaurantes</a></p>
+    <nav class="migalha" aria-label="Você está em"><a href="/">CIT shop</a><span aria-hidden="true">/</span><a href="/alimentacao" id="fVoltar">Praça de Alimentação</a><span aria-hidden="true">/</span><span id="fMigalha"></span></nav>
     <div id="fCab"></div>
     <nav class="chips" id="fCats" aria-label="Categorias do cardápio"></nav>
-    <div id="fCardapio"></div>
+    <div class="rest-layout">
+      <div id="fCardapio"></div>
+      <aside class="rest-aside" id="fAside" aria-label="Seu pedido"></aside>
+    </div>
   </section>
 
   <section id="fAcomp" hidden aria-live="polite"></section>

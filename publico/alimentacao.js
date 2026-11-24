@@ -20,13 +20,17 @@
   let restaurantes = [], tipo = '', atual = null, itens = [], sacolas = ler(), loja = null, sacola = null, escolhendo = null, qtd = 1, ponto = null, frete = null;
 
   // ---------- lista ----------
+  // Capa do restaurante: a cor da marca dele com o logo (ou as iniciais) e a situação por cima.
+  const capa = (r, grande = false) => `<span class="rest-capa${grande ? ' grande' : ''}" style="background:${esc(r.cor || '#036271')};color:${window.CIT.textoSobre(r.cor || '#036271')}">
+      ${r.logo ? `<img src="${esc(r.logo)}" alt="">` : `<span class="iniciais">${esc(window.CIT.iniciais(r.nome))}</span>`}
+      <span class="selo-sit ${r.aberto ? 'ok' : 'off'}">${esc(r.situacao)}</span></span>`;
   function cartaoRest(r) {
     const entrega = r.entrega ? (r.taxaEntregaDesde == null ? 'Entrega' : r.taxaEntregaDesde === 0 ? 'Entrega grátis' : `Entrega ${r.entregaPorKm ? 'a partir de ' : ''}${brl(r.taxaEntregaDesde)}`) : 'Só retirada';
     return `<a class="food-rest${r.aberto ? '' : ' fechado'}" href="/alimentacao/${esc(r.slug)}" data-rest="${esc(r.slug)}">
-      <span class="avatar" style="background:${esc(r.cor || '#036271')};color:${window.CIT.textoSobre(r.cor || '#036271')}">${r.logo ? `<img src="${esc(r.logo)}" alt="">` : esc(window.CIT.iniciais(r.nome))}</span>
-      <span><b>${esc(r.nome)}</b><small>${esc(r.tipo)} · ${esc(r.cidade)}${r.avaliacao ? ` · ★ ${String(r.avaliacao.media).replace('.', ',')}` : ''}</small>
-      <small class="${r.aberto ? 'ok' : 'off'}">${esc(r.situacao)}</small>
-      <small>${r.preparoMin} min · ${entrega}${r.pedidoMinimo ? ` · mínimo ${brl(r.pedidoMinimo)}` : ''}</small></span></a>`;
+      ${capa(r)}
+      <span class="corpo"><b>${esc(r.nome)}</b><small>${esc(r.tipo)} · ${esc(r.cidade)}${r.avaliacao ? ` · ★ ${String(r.avaliacao.media).replace('.', ',')}` : ''}</small>
+      <span class="pilulas"><span>~${r.preparoMin} min</span><span>${entrega}</span></span>
+      <small>${r.pedidoMinimo ? `Pedido mínimo ${brl(r.pedidoMinimo)}` : 'Sem pedido mínimo'}</small></span></a>`;
   }
   function renderLista() {
     const q = $('fBusca').value.trim().toLowerCase(), so = $('fAbertos').checked;
@@ -34,6 +38,8 @@
     $('fTipos').innerHTML = tipos.length > 1 ? [['', 'Todos'], ...tipos.map((t) => [t, t])].map(([k, n]) => `<button class="chip" data-tipo="${esc(k)}" aria-pressed="${tipo === k}">${esc(n)}</button>`).join('') : '';
     const lista = restaurantes.filter((r) => (!so || r.aberto) && (!tipo || r.tipo === tipo) && (!q || `${r.nome} ${r.tipo} ${r.cidade}`.toLowerCase().includes(q)));
     $('fRestaurantes').innerHTML = lista.length ? lista.map(cartaoRest).join('') : '<p class="empty">Nenhum restaurante encontrado. Tente outra busca.</p>';
+    $('fTituloLista').textContent = tipo || 'Restaurantes da praça';
+    $('fContagem').textContent = `${lista.length} ${lista.length === 1 ? 'restaurante' : 'restaurantes'}`;
   }
 
   // ---------- restaurante e cardápio ----------
@@ -43,14 +49,16 @@
     if (!r) { $('fCab').innerHTML = '<p class="empty">Restaurante não encontrado.</p>'; $('fCardapio').innerHTML = ''; return; }
     atual = r.restaurante; itens = r.itens;
     document.title = `${atual.nome} · CITshop Food`;
-    $('fCab').innerHTML = `<div class="food-cab"><h1>${esc(atual.nome)}</h1><p class="note">${esc(atual.tipo)} · ${esc(atual.cidade)}${atual.localEndereco ? ` · ${esc(atual.localEndereco)}` : ''}</p>
-      <p><b class="${atual.aberto ? 'ok' : 'off'}">${esc(atual.situacao)}</b> · preparo ~${atual.preparoMin} min${atual.pedidoMinimo ? ` · pedido mínimo ${brl(atual.pedidoMinimo)}` : ''}${atual.retirada ? ' · retirada no local' : ''}</p>
-      ${atual.sobre ? `<p>${esc(atual.sobre)}</p>` : ''}</div>`;
+    $('fMigalha').textContent = atual.nome;
+    const taxa = atual.entrega ? (atual.taxaEntregaDesde == null ? 'Entrega' : atual.taxaEntregaDesde === 0 ? 'Entrega grátis' : `Entrega ${atual.entregaPorKm ? 'a partir de ' : ''}${brl(atual.taxaEntregaDesde)}`) : 'Só retirada';
+    $('fCab').innerHTML = `<section class="food-cab">${capa(atual, true)}
+      <div class="food-cab-info"><div><h1>${esc(atual.nome)}</h1><p class="note">${esc(atual.tipo)} · ${esc(atual.cidade)}${atual.localEndereco ? ` · ${esc(atual.localEndereco)}` : ''}</p>${atual.sobre ? `<p>${esc(atual.sobre)}</p>` : ''}</div>
+      <p class="pilulas"><span class="${atual.aberto ? 'ok' : 'off'}">${esc(atual.situacao)}</span><span>~${atual.preparoMin} min</span><span>${taxa}</span>${atual.pedidoMinimo ? `<span>Pedido mínimo ${brl(atual.pedidoMinimo)}</span>` : ''}${atual.retirada && atual.entrega ? '<span>Retirada no balcão</span>' : ''}</p></div></section>`;
     const cats = [...new Set(itens.map((i) => i.categoria))];
     $('fCats').innerHTML = cats.length > 1 ? cats.map((c, n) => `<a class="chip" href="#cat-${n}">${esc(c)}</a>`).join('') : '';
     $('fCardapio').innerHTML = itens.length ? cats.map((c, n) => `<h2 class="food-cat" id="cat-${n}">${esc(c)}</h2><div class="food-itens">${itens.filter((i) => i.categoria === c).map((i) => `
       <button type="button" class="food-item" data-item="${esc(i.id)}" ${atual.aberto && !i.esgotado && !i.foraDoHorario ? '' : 'aria-disabled="true"'}>
-        <span><b>${esc(i.nome)}</b>${i.descricao ? `<small>${esc(i.descricao)}</small>` : ''}<strong>${(i.variacoes ?? []).length || i.grupos.some((g) => g.min > 0) ? 'a partir de ' : ''}${brl(i.aPartirDe ?? i.preco)}</strong>${i.esgotado ? '<small class="off">Esgotado</small>' : i.foraDoHorario ? '<small class="off">Fora do horário</small>' : ''}</span>
+        <span><b>${esc(i.nome)}</b>${i.descricao ? `<small>${esc(i.descricao)}</small>` : ''}<span class="item-pe"><strong>${(i.variacoes ?? []).length || i.grupos.some((g) => g.min > 0) ? '<small>a partir de</small> ' : ''}${brl(i.aPartirDe ?? i.preco)}</strong>${i.esgotado ? '<small class="off">Esgotado</small>' : i.foraDoHorario ? '<small class="off">Fora do horário</small>' : atual.aberto ? '<span class="add" aria-hidden="true">Adicionar</span>' : ''}</span></span>
         ${i.foto ? `<img src="${esc(i.foto)}" alt="" loading="lazy" width="96" height="96">` : ''}</button>`).join('')}</div>`).join('') : '<p class="empty">Cardápio ainda vazio.</p>';
     pintarSacola();
   }
@@ -132,7 +140,25 @@
   const somaDe = (s) => (s?.itens ?? []).reduce((t, i) => t + i.unitario * i.quantidade, 0);
   const subtotal = () => somaDe(sacola);
   const linhaItem = (i, attr) => `<li><span><b>${i.quantidade}x ${esc(i.nome)}</b>${i.opcoes.length ? `<small>${esc(i.opcoes.join(', '))}</small>` : ''}${i.observacao ? `<small>Obs.: ${esc(i.observacao)}</small>` : ''}</span><span>${brl(i.unitario * i.quantidade)} <button type="button" class="food-x" ${attr} aria-label="Remover ${esc(i.nome)}">×</button></span></li>`;
+  // "Seu pedido" ao lado do cardápio (telas largas): só o deste restaurante, com + e −; os outros ficam no botão da sacola.
+  function renderAside() {
+    const el = $('fAside');
+    document.body.classList.toggle('com-aside', Boolean(atual) && !$('fRest').hidden);
+    if (!atual || $('fRest').hidden) return;
+    const s = sacolas[atual.slug], sub = somaDe(s), falta = atual.pedidoMinimo && sub < atual.pedidoMinimo ? atual.pedidoMinimo - sub : 0;
+    const outros = Object.values(sacolas).filter((x) => x.loja !== atual.slug);
+    el.innerHTML = `<h2>Seu pedido</h2>
+      ${s ? `<ul class="aside-itens">${s.itens.map((i, n) => `<li><span><b>${esc(i.nome)}</b>${i.opcoes.length ? `<small>${esc(i.opcoes.join(', '))}</small>` : ''}<small>${brl(i.unitario * i.quantidade)}</small></span>
+          <span class="food-qtd mini"><button type="button" data-aqtd="${n}" data-d="-1" aria-label="Tirar um ${esc(i.nome)}">−</button><output>${i.quantidade}</output><button type="button" data-aqtd="${n}" data-d="1" aria-label="Mais um ${esc(i.nome)}">+</button></span></li>`).join('')}</ul>
+        <p class="aside-sub"><span>Subtotal</span><b>${brl(sub)}</b></p>
+        ${falta ? `<p class="aside-aviso">Faltam ${brl(falta)} para o pedido mínimo de ${brl(atual.pedidoMinimo)}.</p>` : ''}
+        <button type="button" class="btn" data-finalizar="${esc(atual.slug)}" ${falta ? 'disabled' : ''}>Fechar pedido</button>
+        <p class="note">A taxa de entrega aparece ao fechar o pedido.</p>`
+      : '<p class="aside-vazia"><b>Sua sacola está vazia</b>Toque num item para começar o pedido.</p>'}
+      ${outros.length ? `<p class="note">Você também tem itens de ${outros.map((x) => esc(x.nome)).join(', ')}. <button type="button" class="link" data-ver-sacola>Ver sacola</button></p>` : ''}`;
+  }
   function pintarSacola() {
+    renderAside();
     const lista = Object.values(sacolas), n = lista.reduce((t, s) => t + s.itens.reduce((u, i) => u + i.quantidade, 0), 0);
     $('fSacola').hidden = !n;
     $('fSacola').textContent = `Ver sacola · ${n} ${n === 1 ? 'item' : 'itens'}${lista.length > 1 ? ` de ${lista.length} restaurantes` : ''} · ${brl(lista.reduce((t, s) => t + somaDe(s), 0))}`;
@@ -224,9 +250,22 @@
     pintarSacola(); // outros restaurantes que ainda estão na sacola continuam à vista
     const d = await fetch(`/api/food/acompanhar/${encodeURIComponent(id)}?t=${encodeURIComponent(t)}`).then((x) => (x.ok ? x.json() : null)).catch(() => null);
     if (!d) { $('fAcomp').innerHTML = '<p class="empty">Pedido não encontrado.</p>'; return; }
-    const pago = d.pagamento === 'approved' ? 'Pagamento aprovado' : d.pagamento === 'na_entrega' ? 'Pagamento na entrega' : 'Aguardando o pagamento';
-    $('fAcomp').innerHTML = `<h1>Pedido #${d.numero}</h1><p class="food-status">${esc(d.rotulo)}</p><p class="note">${esc(pago)} · total ${brl(d.total)} · ${d.receber === 'entrega' ? 'entrega' : 'retirada'}</p>
-      <ul>${d.itens.map((i) => `<li>${esc(i)}</li>`).join('')}</ul><p class="note">Esta página atualiza sozinha. Você também recebe os avisos no WhatsApp.</p>`;
+    const pago = d.pagamento === 'approved' ? 'pago online' : d.pagamento === 'na_entrega' ? 'pagamento na entrega' : 'aguardando o pagamento';
+    const entrega = d.receber === 'entrega';
+    const FRASE = { aguardando: 'O restaurante recebeu seu pedido.', aceito: 'Seu pedido foi aceito.', preparo: 'Seu pedido está sendo preparado.',
+      pronto: entrega ? 'Seu pedido está pronto e logo sai para entrega.' : 'Seu pedido está pronto para retirar.', aguardando_saida: entrega ? 'Seu pedido está pronto e logo sai para entrega.' : 'Seu pedido está pronto para retirar.',
+      saiu: 'Seu pedido saiu para entrega.', entregue: 'Pedido entregue. Bom apetite!', concluido: 'Pedido concluído. Bom apetite!', cancelado: 'Este pedido foi cancelado.' };
+    const etapas = ['Pedido recebido', 'Em preparo', entrega ? 'Saiu para entrega' : 'Pronto para retirar', entrega ? 'Entregue' : 'Retirado'];
+    const pos = { aguardando: 0, aceito: 1, preparo: 1, pronto: entrega ? 1 : 2, aguardando_saida: entrega ? 1 : 2, saiu: 2, entregue: 3, concluido: 3 }[d.situacao];
+    const slug = location.pathname.split('/')[2] || '';
+    $('fAcomp').innerHTML = `<p class="note">Pedido #${d.numero} · ${esc(pago)}</p><h1>${esc(FRASE[d.situacao] ?? d.rotulo)}</h1>
+      <section class="acomp-card">
+        ${pos == null ? '' : `<ol class="etapas">${etapas.map((n, i) => `<li class="${i < pos || d.situacao === 'entregue' || d.situacao === 'concluido' ? 'feito' : i === pos ? 'atual' : ''}"${i === pos ? ' aria-current="step"' : ''}><span aria-hidden="true"></span>${esc(n)}</li>`).join('')}</ol>`}
+        <ul class="food-car">${d.itens.map((i) => `<li><span>${esc(i)}</span></li>`).join('')}</ul>
+        <p class="aside-sub"><span>Total · ${entrega ? 'entrega' : 'retirada no balcão'}</span><b>${brl(d.total)}</b></p>
+        ${slug ? `<p><a class="btn sec" href="/alimentacao/${esc(slug)}">Voltar ao restaurante</a></p>` : ''}
+      </section>
+      <p class="note">Esta página atualiza sozinha. Você também recebe os avisos no WhatsApp.</p>`;
     if (!['entregue', 'concluido', 'cancelado'].includes(d.situacao)) setTimeout(() => acompanhar(id, t), 15000);
   }
 
@@ -237,6 +276,9 @@
     const tp = e.target.closest('[data-tipo]'); if (tp) { tipo = tp.dataset.tipo; return renderLista(); }
     const q = e.target.closest('[data-qtd]'); if (q) { qtd = Math.min(50, Math.max(1, qtd + Number(q.dataset.qtd))); return atualizarItem(); }
     const rm = e.target.closest('[data-remover]'); if (rm) { sacola.itens.splice(Number(rm.dataset.remover), 1); gravar(); if (!sacola.itens.length) { sacola = null; $('fCarrinho').close(); } else renderCarrinho(); return pintarSacola(); }
+    const aq = e.target.closest('[data-aqtd]');
+    if (aq) { const it = sacolas[atual.slug].itens[Number(aq.dataset.aqtd)]; it.quantidade = Math.min(50, it.quantidade + Number(aq.dataset.d)); if (it.quantidade < 1) sacolas[atual.slug].itens.splice(Number(aq.dataset.aqtd), 1); gravar(); return pintarSacola(); }
+    if (e.target.closest('[data-ver-sacola]')) return abrirSacolas();
     const ti = e.target.closest('[data-tirar]'); if (ti) { sacolas[ti.dataset.tirar].itens.splice(Number(ti.dataset.n), 1); gravar(); renderSacolas(); return pintarSacola(); }
     const fi = e.target.closest('[data-finalizar]'); if (fi) return finalizar(fi.dataset.finalizar);
     if (e.target.closest('[data-fechar]')) e.target.closest('dialog').close();
@@ -249,7 +291,7 @@
     if (q.get('pedido')) return acompanhar(q.get('pedido'), q.get('t') || '');
     const m = location.pathname.match(/^\/alimentacao\/([a-z0-9-]+)/);
     if (m) return abrirRest(m[1]);
-    $('fRest').hidden = true; $('fAcomp').hidden = true; $('fLista').hidden = false; pintarSacola();
+    $('fRest').hidden = true; $('fAcomp').hidden = true; $('fLista').hidden = false; atual = null; pintarSacola();
     document.title = 'Alimentação · CITshop Food';
     restaurantes = await fetch('/api/food/restaurantes').then((x) => x.json()).catch(() => []);
     renderLista();
