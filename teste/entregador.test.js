@@ -24,6 +24,8 @@ test("Entregador do restaurante: link do painel, só entregas do restaurante, s�
     return { c, slug: p.slug, item: p.itens[0].id };
   };
   const A = await restaurante("Lanches A", "a@x.com"), B = await restaurante("Lanches B", "b@x.com");
+  const login = await req("POST", "/api/painel/entrar", { email: "a@x.com", senha, segmento: "food" });
+  assert.match(login.headers.get("set-cookie"), /Path=\/api;/, "a sessão do restaurante vale para /api/food/* no navegador (não só /api/painel)");
   const pedir = (r, receber) => req("POST", "/api/food/pedidos", { loja: r.slug, receber, pagamento: "dinheiro", troco: "50", itens: [{ itemId: r.item, quantidade: 1, escolhas: {} }], comprador: { nome: "Ana", whatsapp: "84922222222", endereco: "Rua das Flores, 10, Centro" } }).then((x) => x.json());
   const entrega = await pedir(A, "entrega"), retirada = await pedir(A, "retirada");
   await pedir(B, "entrega");

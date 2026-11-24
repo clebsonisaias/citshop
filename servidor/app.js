@@ -241,7 +241,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   const erro = (res, status, msg) => res.status(status).json({ erro: msg });
 
   // ---------- sessões ----------
-  const CAMINHO = { loja: "/api/painel", admin: "/api/admin" };
+  // Loja em /api (não só /api/painel): o painel do restaurante chama /api/food/painel com a mesma sessão.
+  const CAMINHO = { loja: "/api", admin: "/api/admin" };
   const sessao = (req, tipo) => {
     const d = S.lerSessao(S.lerCookies(req.headers.cookie)[`citshop_${tipo}`], { segredo, agora: agora() });
     return d?.t === tipo ? d : null;
@@ -252,7 +253,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     nome: `citshop_${tipo}`, caminho: CAMINHO[tipo], https: S.ehHttps(req),
     valor: S.criarSessao({ segredo, dados: { t: tipo, id, ...extra }, agora: agora() }),
   }));
-  const fecharSessao = (req, res, tipo) => res.setHeader("Set-Cookie", S.cookie({ nome: `citshop_${tipo}`, valor: "", caminho: CAMINHO[tipo], https: S.ehHttps(req) }));
+  const fecharSessao = (req, res, tipo) => res.setHeader("Set-Cookie", [S.cookie({ nome: `citshop_${tipo}`, valor: "", caminho: CAMINHO[tipo], https: S.ehHttps(req) }),
+    ...(tipo === "loja" ? [S.cookie({ nome: "citshop_loja", valor: "", caminho: "/api/painel", https: S.ehHttps(req) })] : [])]); // apaga também o cookie do caminho antigo
 
   function exigirLoja(req, res, next) {
     const s = sessao(req, "loja");
