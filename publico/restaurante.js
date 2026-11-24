@@ -88,7 +88,7 @@
     const imp = food.impressao;
     $('rImpStatus').textContent = !imp.configurada ? 'Nenhuma impressora vinculada. Sem impressora, os pedidos aparecem normalmente na tela da cozinha.'
       : imp.online ? `Impressora conectada${imp.pendentes ? ` · ${imp.pendentes} na fila` : ''}.` : `CITshop Print sem resposta desde ${imp.vistoEm ? new Date(imp.vistoEm).toLocaleString('pt-BR') : 'o vínculo'}. A fila espera e imprime quando voltar.`;
-    const PAPEL = { cozinha: 'Cozinha', atendente: 'Atendimento', impressora: 'Impressora' };
+    const PAPEL = { cozinha: 'Cozinha', atendente: 'Atendimento', entregador: 'Entregador', impressora: 'Impressora' };
     $('rAcessos').innerHTML = food.acessos.length ? food.acessos.map((a) => `<div class="item-adm"><p><b>${esc(PAPEL[a.papel])}</b> · ${esc(a.nome)}${a.dispositivo?.impressora ? ` · ${esc(a.dispositivo.impressora)} (${a.dispositivo.largura} mm)` : ''}${a.papel === 'impressora' && !a.vinculado ? ' · aguardando o código' : ''}${a.vistoEm ? ` · visto ${new Date(a.vistoEm).toLocaleTimeString('pt-BR')}` : ''}</p><button class="btn sec" type="button" data-revogar="${esc(a.id)}">Revogar</button></div>`).join('') : '<p class="note">Nenhum acesso criado.</p>';
     $('rImpressoes').innerHTML = food.impressoes.length ? food.impressoes.map((j) => `<div class="item-adm"><p>#${j.numero} · ${esc(j.tipo)}${j.manual ? ' (reimpressão)' : ''} · <b>${esc(IMP[j.status])}</b>${j.erro ? ` · ${esc(j.erro)}` : ''} · ${new Date(j.criadoEm).toLocaleTimeString('pt-BR')}</p>${['pendente', 'erro'].includes(j.status) ? `<button class="btn sec" type="button" data-cancelar-imp="${esc(j.id)}">Cancelar</button>` : ''}</div>`).join('') : '<p class="note">Nenhuma impressão ainda.</p>';
   }
@@ -214,7 +214,7 @@
         const d = await api('/api/food/painel/acessos', 'POST', { papel: na.dataset.novoAcesso });
         food = d.painel; renderCozinha();
         if (d.codigo) { $('rCodigo').hidden = false; $('rCodigo').innerHTML = `Código da impressora: <b>${esc(d.codigo)}</b> (vale 15 minutos, uma vez)`; }
-        if (d.link) { $('rLink').hidden = false; $('rLink').innerHTML = `Abra este link no aparelho da cozinha (aparece só agora):<br><a href="${esc(d.link)}" target="_blank" rel="noopener">${esc(d.link)}</a> <button class="btn sec" type="button" data-copiar="${esc(d.link)}">Copiar</button>`; }
+        if (d.link) { $('rLink').hidden = false; $('rLink').innerHTML = `Abra este link no aparelho ${na.dataset.novoAcesso === 'entregador' ? 'do entregador' : 'da cozinha'} (aparece só agora):<br><a href="${esc(d.link)}" target="_blank" rel="noopener">${esc(d.link)}</a> <button class="btn sec" type="button" data-copiar="${esc(d.link)}">Copiar</button>`; }
         return;
       }
       const cp = t.closest('[data-copiar]'); if (cp) { await navigator.clipboard?.writeText(cp.dataset.copiar); cp.textContent = 'Copiado'; return; }

@@ -14,9 +14,11 @@ export const ROTULO_SITUACAO = {
   aguardando: "Aguardando confirmação", aceito: "Aceito", preparo: "Em preparação", pronto: "Pronto",
   aguardando_saida: "Aguardando retirada/entregador", saiu: "Saiu para entrega", entregue: "Entregue", concluido: "Concluído", cancelado: "Cancelado",
 };
-// Cozinha só mexe no preparo; atendente e dono mexem em tudo (inclusive cancelar). Ninguém aqui mexe no pagamento.
+// Cozinha só mexe no preparo; o entregador (motoboy do restaurante) só marca saída e entrega; atendente e dono
+// mexem em tudo (inclusive cancelar). Ninguém aqui mexe no pagamento.
 const DA_COZINHA = new Set(["aceito", "preparo", "pronto"]);
-export const podeMudar = (papel, para) => SITUACOES.includes(para) && (papel === "cozinha" ? DA_COZINHA.has(para) : true);
+const DO_ENTREGADOR = new Set(["saiu", "entregue"]);
+export const podeMudar = (papel, para) => SITUACOES.includes(para) && (papel === "cozinha" ? DA_COZINHA.has(para) : papel === "entregador" ? DO_ENTREGADOR.has(para) : true);
 export const ATIVAS = new Set(["aguardando", "aceito", "preparo", "pronto", "aguardando_saida", "saiu"]);
 
 // ---------- horário (America/Sao_Paulo, independente do fuso do servidor) ----------

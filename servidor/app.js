@@ -2080,6 +2080,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   for (const rota of ["/alimentacao", "/alimentacao/:slug"]) app.get(rota, (req, res) => { semCache(res); res.sendFile(join(publico, "alimentacao.html")); });
   app.get("/restaurante", (req, res) => { semCache(res); res.sendFile(join(publico, "restaurante.html")); });
   app.get("/cozinha", (req, res) => { semCache(res); res.sendFile(join(publico, "cozinha.html")); });
+  app.get("/entregador", (req, res) => { semCache(res); res.sendFile(join(publico, "entregador.html")); });
   // Instalador do CITshop Print: o arquivo é publicado no volume (DADOS_DIR/downloads), não fica no repositório.
   app.get("/downloads/citshop-print", (req, res) => {
     const arquivo = join(dadosDir, "downloads", "citshop-print.exe");

@@ -368,10 +368,10 @@ export function instalarFood(app, ctx) {
   });
   // Novo acesso: cozinha/atendente recebem um link (token mostrado uma vez); impressora recebe um código de 15 min.
   app.post("/api/food/painel/acessos", exigirRest, (req, res) => {
-    const papel = ["cozinha", "atendente", "impressora"].includes(req.body?.papel) ? req.body.papel : null;
-    if (!papel) return erro(res, 400, "Escolha cozinha, atendente ou impressora.");
+    const papel = ["cozinha", "atendente", "entregador", "impressora"].includes(req.body?.papel) ? req.body.papel : null;
+    if (!papel) return erro(res, 400, "Escolha cozinha, atendente, entregador ou impressora.");
     if (acessos().filter((x) => x.lojaId === req.loja.id && !x.revogadoEm).length >= 20) return erro(res, 400, "Limite de 20 acessos. Revogue algum.");
-    const ac = { id: randomUUID(), lojaId: req.loja.id, papel, nome: txt(req.body?.nome, 40) || (papel === "impressora" ? "Computador do caixa" : papel === "cozinha" ? "Cozinha" : "Atendimento"), criadoEm: iso() };
+    const ac = { id: randomUUID(), lojaId: req.loja.id, papel, nome: txt(req.body?.nome, 40) || (papel === "impressora" ? "Computador do caixa" : papel === "cozinha" ? "Cozinha" : papel === "entregador" ? "Entregador" : "Atendimento"), criadoEm: iso() };
     let resposta;
     if (papel === "impressora") {
       const codigo = Array.from(randomBytes(8), (n) => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[n % 32]).join("");
@@ -380,7 +380,7 @@ export function instalarFood(app, ctx) {
     } else {
       const token = randomBytes(24).toString("base64url");
       ac.tokenHash = hash(token);
-      resposta = { link: `${urlPublica}/cozinha#${token}` };
+      resposta = { link: `${urlPublica}/${papel === "entregador" ? "entregador" : "cozinha"}#${token}` };
     }
     acessos().push(ac);
     banco.salvar();
@@ -399,7 +399,8 @@ export function instalarFood(app, ctx) {
     const p = pedidoDaLoja(req);
     if (!p || !naCozinha(p)) return erro(res, 404, "Pedido não encontrado.");
     const para = String(req.body?.situacao ?? "");
-    if (!podeMudar(req.papel ?? "dono", para)) return erro(res, 403, req.papel === "cozinha" ? "A cozinha só aceita, prepara e marca como pronto." : "Situação inválida.");
+    if (!podeMudar(req.papel ?? "dono", para)) return erro(res, 403, req.papel === "cozinha" ? "A cozinha só aceita, prepara e marca como pronto." : req.papel === "entregador" ? "O entregador só marca a saída e a entrega." : "Situação inválida.");
+    if (req.papel === "entregador" && p.receber !== "entrega") return erro(res, 403, "Este pedido é para retirar no local.");
     const falha = mudarSituacao(req.loja, p, para, req.quem ?? "dono");
     if (falha) return erro(res, 409, falha);
     banco.salvar();
@@ -416,6 +417,24 @@ export function instalarFood(app, ctx) {
       impressao: impressora ? { online: agora() - (vistos.get(impressora.id) ?? 0) < 2 * MIN } : null });
   });
   app.patch("/api/food/kds/pedidos/:id", exigirKds, (req, res) => mudarPelaTela(req, res));
+
+  // ---------- entregador (motoboy do próprio restaurante): link do painel, só as entregas ----------
+  function exigirEntregador(req, res, next) {
+    const t = acessoDoToken(req, ["entregador"]);
+    if (t) { Object.assign(req, { loja: t.loja, papel: "entregador", quem: t.ac.nome }); return next(); }
+    exigirLoja(req, res, () => (ehFood(req.loja) ? (Object.assign(req, { papel: "dono", quem: "dono" }), next()) : erro(res, 403, "Só para restaurantes.")));
+  }
+  const PARA_ENTREGAR = new Set(["aceito", "preparo", "pronto", "aguardando_saida", "saiu"]);
+  app.get("/api/food/entregas", exigirEntregador, (req, res) => {
+    const limite = agora() - 3 * 60 * MIN;
+    const entregas = pedidosFood(req.loja.id).filter((p) => naCozinha(p) && p.receber === "entrega" && (PARA_ENTREGAR.has(p.situacao) || (p.situacao === "entregue" && Date.parse(p.criadoEm) > limite)))
+      .map((p) => ({ id: p.id, numero: p.numero, situacao: p.situacao, rotulo: ROTULO_SITUACAO[p.situacao], criadoEm: p.criadoEm, itens: p.itens.map((i) => `${i.quantidade}x ${i.nome}`),
+        cliente: { nome: p.comprador?.nome, whatsapp: p.comprador?.whatsapp, endereco: p.comprador?.endereco, observacao: p.comprador?.observacao }, ponto: Number.isFinite(p.entrega?.lat) ? { lat: p.entrega.lat, lng: p.entrega.lng } : null,
+        // O que cobrar na porta: nada se já foi pago online.
+        cobrar: p.status === "approved" ? null : { valor: p.valorTotal, forma: p.pagamentoForma, troco: p.troco } }));
+    res.set("Cache-Control", "no-store").json({ restaurante: req.loja.nome, papel: req.papel, entregas });
+  });
+  app.patch("/api/food/entregas/pedidos/:id", exigirEntregador, (req, res) => mudarPelaTela(req, res));
 
   // ---------- CITshop Print (dispositivo) ----------
   const limiteVinculo = new S.Limitador({ maximo: 10, janelaMs: 10 * MIN });
