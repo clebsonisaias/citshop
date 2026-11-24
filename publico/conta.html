@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Minha conta · CIT shop</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#036271">
+<link rel="manifest" href="/app.webmanifest">
+<link rel="icon" href="/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400..800&family=Righteous&display=swap">
+<link rel="stylesheet" href="/estilo.css">
+<script src="/comum.js" defer></script>
+<script src="/conta.js" defer></script>
+</head>
+<body>
+<header class="site"><div class="wrap bar" style="grid-template-columns:auto 1fr auto"><a class="logo" href="/"><img src="/marca-cit-shopping.png" alt="CIT shop" width="140" height="36"></a><span></span><a class="sell" href="/alimentacao"><b>Praça de Alimentação</b></a></div></header>
+<main class="wrap conta-pg">
+  <!-- Sem conta aberta -->
+  <section id="cFora" hidden>
+    <h1>Minha conta</h1>
+    <p class="note">Entre para ver seus pedidos, guardar endereços e levar seus favoritos para qualquer aparelho.</p>
+    <div class="conta-duas">
+      <form id="cEntrar" class="conta-card">
+        <h2>Entrar</h2>
+        <label class="food-campo">E-mail<input name="email" type="email" required autocomplete="email"></label>
+        <label class="food-campo">Senha<input name="senha" type="password" required autocomplete="current-password"></label>
+        <button class="btn" type="submit">Entrar</button>
+        <p><button type="button" class="link" id="cAbrirEsqueci">Esqueci a senha</button></p>
+        <p class="food-erro" role="alert"></p>
+      </form>
+      <form id="cCriar" class="conta-card">
+        <h2>Criar conta</h2>
+        <label class="food-campo">Nome<input name="nome" required maxlength="80" autocomplete="name"></label>
+        <label class="food-campo">E-mail<input name="email" type="email" required autocomplete="email"></label>
+        <label class="food-campo">WhatsApp<input name="whatsapp" required inputmode="tel" autocomplete="tel" placeholder="(84) 99999-9999"></label>
+        <label class="food-campo">Senha (mínimo 8 caracteres)<input name="senha" type="password" required minlength="8" autocomplete="new-password"></label>
+        <label class="food-check"><input type="checkbox" name="aceite" required> Li e aceito os <a href="/termos" target="_blank">termos</a> e a <a href="/privacidade" target="_blank">privacidade</a></label>
+        <button class="btn" type="submit">Criar conta</button>
+        <p class="food-erro" role="alert"></p>
+      </form>
+    </div>
+    <form id="cEsqueci" class="conta-card" hidden>
+      <h2>Criar uma nova senha</h2>
+      <p class="note">Mandamos um código para o WhatsApp da sua conta.</p>
+      <label class="food-campo">E-mail<input name="email" type="email" required autocomplete="email"></label>
+      <p><button type="button" class="btn sec" id="cPedirCodigo">Mandar código no WhatsApp</button></p>
+      <label class="food-campo">Código de 6 números<input name="codigo" inputmode="numeric" maxlength="6" autocomplete="one-time-code"></label>
+      <label class="food-campo">Nova senha<input name="senha" type="password" minlength="8" autocomplete="new-password"></label>
+      <button class="btn" type="submit">Salvar nova senha</button>
+      <p class="note" id="cEsqueciMsg" aria-live="polite"></p>
+      <p class="food-erro" role="alert"></p>
+    </form>
+  </section>
+
+  <!-- Com conta aberta -->
+  <section id="cDentro" hidden>
+    <div class="conta-topo"><h1 id="cOla">Minha conta</h1><button type="button" class="btn sec" id="cSair">Sair</button></div>
+    <section class="conta-card">
+      <h2>Meus pedidos</h2>
+      <div id="cPedidos"></div>
+    </section>
+    <div class="conta-duas">
+      <form id="cDados" class="conta-card">
+        <h2>Meus dados</h2>
+        <label class="food-campo">Nome<input name="nome" required maxlength="80" autocomplete="name"></label>
+        <label class="food-campo">WhatsApp<input name="whatsapp" required inputmode="tel" autocomplete="tel"></label>
+        <p class="note" id="cEmail"></p>
+        <button class="btn" type="submit">Salvar</button>
+        <p class="note" aria-live="polite"></p>
+      </form>
+      <form id="cEnderecos" class="conta-card">
+        <h2>Endereços</h2>
+        <p class="note">Usados para preencher o pedido na praça de alimentação. Até 5.</p>
+        <div id="cEndLista"></div>
+        <p><button type="button" class="btn sec" id="cMaisEnd">Adicionar endereço</button></p>
+        <button class="btn" type="submit">Salvar endereços</button>
+        <p class="note" aria-live="polite"></p>
+      </form>
+    </div>
+    <form id="cSenha" class="conta-card">
+      <h2>Trocar senha</h2>
+      <label class="food-campo">Senha atual<input name="atual" type="password" required autocomplete="current-password"></label>
+      <label class="food-campo">Nova senha<input name="nova" type="password" required minlength="8" autocomplete="new-password"></label>
+      <button class="btn" type="submit">Trocar senha</button>
+      <p class="note" aria-live="polite"></p>
+    </form>
+    <p class="note" id="cFav"></p>
+  </section>
+</main>
+</body>
+</html>

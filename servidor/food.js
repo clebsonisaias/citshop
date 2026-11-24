@@ -11,7 +11,7 @@ const hash = (t) => createHash("sha256").update(String(t)).digest("hex");
 const MIN = 60_000;
 
 export function instalarFood(app, ctx) {
-  const { banco, agora, iso, erro, a, exigirLoja, exigirAdmin, S, segredo, urlPublica, mp, tokenDaLoja, freteDe, freteAtivo, auditar, conectorWaha, log, lojaVisivel, notaDaLoja, whatsapp, txt, uploadsDir, geocodificar } = ctx;
+  const { clienteDe = () => null, banco, agora, iso, erro, a, exigirLoja, exigirAdmin, S, segredo, urlPublica, mp, tokenDaLoja, freteDe, freteAtivo, auditar, conectorWaha, log, lojaVisivel, notaDaLoja, whatsapp, txt, uploadsDir, geocodificar } = ctx;
   const ehFood = (l) => l?.segmento === "food";
   const cardapioDa = (lojaId) => (banco.d.cardapio ??= []).filter((i) => i.lojaId === lojaId);
   const pedidosFood = (lojaId) => (banco.d.pedidos ?? []).filter((p) => p.origem === "food" && p.lojaId === lojaId);
@@ -198,6 +198,8 @@ export function instalarFood(app, ctx) {
       financeiro: { modelo: "food_pro", comissaoTotal: 0, unidades: montado.itens.reduce((s2, i) => s2 + i.quantidade, 0), valorTotal: total }, // FOOD PRO: nenhuma comissão
     };
     const acompanhar = `${urlPublica}/alimentacao/${loja.slug}?pedido=${pedido.id}&t=${tokenAcompanhar(pedido.id)}`;
+    const cliente = clienteDe(req); // feito com a conta aberta: entra em "Minha conta", com o link de acompanhar
+    if (cliente) Object.assign(pedido, { clienteId: cliente.id, linkCliente: acompanhar.slice(urlPublica.length) });
     banco.d.pedidos ??= [];
     moverEstoqueFood(cardapioDa(loja.id), montado.consumo, 1); // reserva no mesmo passo da conferência (sem corrida)
     if (online) {

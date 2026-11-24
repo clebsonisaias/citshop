@@ -175,7 +175,17 @@
     if (loja.pagamentoOnline) $('fPag').insertAdjacentHTML('afterbegin', '<option value="online">Pagar agora (Pix ou cartão · Mercado Pago)</option>');
     ponto = null; frete = null; $('fFrete').textContent = loja.entregaPorKm ? 'A taxa depende da distância: use sua localização ou calcule pelo endereço.' : '';
     if (!loja.entregaPorKm) calcularFrete();
+    preencherDaConta(f);
     $('fErro').textContent = ''; renderCarrinho(); $('fCarrinho').showModal();
+  }
+  // Conta aberta (Minha conta): nome, WhatsApp e endereço já vêm preenchidos; o pedido fica no histórico da conta.
+  let conta;
+  async function preencherDaConta(f) {
+    conta ??= await fetch('/api/conta/eu').then((x) => (x.ok ? x.json() : null)).catch(() => null);
+    if (!conta) return;
+    if (!f.nome.value) f.nome.value = conta.nome;
+    if (!f.whatsapp.value) f.whatsapp.value = conta.whatsapp.replace(/^55/, '');
+    if (!f.endereco.value && conta.enderecos[0]) f.endereco.value = conta.enderecos[0].texto;
   }
   async function calcularFrete(extra = {}) {
     const r = await fetch('/api/food/frete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ loja: loja.slug, subtotal: subtotal(), ...extra }) }).then((x) => x.json()).catch(() => ({}));

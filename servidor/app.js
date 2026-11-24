@@ -23,6 +23,7 @@ import { TAG_AMAZON_PADRAO, atualizarAfiliados, comTagAmazon, comissaoAmazonPct,
 import { ganhoEsperado } from "./motor-ofertas/ranking.js";
 import { FOCO_TEMPORADA, temporadaDo, temporadasAtivas } from "../publico/temporadas.js";
 import { instalarFood } from "./food.js";
+import { instalarConta } from "./conta.js";
 import { Buscas, normalizarBusca } from "./buscas.js";
 import { deShopee } from "./integracoes/shopee/conector.js";
 import { MATT_TOOL_PADRAO, comAtribuicaoML, pedirTokenML, urlAutorizacaoML } from "./integracoes/mercado-livre/conector.js";
@@ -265,6 +266,10 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   function exigirAdmin(req, res, next) {
     return sessao(req, "admin") ? next() : erro(res, 401, "Entre como administrador.");
   }
+
+  // ---------- Minha conta do cliente (servidor/conta.js) ----------
+  const { clienteDe } = instalarConta(app, { banco, agora, iso, erro, a, S, segredo, conectorWaha, whatsapp, txt, emailOk, log });
+  app.get("/conta", (req, res) => { semCache(res); res.sendFile(join(publico, "conta.html")); });
 
   // ---------- vitrine pública ----------
   // Lê o JSON só quando o arquivo muda (o robô grava com rename, que troca a data de modificação).
@@ -518,7 +523,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const { entrega, erro: msgEntrega, status: stEntrega } = lerEntrega(banco.loja(x.lojaId), comprador, lido.valorTotal);
     if (msgEntrega) return erro(res, stEntrega, msgEntrega);
     const pedido = {
-      id: `P-${randomBytes(3).toString("hex").toUpperCase()}`, origem: "whatsapp", lojaId: x.lojaId, ...resumo,
+      id: `P-${randomBytes(3).toString("hex").toUpperCase()}`, origem: "whatsapp", lojaId: x.lojaId, ...resumo, ...(clienteDe(req) && { clienteId: clienteDe(req).id }),
       ...(entrega ? { entrega, valorTotal: arredonda(lido.valorTotal + entrega.valor, 2) } : {}),
       // Retrato financeiro (loja de mensalidade: comissão sempre zero).
       financeiro: retratoFinanceiro({ loja: banco.loja(x.lojaId), unidades: lido.unidades, valorProdutos: lido.valorTotal, frete: entrega?.valor ?? 0 }),
@@ -1454,7 +1459,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const webhookUrl = `${urlPublica}/webhook/mercadopago?loja=${encodeURIComponent(loja.id)}`;
     banco.d.pedidos ??= [];
     limparPedidosVencidos();
-    const pedido = { id: referencia, origem: "site", lojaId: loja.id, ...resumo, ...(entrega ? { entrega, valorTotal: total } : {}), taxaMarketplace, financeiro, metodo, comprador, status: "criado", etapa: "novo", criadoEm: iso() };
+    const pedido = { id: referencia, origem: "site", lojaId: loja.id, ...(clienteDe(req) && { clienteId: clienteDe(req).id }), ...resumo, ...(entrega ? { entrega, valorTotal: total } : {}), taxaMarketplace, financeiro, metodo, comprador, status: "criado", etapa: "novo", criadoEm: iso() };
     try {
       const tokenVendedor = await tokenDaLoja(loja);
       if (metodo === "pix") {
@@ -2070,7 +2075,7 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   });
 
   // ---------- CITshop Food (servidor/food.js) ----------
-  const ctxFood = { banco, agora, iso, erro, a, exigirLoja, exigirAdmin, S, segredo, urlPublica, mp, tokenDaLoja, freteDe, freteAtivo, auditar, conectorWaha, log, lojaVisivel, notaDaLoja, whatsapp, txt, uploadsDir, geocodificar };
+  const ctxFood = { banco, agora, iso, erro, a, exigirLoja, exigirAdmin, S, segredo, urlPublica, mp, tokenDaLoja, freteDe, freteAtivo, auditar, conectorWaha, log, lojaVisivel, notaDaLoja, whatsapp, txt, uploadsDir, geocodificar, clienteDe };
   instalarFood(app, ctxFood);
   for (const rota of ["/alimentacao", "/alimentacao/:slug"]) app.get(rota, (req, res) => { semCache(res); res.sendFile(join(publico, "alimentacao.html")); });
   app.get("/restaurante", (req, res) => { semCache(res); res.sendFile(join(publico, "restaurante.html")); });

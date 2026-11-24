@@ -1132,3 +1132,23 @@ body.kds { background: #0f1416; color: #f2f5f5; min-height: 100dvh; margin: 0; }
 /* Sacola com vários restaurantes: um bloco por restaurante, cada um fecha o seu pedido. */
 .food-sac { border-top: 1px solid var(--line); padding-block: 14px; display: grid; gap: 8px; }
 .food-sac h3 { font-family: var(--titulo); font-weight: 400; font-size: 18px; }
+
+/* Minha conta */
+.conta-pg { display: grid; gap: 18px; padding-block: 20px 48px; }
+.conta-duas { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+.conta-card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: grid; gap: 10px; }
+.conta-topo { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.conta-pedidos { list-style: none; margin: 0; padding: 0; display: grid; }
+.conta-pedidos li { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
+.conta-pedidos li span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.conta-pedidos small { color: var(--muted); }
+.conta-ped-dir { align-items: flex-end; text-align: right; flex: none; }
+.conta-ped-dir a { color: var(--brand); font-weight: 700; }
+.conta-end { display: grid; gap: 6px; padding-bottom: 10px; border-bottom: 1px dashed var(--line); }
+.conta-end .btn { justify-self: start; min-height: 36px; padding: 6px 12px; }
+button.link { border: 0; background: none; padding: 0; color: var(--brand); font-weight: 700; text-decoration: underline; cursor: pointer; }
+.acoes { display: flex; gap: 8px; align-items: center; }
+.conta-link { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 12px; border-radius: 12px; color: var(--on-deep); text-decoration: none; font-size: 12px; line-height: 1.2; border: 1px solid rgba(255,255,255,.25); }
+.conta-link b { display: block; font-size: 13px; }
+@media (max-width: 760px) { .conta-duas { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .conta-link .t { display: none; } }
