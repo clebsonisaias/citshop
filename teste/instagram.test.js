@@ -27,7 +27,7 @@ test("ConectorInstagram formata legenda com chamada QUERO e preço formatado", (
   assert.ok(insta.formatarLegenda({ ...produto, loja: "amazon" }).includes("#amazon"));
 });
 
-test("GeradorCardInstagram gera imagem JPEG 1080x1080 válida", async () => {
+test("GeradorCardInstagram gera o post do Feed em JPEG 1080x1350 (4:5)", async () => {
   const gerador = new GeradorCardInstagram({
     fetchImpl: async () => ({ ok: false }), // fallback se não tiver rede
   });
@@ -42,6 +42,8 @@ test("GeradorCardInstagram gera imagem JPEG 1080x1080 válida", async () => {
 
   const buffer = await gerador.gerarCardFeed(produto);
   assert.ok(buffer instanceof Buffer);
+  const meta = await (await import("sharp")).default(buffer).metadata();
+  assert.deepEqual([meta.format, meta.width, meta.height], ["jpeg", 1080, 1350]);
   assert.ok(buffer.length > 1000, "Buffer JPEG gerado com dados");
 });
 
@@ -60,6 +62,8 @@ test("GeradorCardInstagram gera imagem vertical JPEG 1080x1920 para Stories", as
 
   const buffer = await gerador.gerarCardStories(produto);
   assert.ok(buffer instanceof Buffer);
+  const meta = await (await import("sharp")).default(buffer).metadata();
+  assert.deepEqual([meta.format, meta.width, meta.height], ["jpeg", 1080, 1920]);
   assert.ok(buffer.length > 1000, "Buffer Stories gerado com dados");
 });
 
@@ -157,6 +161,14 @@ test("Rotas /bio e /api/instagram/card/:id respondem corretamente", async () => 
   } finally {
     servidor?.close();
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("GeradorCardInstagram gera o card do canal do WhatsApp 1080x1080, inclusive de loja da cidade sem foto", async () => {
+  const gerador = new GeradorCardInstagram({ fetchImpl: async () => ({ ok: false }) });
+  for (const produto of [{ id: "shopee-1", loja: "shopee", nome: "Air Fryer 4,2L", preco: 199, precoAntigo: 249 }, { id: "l-1", loja: "local", lojaNome: "Mimos da Delly 🎀", nome: "Faixa laço", preco: 5.9 }]) {
+    const meta = await (await import("sharp")).default(await gerador.gerarCardWhatsapp(produto)).metadata();
+    assert.deepEqual([meta.format, meta.width, meta.height], ["jpeg", 1080, 1080]);
   }
 });
 

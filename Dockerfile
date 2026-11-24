@@ -5,6 +5,9 @@ ENV NODE_ENV=production
 WORKDIR /app
 
 RUN apk add --no-cache fontconfig ttf-dejavu
+# Fontes da marca (Montserrat e Righteous, licença OFL) para os cards gerados no servidor.
+COPY fontes/ /usr/share/fonts/citshop/
+RUN fc-cache -f
 
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force

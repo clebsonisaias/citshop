@@ -20,7 +20,7 @@ test("agenda de posts: na hora posta no Instagram e no canal do WhatsApp com o p
   let wahaFora = false;
   const fetchImpl = async (url, init) => {
     const u = String(url);
-    if (u.includes("/api/sendText")) { if (wahaFora) return Response.json({ message: "WAHA fora" }, { status: 502 }); zap.push(JSON.parse(init.body)); return Response.json({ id: "z" }); }
+    if (/\/api\/send(Text|Image)/.test(u)) { if (wahaFora) return Response.json({ message: "WAHA fora" }, { status: 502 }); const b = JSON.parse(init.body); zap.push({ ...b, text: b.text ?? b.caption }); return Response.json({ id: "z" }); }
     if (u.includes("debug_token")) return Response.json({ data: { is_valid: true, type: "PAGE", expires_at: 0 } });
     if (u.includes("/media_publish")) { insta.push(u); return Response.json({ id: `m${insta.length}` }); }
     if (u.includes("/media")) return Response.json({ id: "c1" });
@@ -44,6 +44,7 @@ test("agenda de posts: na hora posta no Instagram e no canal do WhatsApp com o p
   assert.deepEqual(await postarAgendados(), { postados: 1 }, "na volta seguinte só o WhatsApp, que tinha falhado");
   assert.equal(insta.length, 1);
   assert.equal(zap[0].chatId, "123@newsletter");
+  assert.equal(zap[0].file.url, "http://localhost:3000/api/instagram/card-whatsapp/shopee-123456", "vai o card da marca, com o texto na legenda");
   assert.match(zap[0].text, /^🎄 Árvore de Natal com preço bom\n\n\*Árvore de Natal 1,50m\*\nDe ~R\$\s120,00~ por \*R\$\s89,90\* \(25% OFF\)\n⭐ Mais de 1\.500 vendidos\n\n👉 http:\/\/localhost:3000\/p\/shopee-123456$/);
   assert.deepEqual(await postarAgendados(), { postados: 0 }, "não repete");
 
@@ -63,7 +64,7 @@ test("agenda de posts: produto fora do catálogo vem da cópia na agenda (págin
     { quando: "2026-11-17T09:00", produtoId: "shopee-888888", titulo: "📺 Smart TV com preço bom", produto: copia("shopee-888888", "Smart TV 50") },
   ] }));
   const zap = [];
-  const fetchImpl = async (url, init) => (String(url).includes("/api/sendText") ? (zap.push(JSON.parse(init.body)), Response.json({ id: "z" })) : Response.json({}));
+  const fetchImpl = async (url, init) => (/\/api\/send(Text|Image)/.test(String(url)) ? (zap.push((({ text, caption, ...r }) => ({ ...r, text: text ?? caption }))(JSON.parse(init.body))), Response.json({ id: "z" })) : Response.json({}));
   let agora = sp("2026-11-17T08:01");
   const { app, postarAgendados, canais } = criarApp({ env: { SESSAO_SEGREDO: "s".repeat(40), DADOS_DIR: dir, AGENDA_POSTS: join(dir, "agenda.json"), WAHA_API_URL: "http://waha" }, fetchImpl, agora: () => agora, log: { info() {}, warn() {}, error() {} } });
   canais.shopee = { estaConfigurado: () => true, precoAtual: async (itemId) => (itemId === "777777" ? { preco: 949.9, precoAntigo: 1500 } : null) };
@@ -88,7 +89,7 @@ test("lojas da cidade: todo dia 1 produto de cada loja visível, cada loja no se
   writeFileSync(join(dir, "afiliados.json"), JSON.stringify({ produtos: [] }));
   writeFileSync(join(dir, "agenda.json"), JSON.stringify({ whatsapp: ["123@newsletter"], posts: [] }));
   const zap = [];
-  const fetchImpl = async (url, init) => (String(url).includes("/api/sendText") ? (zap.push(JSON.parse(init.body)), Response.json({ id: "z" })) : Response.json({}));
+  const fetchImpl = async (url, init) => (/\/api\/send(Text|Image)/.test(String(url)) ? (zap.push((({ text, caption, ...r }) => ({ ...r, text: text ?? caption }))(JSON.parse(init.body))), Response.json({ id: "z" })) : Response.json({}));
   let agora = sp("2026-11-15T00:05");
   const { postarAgendados, banco } = criarApp({ env: { SESSAO_SEGREDO: "s".repeat(40), DADOS_DIR: dir, AGENDA_POSTS: join(dir, "agenda.json"), WAHA_API_URL: "http://waha" }, fetchImpl, agora: () => agora, log: { info() {}, warn() {}, error() {} } });
   const loja = (id, nome) => ({ id, slug: id, nome, cidade: "Macaíba", categoria: "Moda", whatsapp: "5584900000001", criadaEm: "2026-11-01T00:00:00Z", testeAte: "2999-01-01T00:00:00Z" });

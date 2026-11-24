@@ -837,7 +837,12 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
           if (semPreco) throw new Error(`${produtoId}: a Shopee não confirmou o preço de agora`);
           if (x.esgotado) throw new Error(`${produtoId}: esgotado`);
           if (d === "instagram") await conectorInstagram.publicarFeed({ urlImagem: `${urlPublica}/api/instagram/card/${encodeURIComponent(x.id)}`, legenda: conectorInstagram.formatarLegenda(x, { urlPublica }), produtoId: x.id });
-          else await conectorWaha.enviarTexto({ chatId: d, texto: textoWhatsapp(x, titulo ?? agenda.titulo) });
+          else {
+            // Card da marca com o texto na legenda; se o WAHA não mandar a imagem, vai só o texto (o link tem prévia).
+            const texto = textoWhatsapp(x, titulo ?? agenda.titulo);
+            await conectorWaha.enviarImagem({ chatId: d, urlImagem: `${urlPublica}/api/instagram/card-whatsapp/${encodeURIComponent(x.id)}`, legenda: texto })
+              .catch(() => conectorWaha.enviarTexto({ chatId: d, texto }));
+          }
           feito[d] = "ok";
           postados++;
           log.info?.(`[agenda] ${quando} ${d}: ${x.nome}`);
@@ -2093,6 +2098,17 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     if (!x) return res.status(404).json({ erro: "Produto não encontrado." });
     try {
       const buffer = await geradorCardInstagram.gerarCardFeed(x);
+      res.set("Content-Type", "image/jpeg").set("Cache-Control", "public, max-age=3600").send(buffer);
+    } catch (e) {
+      res.status(500).json({ erro: e.message });
+    }
+  }));
+
+  app.get("/api/instagram/card-whatsapp/:id", a(async (req, res) => {
+    const x = produtoPorId(req.params.id);
+    if (!x) return res.status(404).json({ erro: "Produto não encontrado." });
+    try {
+      const buffer = await geradorCardInstagram.gerarCardWhatsapp(x);
       res.set("Content-Type", "image/jpeg").set("Cache-Control", "public, max-age=3600").send(buffer);
     } catch (e) {
       res.status(500).json({ erro: e.message });

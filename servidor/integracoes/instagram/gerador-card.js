@@ -1,16 +1,18 @@
 /**
- * Cards do Instagram: Feed (1080x1080) e Stories (1080x1920), feitos com Sharp + SVG.
- * O preço é o herói: foto do produto em destaque e um bloco petróleo da CIT com nome, "de/por" e a chamada.
- * Fonte: DejaVu Sans, que é a instalada no servidor (Dockerfile: ttf-dejavu); por isso não há emoji no SVG
- * (viraria quadrado) e as quebras de linha são calculadas com folga para a largura dela.
+ * Cards dos posts, no visual aprovado da marca CIT shop (canvas "CIT Shopping — novo design"):
+ * Feed 1080x1350 (4:5), Stories 1080x1920 e card do canal do WhatsApp 1080x1080. Feitos com Sharp + SVG.
+ * Fontes: Montserrat e Righteous (pasta fontes/, instaladas no Dockerfile); sem elas o texto cai na DejaVu.
+ * Sem emoji no SVG: a fonte não tem esses desenhos (viraria quadrado).
  */
 import sharp from "sharp";
 import { readFileSync, existsSync } from "node:fs";
-import { join, normalize } from "node:path";
+import { join, normalize, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const FONTE = "DejaVu Sans, Helvetica, Arial, sans-serif";
-const COR = { petroleo: "#036271", fundoFoto: "#F2F7F6", menta: "#00C896", tintaMenta: "#03303A", mentaTexto: "#7DEBCB", suave: "#CFE8E6", branco: "#FFFFFF" };
-const LOJAS = { shopee: "Shopee", amazon: "Amazon", ml: "Mercado Livre", shein: "SHEIN" };
+const FONTE = "Montserrat, DejaVu Sans, Helvetica, Arial, sans-serif";
+const TITULO = "Righteous, Montserrat, DejaVu Sans, sans-serif";
+const COR = { petroleo: "#036271", menta: "#00C896", suave: "#C5E4E1", fundoFoto: "#EAF4F3", verde: "#008B87", branco: "#FFFFFF" };
+const LOJAS = { shopee: "Shopee", amazon: "Amazon", ml: "Mercado Livre", "mercado-livre": "Mercado Livre", shein: "SHEIN" };
 const PERFIL = "@citshopping";
 
 function escaparXml(str = "") {
@@ -21,27 +23,25 @@ function escaparXml(str = "") {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&apos;");
 }
-// Sem emoji: a fonte do servidor não tem esses desenhos.
-const semEmoji = (s = "") => String(s).replace(/[\p{Extended_Pictographic}️‍]/gu, "").replace(/\s+/g, " ").trim();
+const semEmoji = (s = "") => String(s).replace(/[\p{Extended_Pictographic}\uFE0F\u200D]/gu, "").replace(/\s+/g, " ").trim();
 const brl = (n) => Number(n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-// Largura aproximada (só para o selo de desconto, texto curto e fixo).
-const largura = (texto, tamanho) => String(texto).length * tamanho * 0.62;
 
 /**
- * Largura real de um texto em negrito, medida renderindo com a fonte instalada (no servidor, DejaVu).
+ * Largura real de um texto, medida renderindo com a fonte instalada.
  * Estimar por número de letras falha com maiúsculas e letras largas (M, W) e o texto invade o vizinho.
  */
 const medidas = new Map();
-export async function medirTexto(texto, tamanho) {
-  const chave = `${tamanho}|${texto}`;
+export async function medirTexto(texto, tamanho, familia = FONTE, peso = "bold") {
+  const chave = `${tamanho}|${familia}|${peso}|${texto}`;
   if (!medidas.has(chave)) {
-    const svg = `<svg width="${Math.ceil(texto.length * tamanho + 20)}" height="${tamanho * 2}" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#fff"/><text x="10" y="${tamanho * 1.4}" font-family="${FONTE}" font-size="${tamanho}" font-weight="bold" fill="#000">${escaparXml(texto)}</text></svg>`;
+    const svg = `<svg width="${Math.ceil(texto.length * tamanho + 20)}" height="${tamanho * 2}" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#fff"/><text x="10" y="${tamanho * 1.4}" font-family="${familia}" font-size="${tamanho}" font-weight="${peso}" fill="#000">${escaparXml(texto)}</text></svg>`;
     const { info } = await sharp(Buffer.from(svg)).trim().toBuffer({ resolveWithObject: true }).catch(() => ({ info: { width: 0 } }));
     if (medidas.size > 5000) medidas.clear();
     medidas.set(chave, info.width);
   }
   return medidas.get(chave);
 }
+const medirTitulo = (t, tam) => medirTexto(t, tam, TITULO, "normal");
 
 /** Quebra o texto em até `maxLinhas` linhas que cabem em `max` px, sem cortar palavra; reticências na última se sobrar. */
 export async function quebrarTexto(texto, tamanho, max, maxLinhas, medir = medirTexto) {
@@ -57,7 +57,6 @@ export async function quebrarTexto(texto, tamanho, max, maxLinhas, medir = medir
   }
   if (atual) linhas.push(atual);
   if (!sobrou) return linhas;
-  // Sobrou texto: reticências na última linha, tirando palavras até caber junto com elas.
   let ultima = linhas[maxLinhas - 1].split(" ");
   while (ultima.length > 1 && await medir(`${ultima.join(" ")}…`, tamanho) > max) ultima.pop();
   linhas[maxLinhas - 1] = `${ultima.join(" ")}…`;
@@ -69,53 +68,80 @@ function dadosCard(produto) {
   const preco = Number(produto.preco || 0);
   const antigo = Number(produto.precoAntigo || 0);
   const desconto = antigo > preco && preco > 0 ? Math.round((1 - preco / antigo) * 100) : 0;
-  const loja = produto.loja === "local" ? semEmoji(produto.lojaNome) : LOJAS[produto.loja] ?? semEmoji(produto.lojaNome);
-  return { nome: produto.nome || "Oferta", preco: brl(preco), antigo: desconto >= 5 ? brl(antigo) : "", desconto: desconto >= 5 ? desconto : 0, loja };
+  const local = produto.loja === "local";
+  const loja = local ? semEmoji(produto.lojaNome) : LOJAS[produto.loja] ?? semEmoji(produto.lojaNome);
+  return { nome: produto.nome || "Oferta", preco: brl(preco), antigo: desconto >= 5 ? brl(antigo) : "", desconto: desconto >= 5 ? desconto : 0, loja, local };
 }
 
-const HEXAGONO = `<path fill="${COR.menta}" d="M13 0 26 7.5v15L13 30 0 22.5v-15z"/>`;
+// Marca: hexágono + "CIT" (desenhos em publico/marca) + "shop" em Righteous.
+const MARCA = dirname(fileURLToPath(import.meta.url)) + "/../../../publico/marca/";
+const desenhos = {};
+function desenho(nome) {
+  if (!(nome in desenhos)) {
+    try {
+      const svg = readFileSync(MARCA + nome, "utf8");
+      desenhos[nome] = { viewBox: /viewBox="([^"]+)"/.exec(svg)[1], corpo: svg.replace(/^[\s\S]*?<svg[^>]*>|<\/svg>\s*$/g, "") };
+    } catch { desenhos[nome] = null; }
+  }
+  return desenhos[nome];
+}
+const encaixe = (nome, x, y, w, h) => { const d = desenho(nome); return d ? `<svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="${d.viewBox}">${d.corpo}</svg>` : ""; };
 
-/** Marca CIT Shopping (hexágono menta + palavra) com o topo do texto em `y`. */
-function marca(x, y, escala) {
-  const h = 30 * escala;
-  return `<g transform="translate(${x} ${y}) scale(${escala})">${HEXAGONO}</g>
-    <text x="${x + 26 * escala + 14}" y="${y + h * 0.78}" font-family="${FONTE}" font-size="${h * 0.95}" font-weight="bold" fill="${COR.petroleo}">CIT <tspan fill="#008B87" font-weight="normal">Shopping</tspan></text>`;
+/** Logo CIT shop com o topo em `y`. `escuro`: sobre o petróleo (branco); senão sobre o branco. `a` = altura do hexágono. */
+function marca(x, y, a, escuro) {
+  const hexW = a * 100 / 114, citH = a * 72 / 114, citW = citH * 211 / 72, gap = a * 22 / 114;
+  const citY = y + (a - citH) / 2, shopX = x + hexW + gap + citW + citH / 12, shopTam = citH * 60 / 72;
+  return encaixe(escuro ? "hexagono-branco.svg" : "hexagono-petroleo.svg", x, y, hexW, a)
+    + encaixe(escuro ? "cit-branco.svg" : "cit-verde.svg", x + hexW + gap, citY, citW, citH)
+    + `<text x="${shopX}" y="${citY + citH / 12 + shopTam * 0.8}" font-family="${TITULO}" font-size="${shopTam}" fill="${escuro ? COR.branco : COR.petroleo}">shop</text>`;
 }
 
-/** Selo de desconto alinhado à direita, terminando em `xDir`. */
-function seloDesconto(xDir, y, desconto, tamanho) {
+/** Selo em paralelogramo terminando em `xDir`, centrado em `yMeio`. */
+async function selo(xDir, yMeio, texto, tamanho, fundo, tinta) {
+  const corte = tamanho * 0.8, padX = tamanho * 1.57, padY = tamanho * 0.57;
+  const w = (await medirTexto(texto, tamanho, FONTE, 800)) + padX * 2, h = tamanho + padY * 2, x = xDir - w, y = yMeio - h / 2;
+  return `<polygon points="${x + corte},${y} ${x + w},${y} ${x + w - corte},${y + h} ${x},${y + h}" fill="${fundo}"/>
+    <text x="${x + w / 2}" y="${y + h / 2 + tamanho * 0.36}" font-family="${FONTE}" font-size="${tamanho}" font-weight="800" fill="${tinta}" text-anchor="middle">${escaparXml(texto)}</text>`;
+}
+
+/** Desconto em Righteous no canto da foto. */
+async function seloDesconto(xDir, y, desconto, tamanho) {
   if (!desconto) return "";
-  const texto = `-${desconto}%`;
-  const w = largura(texto, tamanho) + tamanho * 1.2, h = tamanho * 1.7;
-  return `<rect x="${xDir - w}" y="${y}" width="${w}" height="${h}" rx="${h / 2}" fill="${COR.menta}"/>
-    <text x="${xDir - w / 2}" y="${y + h * 0.69}" font-family="${FONTE}" font-size="${tamanho}" font-weight="bold" fill="${COR.tintaMenta}" text-anchor="middle">${texto}</text>`;
+  const texto = `-${desconto}%`, w = (await medirTitulo(texto, tamanho)) + tamanho * 0.74, h = tamanho * 1.52;
+  return `<rect x="${xDir - w}" y="${y}" width="${w}" height="${h}" rx="${tamanho * 0.37}" fill="${COR.menta}"/>
+    <text x="${xDir - w / 2}" y="${y + h / 2 + tamanho * 0.36}" font-family="${TITULO}" font-size="${tamanho}" fill="${COR.petroleo}" text-anchor="middle">${texto}</text>`;
 }
 
-/** "de R$ X" com o valor riscado (text-decoration nativo: acompanha a largura real da fonte). */
-function precoAntigo(x, y, texto, tamanho) {
-  if (!texto) return "";
-  return `<text x="${x}" y="${y}" font-family="${FONTE}" font-size="${tamanho}" fill="${COR.mentaTexto}">de <tspan text-decoration="line-through">${escaparXml(texto)}</tspan></text>`;
-}
-
+const rotulo = (x, y, texto, tamanho, cor, ancora = "start") => texto
+  ? `<text x="${x}" y="${y}" font-family="${FONTE}" font-size="${tamanho}" font-weight="bold" letter-spacing="${tamanho * 0.08}" fill="${cor}" text-anchor="${ancora}">${escaparXml(texto.toUpperCase())}</text>` : "";
 const textoLinhas = (lista, x, y, tamanho, entre, cor) => lista
   .map((l, i) => `<text x="${x}" y="${y + i * entre}" font-family="${FONTE}" font-size="${tamanho}" font-weight="bold" fill="${cor}">${escaparXml(l)}</text>`).join("");
+const riscado = (x, y, texto, tamanho, ancora = "start") => texto
+  ? `<text x="${x}" y="${y}" font-family="${FONTE}" font-size="${tamanho}" fill="${COR.suave}" text-anchor="${ancora}">de <tspan text-decoration="line-through">${escaparXml(texto)}</tspan></text>` : "";
+const precoTitulo = (x, y, texto, tamanho, cor, ancora = "start") =>
+  `<text x="${x}" y="${y}" font-family="${TITULO}" font-size="${tamanho}" fill="${cor}" text-anchor="${ancora}">${escaparXml(texto)}</text>`;
 
-const vendidoPor = (x, y, loja, tamanho) => loja
-  ? `<text x="${x}" y="${y}" font-family="${FONTE}" font-size="${tamanho}" fill="${COR.suave}">Vendido por <tspan font-weight="bold" fill="${COR.branco}">${escaparXml(loja)}</tspan></text>`
-  : "";
-
-/** Preço com "R$" menor que o número: o valor é o que se lê primeiro. */
-function precoGrande(x, y, preco, tamanho) {
-  const [moeda, ...valor] = preco.split(/\s/);
-  return `<text x="${x}" y="${y}" font-family="${FONTE}" font-size="${tamanho}" font-weight="bold" fill="${COR.branco}"><tspan font-size="${Math.round(tamanho * 0.5)}">${escaparXml(moeda)}</tspan><tspan dx="${Math.round(tamanho * 0.18)}">${escaparXml(valor.join(" "))}</tspan></text>`;
+/** Maior tamanho (de `max` para baixo) em que o preço cabe em `largura`. */
+async function tamanhoQueCabe(texto, max, largura) {
+  let t = max;
+  while (t > max * 0.5 && await medirTitulo(texto, t) > largura) t -= 4;
+  return t;
 }
 
-/** Quadro sem foto: fundo suave com a marca apagada no meio. */
-function semFoto(x, y, w, h, raio) {
-  const escala = Math.min(w, h) / 120;
-  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${raio}" fill="${COR.fundoFoto}"/>
-    <g transform="translate(${x + w / 2 - 13 * escala} ${y + h / 2 - 15 * escala}) scale(${escala})" opacity=".35">${HEXAGONO}</g>`;
+/** Quadro sem foto: fundo claro listrado com o hexágono apagado no meio. */
+function semFoto(x, y, w, h, raio, fundo) {
+  const a = Math.min(w, h) / 3;
+  return `<defs><pattern id="listra" width="30" height="30" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="2" height="30" fill="${COR.petroleo}" fill-opacity=".06"/></pattern></defs>
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${raio}" fill="${fundo}"/>
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${raio}" fill="url(#listra)"/>
+    <g opacity=".25">${encaixe("hexagono-petroleo.svg", x + w / 2 - a * 0.44, y + h / 2 - a / 2, a * 0.88, a)}</g>`;
 }
+
+/** Seta da chamada (traço menta com bolinha), como no canvas. */
+const seta = (x, yMeio) => `<path d="M${x + 34} ${yMeio}H${x + 116}" stroke="${COR.menta}" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="${x + 20}" cy="${yMeio}" r="14" fill="${COR.petroleo}" stroke="${COR.menta}" stroke-width="10"/>`;
+
+const chamadaSelo = (d) => d.local ? "Achado local" : d.desconto ? "Baixou de preço" : "Oferta do dia";
 
 export class GeradorCardInstagram {
   constructor({ publicoDir = "publico", dadosDir = process.env.DADOS_DIR || "dados", fetchImpl = fetch } = {}) {
@@ -176,65 +202,83 @@ export class GeradorCardInstagram {
     }
   }
 
-  /** Fundo e textos (svg), a foto e por cima o selo de desconto (sobre), que invade o canto da foto. */
-  async montar(W, H, svg, foto, fotoX, fotoY, sobre) {
+  /** Fundo e textos (svg), a foto e por cima o que invade a foto (selo de desconto). */
+  async montar(W, H, svg, foto, fotoX, fotoY, sobre, fundo = COR.branco) {
     const camadas = [{ input: Buffer.from(svg), top: 0, left: 0 }];
     if (foto) camadas.push({ input: foto, top: fotoY, left: fotoX });
     if (sobre) camadas.push({ input: Buffer.from(`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">${sobre}</svg>`), top: 0, left: 0 });
-    return sharp({ create: { width: W, height: H, channels: 4, background: COR.branco } })
+    return sharp({ create: { width: W, height: H, channels: 4, background: fundo } })
       .composite(camadas).jpeg({ quality: 90 }).toBuffer();
   }
 
-  /** Card quadrado 1080x1080 para o Feed. Preço e chamada presos na base do bloco petróleo. */
+  /** Post do Feed 1080x1350 (4:5): fundo petróleo, foto num quadro branco, nome e preço em Righteous embaixo. */
   async gerarCardFeed(produto) {
-    const W = 1080, H = 1080, d = dadosCard(produto);
-    const nome = await quebrarTexto(d.nome, 40, 960, 2);
-    const [loja = ""] = await quebrarTexto(d.loja, 28, 300, 1);
-    // O preço ("R$" na metade do tamanho + valor) não pode encostar no botão, que começa em x=680.
-    const [moeda, valor] = d.preco.split(/\s/);
-    let tamPreco = 88;
-    while (tamPreco > 48 && (await medirTexto(moeda, tamPreco / 2)) + tamPreco * 0.18 + (await medirTexto(valor, tamPreco)) > 590) tamPreco -= 6;
-    const q = { x: 60, y: 110, w: 960, h: 570, raio: 32 };
+    const W = 1080, H = 1350, P = 64, d = dadosCard(produto);
+    const q = { x: P, y: 218, w: W - 2 * P, h: 684, raio: 40 };
+    const nome = await quebrarTexto(d.nome, 52, W - 2 * P, 2);
+    const tam = await tamanhoQueCabe(d.preco, 108, W - 2 * P - 360);
     const foto = await this.foto(produto, q.w, q.h, q.raio);
     const svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
-      <rect width="${W}" height="${H}" fill="${COR.branco}"/>
-      ${marca(60, 40, 1.5)}
-      ${foto ? "" : semFoto(q.x, q.y, q.w, q.h, q.raio)}
-      <rect x="0" y="700" width="${W}" height="${H - 700}" fill="${COR.petroleo}"/>
-      ${textoLinhas(nome, 60, 764, 40, 48, COR.branco)}
-      ${precoAntigo(60, 888, d.antigo, 34)}
-      ${precoGrande(60, 972, d.preco, tamPreco)}
-      <rect x="680" y="892" width="340" height="88" rx="44" fill="${COR.menta}"/>
-      <text x="850" y="950" font-family="${FONTE}" font-size="34" font-weight="bold" fill="${COR.tintaMenta}" text-anchor="middle">Comente QUERO</text>
-      ${vendidoPor(60, 1046, loja, 28)}
-      <text x="1020" y="1046" font-family="${FONTE}" font-size="28" fill="${COR.suave}" text-anchor="end">Link na bio ${PERFIL}</text>
+      <rect width="${W}" height="${H}" fill="${COR.petroleo}"/>
+      ${marca(P, P, 114, true)}
+      ${await selo(W - P, P + 57, chamadaSelo(d), 28, COR.menta, COR.petroleo)}
+      ${foto ? "" : semFoto(q.x, q.y, q.w, q.h, q.raio, COR.branco)}
+      ${rotulo(P, 970, d.loja, 26, COR.menta)}
+      ${textoLinhas(nome, P, 1034, 52, 58, COR.branco)}
+      ${riscado(P, 1176, d.antigo, 32)}
+      ${precoTitulo(P, 1270, d.preco, tam, COR.branco)}
+      ${seta(W - P - 306, 1240)}
+      <text x="${W - P}" y="1251" font-family="${FONTE}" font-size="30" font-weight="bold" fill="${COR.branco}" text-anchor="end">Link na bio</text>
     </svg>`;
-    return this.montar(W, H, svg, foto, q.x, q.y, seloDesconto(1040, 80, d.desconto, 48));
+    return this.montar(W, H, svg, foto, q.x, q.y, await seloDesconto(q.x + q.w - 32, q.y + 32, d.desconto, 76), COR.petroleo);
   }
 
   /**
-   * Card vertical 1080x1920 para os Stories. Publicado pela API, o Stories não tem figurinha de link:
-   * a chamada é o link da bio, que é verdade para quem vê. Topo e base (~250px) ficam livres: o Instagram
-   * cobre com o cabeçalho do perfil e a caixa de resposta.
+   * Story 1080x1920. Publicado pela API, o Story não tem figurinha de link: a chamada é o link da bio.
+   * Topo e base (~250px) ficam livres: o Instagram cobre com o cabeçalho do perfil e a caixa de resposta.
    */
   async gerarCardStories(produto) {
-    const W = 1080, H = 1920, d = dadosCard(produto);
-    const nome = await quebrarTexto(d.nome, 52, 960, 2);
-    const [loja = ""] = await quebrarTexto(d.loja, 34, 720, 1);
-    const q = { x: 60, y: 350, w: 960, h: 760, raio: 40 };
+    const W = 1080, H = 1920, P = 64, d = dadosCard(produto);
+    const q = { x: P, y: 400, w: W - 2 * P, h: 760, raio: 44 };
+    const nome = await quebrarTexto(d.nome, 56, W - 2 * P, 2);
+    const tam = await tamanhoQueCabe(d.preco, 120, W - 2 * P);
     const foto = await this.foto(produto, q.w, q.h, q.raio);
     const svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
-      <rect width="${W}" height="${H}" fill="${COR.branco}"/>
-      ${marca(60, 250, 2)}
-      ${foto ? "" : semFoto(q.x, q.y, q.w, q.h, q.raio)}
-      <rect x="0" y="1150" width="${W}" height="${H - 1150}" fill="${COR.petroleo}"/>
-      ${textoLinhas(nome, 60, 1218, 52, 64, COR.branco)}
-      ${precoAntigo(60, 1352, d.antigo, 42)}
-      ${precoGrande(60, 1470, d.preco, 120)}
-      ${vendidoPor(60, 1530, loja, 34)}
-      <rect x="60" y="1560" width="960" height="110" rx="55" fill="${COR.menta}"/>
-      <text x="540" y="1630" font-family="${FONTE}" font-size="44" font-weight="bold" fill="${COR.tintaMenta}" text-anchor="middle">Link na bio ${PERFIL}</text>
+      <rect width="${W}" height="${H}" fill="${COR.petroleo}"/>
+      ${marca(P, 250, 114, true)}
+      ${await selo(W - P, 307, chamadaSelo(d), 30, COR.menta, COR.petroleo)}
+      ${foto ? "" : semFoto(q.x, q.y, q.w, q.h, q.raio, COR.branco)}
+      ${rotulo(P, 1232, d.loja, 30, COR.menta)}
+      ${textoLinhas(nome, P, 1302, 56, 64, COR.branco)}
+      ${riscado(P, 1440, d.antigo, 36)}
+      ${precoTitulo(P, 1550, d.preco, tam, COR.branco)}
+      <rect x="${P}" y="1592" width="${W - 2 * P}" height="96" rx="48" fill="${COR.menta}"/>
+      <text x="${W / 2}" y="1653" font-family="${FONTE}" font-size="38" font-weight="800" fill="${COR.petroleo}" text-anchor="middle">Link na bio ${PERFIL}</text>
     </svg>`;
-    return this.montar(W, H, svg, foto, q.x, q.y, seloDesconto(1040, 318, d.desconto, 64));
+    return this.montar(W, H, svg, foto, q.x, q.y, await seloDesconto(q.x + q.w - 32, q.y + 32, d.desconto, 80), COR.petroleo);
+  }
+
+  /** Card do canal do WhatsApp 1080x1080: fundo branco, foto em quadro claro e faixa petróleo com nome e preço. */
+  async gerarCardWhatsapp(produto) {
+    const W = 1080, H = 1080, P = 56, d = dadosCard(produto);
+    const faixa = { x: P, y: 828, w: W - 2 * P, h: 196, raio: 36 };
+    const q = { x: P, y: 183, w: W - 2 * P, h: 613, raio: 36 };
+    const tam = await tamanhoQueCabe(d.preco, 84, 420);
+    const larguraPreco = Math.max(await medirTitulo(d.preco, tam), d.antigo ? await medirTexto(`de ${d.antigo}`, 28, FONTE, "normal") : 0);
+    const nome = await quebrarTexto(d.nome, 40, faixa.w - 80 - larguraPreco - 32, 2);
+    const foto = await this.foto(produto, q.w, q.h, q.raio);
+    const xDir = faixa.x + faixa.w - 40, yNome = nome.length > 1 ? 932 : 958;
+    const svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+      <rect width="${W}" height="${H}" fill="${COR.branco}"/>
+      ${marca(P, P, 95, false)}
+      ${await selo(W - P, P + 47, d.local ? "Achado local" : "Oferta do canal", 26, COR.petroleo, COR.branco)}
+      ${foto ? "" : semFoto(q.x, q.y, q.w, q.h, q.raio, COR.fundoFoto)}
+      <rect x="${faixa.x}" y="${faixa.y}" width="${faixa.w}" height="${faixa.h}" rx="${faixa.raio}" fill="${COR.petroleo}"/>
+      ${rotulo(faixa.x + 40, yNome - 52, d.loja, 24, COR.menta)}
+      ${textoLinhas(nome, faixa.x + 40, yNome, 40, 46, COR.branco)}
+      ${riscado(xDir, 912, d.antigo, 28, "end")}
+      ${precoTitulo(xDir, 990, d.preco, tam, COR.branco, "end")}
+    </svg>`;
+    return this.montar(W, H, svg, foto, q.x, q.y, await seloDesconto(q.x + q.w - 28, q.y + 28, d.desconto, 72));
   }
 }
