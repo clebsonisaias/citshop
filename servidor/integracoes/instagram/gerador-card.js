@@ -185,7 +185,9 @@ export class GeradorCardInstagram {
    * as sobras. Assim foto vertical (celular) não vira uma tira no meio de um quadro branco.
    */
   async foto(produto, w, h, raio) {
-    const bruta = await this.baixarImagemProduto(produto.fotos?.[0] || produto.imagem || null);
+    const url = produto.fotos?.[0] || produto.imagem || null;
+    // Uma segunda tentativa: falha pontual da CDN não pode publicar post sem foto.
+    const bruta = await this.baixarImagemProduto(url) ?? await this.baixarImagemProduto(url);
     if (!bruta) return null;
     try {
       const img = await sharp(bruta).rotate().flatten({ background: "#FFFFFF" }).toBuffer();
