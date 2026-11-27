@@ -3,6 +3,8 @@
  * Permite publicar imagens de ofertas no Feed e Stories do perfil @citshopping.
  */
 
+import { ehDiaDaBlackFriday } from "../../campanha.js";
+
 const GRAPH_API = "https://graph.facebook.com/v21.0";
 
 export class ConectorInstagram {
@@ -55,8 +57,10 @@ export class ConectorInstagram {
   /**
    * Legenda do post. Texto simples: o Instagram não interpreta *negrito* nem ~riscado~ do WhatsApp.
    * A chamada QUERO é respondida no direct com o link do próprio produto (webhook em app.js).
+   * Na sexta-feira da Black Friday (e só nela) a legenda abre com a chamada da campanha e ganha #blackfriday.
    */
-  formatarLegenda(produto) {
+  formatarLegenda(produto, { agora = Date.now() } = {}) {
+    const black = ehDiaDaBlackFriday(agora);
     const brl = (n) => Number(n).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     const temDesconto = produto.precoAntigo > produto.preco;
     const descPct = temDesconto ? Math.round(((produto.precoAntigo - produto.preco) / produto.precoAntigo) * 100) : null;
@@ -65,6 +69,7 @@ export class ConectorInstagram {
     const ehLocal = produto.loja === "local";
     const [lojaNome, tagLoja] = ehLocal ? [produto.lojaNome || "loja local", "#comerciolocal #comprarlocal"] : (LOJAS[produto.loja] ?? ["loja parceira", ""]);
     const linhas = [
+      ...(black ? ["🖤 BLACK FRIDAY É SÓ HOJE!", ""] : []),
       ehLocal ? `📍 Achado local: ${lojaNome}${produto.cidade ? ` (${produto.cidade})` : ""}` : (temDesconto ? "🔥 Achado com desconto!" : "🛍️ Achado do dia!"),
       "",
       `📦 ${produto.nome}`,
@@ -77,7 +82,7 @@ export class ConectorInstagram {
       "👉 Comente \"QUERO\" que eu te mando o link do produto no direct!",
       "Ou acesse pelo link da bio: @citshopping",
       "",
-      `#achados #ofertas #citshop ${tagLoja}`.trim(),
+      `${black ? "#blackfriday " : ""}#achados #ofertas #citshop ${tagLoja}`.trim(),
     );
     return linhas.join("\n");
   }

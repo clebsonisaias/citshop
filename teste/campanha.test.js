@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { campanhaAtual } from "../servidor/campanha.js";
+import { campanhaAtual, ehDiaDaBlackFriday } from "../servidor/campanha.js";
 
 const em = (data) => campanhaAtual(Date.parse(data));
 
@@ -34,4 +34,13 @@ test("Black Friday: ativa da 4ª sexta de novembro até o fim da Cyber Monday (B
   assert.equal(estadoBlackFriday(Date.parse("2026-11-30T10:00:00-03:00")).fase, "cyber");
   assert.equal(estadoBlackFriday(Date.parse("2026-11-20T10:00:00-03:00")).fase, "antes");
   assert.equal(estadoBlackFriday(Date.parse("2026-12-05T10:00:00-03:00")).fase, "encerrada");
+});
+
+test("Black Friday: o dia em si é só a sexta-feira (Brasília)", () => {
+  const dia = (s) => ehDiaDaBlackFriday(Date.parse(s));
+  assert.equal(dia("2026-11-26T23:59:00-03:00"), false, "quinta ainda não");
+  assert.equal(dia("2026-11-27T00:00:00-03:00"), true, "sexta 00:00");
+  assert.equal(dia("2026-11-27T23:59:00-03:00"), true, "sexta 23:59");
+  assert.equal(dia("2026-11-28T00:00:00-03:00"), false, "sábado já saiu");
+  assert.equal(dia("2027-11-26T12:00:00-03:00"), true, "em 2027 a sexta é dia 26");
 });

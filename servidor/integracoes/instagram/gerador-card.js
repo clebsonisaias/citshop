@@ -8,6 +8,7 @@ import sharp from "sharp";
 import { readFileSync, existsSync } from "node:fs";
 import { join, normalize, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { ehDiaDaBlackFriday } from "../../campanha.js";
 
 const FONTE = "Montserrat, DejaVu Sans, Helvetica, Arial, sans-serif";
 const TITULO = "Righteous, Montserrat, DejaVu Sans, sans-serif";
@@ -64,13 +65,13 @@ export async function quebrarTexto(texto, tamanho, max, maxLinhas, medir = medir
 }
 
 /** Dados do produto já prontos para o card. Desconto só quando o preço antigo é real e maior. */
-function dadosCard(produto) {
+function dadosCard(produto, agora = Date.now()) {
   const preco = Number(produto.preco || 0);
   const antigo = Number(produto.precoAntigo || 0);
   const desconto = antigo > preco && preco > 0 ? Math.round((1 - preco / antigo) * 100) : 0;
   const local = produto.loja === "local";
   const loja = local ? semEmoji(produto.lojaNome) : LOJAS[produto.loja] ?? semEmoji(produto.lojaNome);
-  return { nome: produto.nome || "Oferta", preco: brl(preco), antigo: desconto >= 5 ? brl(antigo) : "", desconto: desconto >= 5 ? desconto : 0, loja, local };
+  return { nome: produto.nome || "Oferta", preco: brl(preco), antigo: desconto >= 5 ? brl(antigo) : "", desconto: desconto >= 5 ? desconto : 0, loja, local, blackFriday: ehDiaDaBlackFriday(agora) };
 }
 
 // Marca: hexágono + "CIT" (desenhos em publico/marca) + "shop" em Righteous.
@@ -141,7 +142,8 @@ function semFoto(x, y, w, h, raio, fundo) {
 const seta = (x, yMeio) => `<path d="M${x + 34} ${yMeio}H${x + 116}" stroke="${COR.menta}" stroke-width="10" stroke-linecap="round"/>
   <circle cx="${x + 20}" cy="${yMeio}" r="14" fill="${COR.petroleo}" stroke="${COR.menta}" stroke-width="10"/>`;
 
-const chamadaSelo = (d) => d.local ? "Achado local" : d.desconto ? "Baixou de preço" : "Oferta do dia";
+// Na sexta-feira da Black Friday o selo do Feed e dos Stories troca para a campanha; no sábado volta sozinho.
+const chamadaSelo = (d) => d.blackFriday ? "Black Friday · só hoje" : d.local ? "Achado local" : d.desconto ? "Baixou de preço" : "Oferta do dia";
 
 export class GeradorCardInstagram {
   constructor({ publicoDir = "publico", dadosDir = process.env.DADOS_DIR || "dados", fetchImpl = fetch } = {}) {
@@ -214,8 +216,8 @@ export class GeradorCardInstagram {
   }
 
   /** Post do Feed 1080x1350 (4:5): fundo petróleo, foto num quadro branco, nome e preço em Righteous embaixo. */
-  async gerarCardFeed(produto) {
-    const W = 1080, H = 1350, P = 64, d = dadosCard(produto);
+  async gerarCardFeed(produto, { agora = Date.now() } = {}) {
+    const W = 1080, H = 1350, P = 64, d = dadosCard(produto, agora);
     const q = { x: P, y: 218, w: W - 2 * P, h: 684, raio: 40 };
     const nome = await quebrarTexto(d.nome, 52, W - 2 * P, 2);
     const tam = await tamanhoQueCabe(d.preco, 108, W - 2 * P - 360);
@@ -239,8 +241,8 @@ export class GeradorCardInstagram {
    * Story 1080x1920. Publicado pela API, o Story não tem figurinha de link: a chamada é o link da bio.
    * Topo e base (~250px) ficam livres: o Instagram cobre com o cabeçalho do perfil e a caixa de resposta.
    */
-  async gerarCardStories(produto) {
-    const W = 1080, H = 1920, P = 64, d = dadosCard(produto);
+  async gerarCardStories(produto, { agora = Date.now() } = {}) {
+    const W = 1080, H = 1920, P = 64, d = dadosCard(produto, agora);
     const q = { x: P, y: 400, w: W - 2 * P, h: 760, raio: 44 };
     const nome = await quebrarTexto(d.nome, 56, W - 2 * P, 2);
     const tam = await tamanhoQueCabe(d.preco, 120, W - 2 * P);
