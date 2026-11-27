@@ -33,6 +33,12 @@ export function estadoBlackFriday(agora = Date.now()) {
   return { ativa: false, fase: "encerrada", ...j };
 }
 
+/** O dia da Black Friday em si: só a sexta-feira, de 00:00 a 23:59 de Brasília. No sábado já não vale. */
+export function ehDiaDaBlackFriday(agora = Date.now()) {
+  const { inicio } = janelaBlackFriday(new Date(agora - BRT_MS).getUTCFullYear());
+  return agora >= inicio && agora < inicio + DIA_MS;
+}
+
 /**
  * Campanha especial ativa no dia (horário de Brasília):
  * - Data dupla (1.1, 2.2, ..., 12.12): só no próprio dia, de 00:00 a 23:59 BRT.

@@ -197,3 +197,15 @@ test("quebrarTexto mede a largura real: nenhuma linha passa do limite, nem com m
   assert.deepEqual(await quebrarTexto("Laço 🎀 rosa", 38, 960, 2), ["Laço rosa"]);
   assert.deepEqual(await quebrarTexto("Tiara laço verde", 40, 960, 2), ["Tiara laço verde"]);
 });
+
+test("Instagram: a legenda fala de Black Friday só na sexta-feira da campanha", () => {
+  const insta = new ConectorInstagram();
+  const produto = { id: "shopee-1", loja: "shopee", nome: "Fone Bluetooth", preco: 29.9, precoAntigo: 99.9 };
+  const sexta = insta.formatarLegenda(produto, { agora: Date.parse("2026-11-27T11:00:00-03:00") });
+  assert.ok(sexta.startsWith("🖤 BLACK FRIDAY É SÓ HOJE!"));
+  assert.ok(sexta.includes("#blackfriday") && sexta.includes('Comente "QUERO"') && sexta.includes("70% OFF"));
+  for (const quando of ["2026-11-26T23:00:00-03:00", "2026-11-28T08:00:00-03:00"]) {
+    const fora = insta.formatarLegenda(produto, { agora: Date.parse(quando) });
+    assert.ok(!/black/i.test(fora), `sem Black Friday em ${quando}`);
+  }
+});
