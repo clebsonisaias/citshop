@@ -22,6 +22,7 @@ import { MARKETPLACE, criarClienteAmazon } from "./amazon.js";
 import { TAG_AMAZON_PADRAO, atualizarAfiliados, comTagAmazon, comissaoAmazonPct, ordenarAmazonPorComissao } from "./afiliados.js";
 import { ganhoEsperado } from "./motor-ofertas/ranking.js";
 import { FOCO_TEMPORADA, temporadaDo, temporadasAtivas } from "../publico/temporadas.js";
+import { descontoProgressivo } from "../publico/black-friday.js";
 import { instalarFood } from "./food.js";
 import { instalarConta } from "./conta.js";
 import { Buscas, normalizarBusca } from "./buscas.js";
@@ -36,7 +37,7 @@ import { RadarOfertas } from "./motor-ofertas/radar.js";
 import { ConectorInstagram } from "./integracoes/instagram/conector.js";
 import { GeradorCardInstagram } from "./integracoes/instagram/gerador-card.js";
 import { aplicarCatalogo } from "./catalogo-loja.js";
-import { campanhaAtual, proximaCampanha } from "./campanha.js";
+import { campanhaAtual, estadoBlackFriday, proximaCampanha } from "./campanha.js";
 import { ConectorTelegram } from "./integracoes/telegram/conector.js";
 
 export const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -344,6 +345,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     modeloCobranca: l.modeloCobranca ?? "mensalidade",
     // Só o texto que a loja escolheu mostrar; o ponto do mapa (lat/lng) nunca sai do servidor.
     localEndereco: l.local?.publico && l.local.endereco ? l.local.endereco : "",
+    descontoProgressivo: Array.isArray(l.descontoProgressivo) ? l.descontoProgressivo : [],
+    freteGratisAcima: l.frete?.gratisAcima ?? null,
     avaliacao: notaDaLoja(l.id),
   });
   // Avaliações: só quem comprou (link assinado do pedido), uma por pedido; o admin pode ocultar.
@@ -374,6 +377,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     // Compra pelo site (Pix/cartão com split) só para lojas que pagam por venda e conectaram o Mercado Pago.
     // As de mensalidade vendem pelo WhatsApp.
     compraOnline: l.modeloCobranca === "comissao_fixa" && Boolean(l.mpConta) && mp.oauthConfigurado,
+    descontoProgressivo: Array.isArray(l.descontoProgressivo) ? l.descontoProgressivo : [],
+    freteGratisAcima: l.frete?.gratisAcima ?? null,
   });
   const produtoAfiliado = (x) => ({
     id: x.id, nome: x.nome, dept: DEPTS.includes(x.categoria) ? x.categoria : "casa", loja: x.loja,
@@ -397,8 +402,9 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const af = afiliados();
     return {
       atualizadoEm: af.atualizadoEm ?? null,
-      campanha: campanhaAtual(agora()),
-      proximaCampanha: proximaCampanha(agora()),
+      campanha: campanhaAtual(t),
+      proximaCampanha: proximaCampanha(t),
+      blackFriday: estadoBlackFriday(t),
       campanhasShopee: campanhasValidas().map(({ id, nome, imagem, fim }) => ({ id, nome, imagem, fim })), // link só pelo /ir (clique e canal)
       cupons: cuponsAtivos().map(cupomPublico),
       lojas: [...visiveis.values()].map(lojaPublica),
@@ -522,13 +528,18 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     if (x.soPeloSite) return erro(res, 409, "Esta loja vende só pelo site, com Pix ou cartão.");
     const { comprador, erro: msg } = lerComprador(req.body?.comprador);
     if (msg) return erro(res, 400, msg);
-    const { entrega, erro: msgEntrega, status: stEntrega } = lerEntrega(banco.loja(x.lojaId), comprador, lido.valorTotal);
+    const lojaPedido = banco.loja(x.lojaId);
+    const desc = descontoProgressivo(lido.valorTotal, lojaPedido?.descontoProgressivo);
+    const { entrega, erro: msgEntrega, status: stEntrega } = lerEntrega(lojaPedido, comprador, desc.totalComDesconto);
     if (msgEntrega) return erro(res, stEntrega, msgEntrega);
+    const totalFinal = arredonda(desc.totalComDesconto + (entrega?.valor ?? 0), 2);
     const pedido = {
       id: `P-${randomBytes(3).toString("hex").toUpperCase()}`, origem: "whatsapp", lojaId: x.lojaId, ...resumo, ...(clienteDe(req) && { clienteId: clienteDe(req).id }),
-      ...(entrega ? { entrega, valorTotal: arredonda(lido.valorTotal + entrega.valor, 2) } : {}),
+      valorTotal: totalFinal,
+      ...(desc.valor > 0 ? { descontoProgressivo: { pct: desc.pct, valor: desc.valor, acima: desc.faixaAplicada.acima } } : {}),
+      ...(entrega ? { entrega } : {}),
       // Retrato financeiro (loja de mensalidade: comissão sempre zero).
-      financeiro: retratoFinanceiro({ loja: banco.loja(x.lojaId), unidades: lido.unidades, valorProdutos: lido.valorTotal, frete: entrega?.valor ?? 0 }),
+      financeiro: retratoFinanceiro({ loja: lojaPedido, unidades: lido.unidades, valorProdutos: desc.totalComDesconto, frete: entrega?.valor ?? 0 }),
       comprador, etapa: "novo", criadoEm: iso(),
     };
     limparPedidosVencidos();
@@ -538,7 +549,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const mensagem = [
       "Olá! Vi no CIT Shopping e quero fazer um pedido:",
       ...itens.map((i) => `🛍️ *${linhaItem(i)}*`),
-      ...(itens.length > 1 || entrega ? [`💰 Total: ${reais(pedido.valorTotal)}`] : []),
+      ...(desc.valor > 0 ? [`🏷️ Desconto progressivo (${desc.pct}% OFF): -${reais(desc.valor)}`] : []),
+      ...(itens.length > 1 || entrega || desc.valor > 0 ? [`💰 Total: ${reais(pedido.valorTotal)}`] : []),
       `🧾 Pedido ${pedido.id}`,
       "",
       `👤 ${comprador.nome}`,
@@ -604,7 +616,8 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
       ponto = g; encontrado = g.nome; aproximado = Boolean(g.aproximado);
     }
     if (!ponto) return res.json(base);
-    res.json({ ...base, ...freteDe(loja, ponto, lido.valorTotal), lat: ponto.lat, lng: ponto.lng, encontrado, aproximado });
+    const desc = descontoProgressivo(lido.valorTotal, loja.descontoProgressivo);
+    res.json({ ...base, ...freteDe(loja, ponto, desc.totalComDesconto), lat: ponto.lat, lng: ponto.lng, encontrado, aproximado });
   }));
 
   // ---------- cupons ----------
@@ -1382,6 +1395,24 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     banco.salvar();
     res.json(painelDe(req.loja));
   });
+  // Desconto progressivo (escalonado) no carrinho da loja: até 3 faixas [{ acima, pct }].
+  app.put("/api/painel/desconto-progressivo", exigirLoja, (req, res) => {
+    const brutas = Array.isArray(req.body?.faixas) ? req.body.faixas : [];
+    if (brutas.length > 3) return erro(res, 400, "Use no máximo 3 faixas de desconto progressivo.");
+    const faixas = brutas.map((f) => ({ acima: valor(f?.acima), pct: Math.round(Number(f?.pct)) }));
+    if (faixas.some((f) => !f.acima || f.acima > 100_000 || !Number.isFinite(f.pct) || f.pct < 1 || f.pct > 70)) {
+      return erro(res, 400, "Confira as faixas: valor mínimo acima de R$ 0 e desconto de 1% a 70%.");
+    }
+    faixas.sort((a, b) => a.acima - b.acima);
+    for (let i = 1; i < faixas.length; i++) {
+      if (faixas[i].acima === faixas[i - 1].acima) return erro(res, 400, "Duas faixas têm o mesmo valor mínimo.");
+      if (faixas[i].pct <= faixas[i - 1].pct) return erro(res, 400, "Cada faixa mais alta precisa ter um desconto maior que a anterior.");
+    }
+    if (faixas.length) req.loja.descontoProgressivo = faixas;
+    else delete req.loja.descontoProgressivo;
+    banco.salvar();
+    res.json(painelDe(req.loja));
+  });
   app.patch("/api/painel/pedidos/:id", exigirLoja, (req, res) => {
     const p = (banco.d.pedidos ?? []).find((x) => x.id === req.params.id && x.lojaId === req.loja.id);
     if (!p) return erro(res, 404, "Pedido não encontrado.");
@@ -1445,12 +1476,13 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     // Quem compra: a loja precisa saber com quem combinar a entrega.
     const { comprador, erro: msgComprador } = lerComprador(req.body?.comprador);
     if (msgComprador) return erro(res, 400, msgComprador);
-    const { entrega, erro: msgEntrega, status: stEntrega } = lerEntrega(loja, comprador, lido.valorTotal);
+    const desc = descontoProgressivo(lido.valorTotal, loja.descontoProgressivo);
+    const { entrega, erro: msgEntrega, status: stEntrega } = lerEntrega(loja, comprador, desc.totalComDesconto);
     if (msgEntrega) return erro(res, stEntrega, msgEntrega);
-    const total = arredonda(lido.valorTotal + (entrega?.valor ?? 0), 2); // produtos + frete
+    const total = arredonda(desc.totalComDesconto + (entrega?.valor ?? 0), 2); // produtos com desconto + frete
 
     // Comissão da CIT: R$ 1 (comissaoPorVenda) por unidade vendida, só nas lojas que pagam por venda. Fica no retrato do pedido.
-    const financeiro = retratoFinanceiro({ loja, unidades, valorProdutos: lido.valorTotal, frete: entrega?.valor ?? 0 });
+    const financeiro = retratoFinanceiro({ loja, unidades, valorProdutos: desc.totalComDesconto, frete: entrega?.valor ?? 0 });
     const taxaMarketplace = financeiro.comissaoTotal;
     if (!(taxaMarketplace < total)) return erro(res, 400, "Valor da compra menor que a taxa da plataforma.");
     const email = String(emailComprador ?? "").trim().toLowerCase();
@@ -1461,7 +1493,12 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
     const webhookUrl = `${urlPublica}/webhook/mercadopago?loja=${encodeURIComponent(loja.id)}`;
     banco.d.pedidos ??= [];
     limparPedidosVencidos();
-    const pedido = { id: referencia, origem: "site", lojaId: loja.id, ...(clienteDe(req) && { clienteId: clienteDe(req).id }), ...resumo, ...(entrega ? { entrega, valorTotal: total } : {}), taxaMarketplace, financeiro, metodo, comprador, status: "criado", etapa: "novo", criadoEm: iso() };
+    const pedido = {
+      id: referencia, origem: "site", lojaId: loja.id, ...(clienteDe(req) && { clienteId: clienteDe(req).id }), ...resumo,
+      valorTotal: total,
+      ...(desc.valor > 0 ? { descontoProgressivo: { pct: desc.pct, valor: desc.valor, acima: desc.faixaAplicada.acima } } : {}),
+      ...(entrega ? { entrega } : {}), taxaMarketplace, financeiro, metodo, comprador, status: "criado", etapa: "novo", criadoEm: iso(),
+    };
     try {
       const tokenVendedor = await tokenDaLoja(loja);
       if (metodo === "pix") {
@@ -1470,10 +1507,13 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
         banco.salvar();
         return res.json({ ok: true, pix, taxaMarketplace, valorTotal: total });
       }
+      const itensMp = desc.valor > 0
+        ? [{ titulo: `${titulo} (${desc.pct}% OFF)`.slice(0, 120), quantidade: 1, preco: desc.totalComDesconto }]
+        : itens.map((i) => ({ titulo: i.observacao ? `${i.nome} (${i.observacao})`.slice(0, 120) : i.nome, quantidade: i.quantidade, preco: i.preco }));
       const pref = await mp.criarPreferenciaSplit({
         tokenVendedor, titulo, valor: total, referencia, taxaMarketplace, webhookUrl,
         itens: [
-          ...itens.map((i) => ({ titulo: i.observacao ? `${i.nome} (${i.observacao})`.slice(0, 120) : i.nome, quantidade: i.quantidade, preco: i.preco })),
+          ...itensMp,
           ...(entrega?.valor ? [{ titulo: `Entrega (${String(entrega.km).replace(".", ",")} km)`, quantidade: 1, preco: entrega.valor }] : []),
         ],
         // Carrinho volta para /carrinho (e tira dele os itens desta loja); compra de um produto volta para a página dele.
@@ -2371,8 +2411,25 @@ export function criarApp({ env = process.env, log = console, agora = () => Date.
   // Mapa do painel (aba Entrega): o Leaflet sai do próprio site porque a CSP só aceita script de 'self'.
   app.use("/vendor/leaflet", express.static(join(RAIZ, "node_modules/leaflet/dist"), { index: false, maxAge: "30d" }));
   app.use(express.static(publico, { extensions: ["html"], setHeaders: semCache }));
+  const PAGINA_INDEX = readFileSync(join(publico, "index.html"), "utf8");
   app.get("/loja/:slug", (req, res) => { semCache(res); res.sendFile(join(publico, "index.html")); });
-  app.get("/black-friday", (req, res) => { semCache(res); res.sendFile(join(publico, "index.html")); });
+  app.get("/black-friday", (req, res) => {
+    semCache(res);
+    const canonical = `${urlPublica}/black-friday`;
+    const titulo = "Black Friday CIT Shopping · Ofertas Relâmpago, Menor Preço e Lojas da Cidade";
+    const desc = "Acompanhe a Black Friday no CIT Shopping: ofertas relâmpago por hora, maiores descontos reais da Shopee, Mercado Livre, Amazon e SHEIN, e promoções das lojas da sua cidade.";
+    const meta = [
+      `<title>${titulo}</title>`,
+      `<meta name="description" content="${desc}">`,
+      `<link rel="canonical" href="${canonical}">`,
+      `<meta property="og:title" content="${titulo}">`,
+      `<meta property="og:description" content="${desc}">`,
+      `<meta property="og:url" content="${canonical}">`,
+      `<meta property="og:type" content="website">`,
+      `<meta property="og:image" content="${urlPublica}/marca/icone-512.png">`,
+    ].join("\n");
+    res.type("html").send(PAGINA_INDEX.replace(/<!--meta-->[\s\S]*?<!--\/meta-->/, meta));
+  });
 
   // Rota direta da loja (ex: /mimosdadelly)
   app.get("/:slug", (req, res, next) => {

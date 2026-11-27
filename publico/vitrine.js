@@ -1,6 +1,7 @@
 import { filtrarCatalogo } from './catalogo.js';
 import { FOCO_TEMPORADA, TEMPORADAS, combina, temporadasAtivas } from './temporadas.js';
 import { desenharHistorico } from './historico-preco.js';
+import { FILTROS_BF, ehOfertaBlack, melhorDesconto, proximaRodadaMs, resumoBlackFriday, selecionarRelampago, tempoRestante } from './black-friday.js';
 
 // Vitrine: lê /api/vitrine (lojas locais já vêm na frente dos afiliados) e monta a loja.
 (() => {
@@ -9,7 +10,7 @@ import { desenharHistorico } from './historico-preco.js';
   const DISPONIBILIDADE = { disponivel: 'Disponível, informado pela loja', 'sob-encomenda': 'Sob encomenda', consulte: 'Consulte disponibilidade' };
   const $ = (id) => document.getElementById(id);
   const num = new Intl.NumberFormat('pt-BR');
-  let P = [], LOJAS = [], CAMPANHA = null, PROXIMA = null, CUPONS = [], CAMPANHAS_SHOPEE = []; // CAMPANHA: data especial em andamento (ex.: "12.12"), vem do servidor
+  let P = [], LOJAS = [], CAMPANHA = null, PROXIMA = null, BF = null, CUPONS = [], CAMPANHAS_SHOPEE = []; // CAMPANHA: data especial em andamento (ex.: "Black Friday", "12.12"), vem do servidor
 
   const off = (x) => (x.precoAntigo > x.preco ? Math.round((1 - x.preco / x.precoAntigo) * 100) : 0);
   // Quanto (em %) caiu desde o maior preço que a CIT Shopping viu nos últimos dias.
@@ -88,22 +89,39 @@ import { desenharHistorico } from './historico-preco.js';
   }
 
   // Carrossel
-  const SLIDES = [
-    { k: 'Black Friday', h: 'Black Friday CIT Shopping', p: 'Contagem regressiva e os produtos que mais baixaram de preço.', c: 'Ver ofertas →', a: 'bag', href: '/black-friday' },
-    { k: 'Compre perto', h: 'As lojas da sua cidade estão aqui', p: 'Escolha, chame a loja no WhatsApp e receba rápido.', c: 'Ver lojas →', a: 'shop', show: 'local' },
-    { k: 'Venda na CIT Shopping', h: 'Sua loja na frente das gigantes', p: '30 dias grátis pra testar. Depois, R$ 99,90 por mês.', c: 'Cadastrar minha loja →', a: 'shop', href: '/painel' },
-  ];
-  // Banner da temporada em vigor vai na frente do carrossel.
   const BANNER_TEMPORADA = {
     natal: { k: 'Natal', h: 'Decoração de Natal', p: 'Árvore, pisca-pisca e enfeites até 24 de dezembro.', c: 'Ver decoração →', a: 'shop' },
     aulas: { k: 'Volta às aulas', h: 'Material escolar para 2027', p: 'Mochilas, estojos, cadernos e kits escolares.', c: 'Ver material escolar →', a: 'bag' },
     mesa: { k: 'Ceia', h: 'Mesa posta de Natal e Ano Novo', p: 'Taças, sousplat, guardanapos e louças para a ceia.', c: 'Montar a mesa →', a: 'bag' },
     looks: { k: 'Fim de ano', h: 'Looks para formatura, Natal e réveillon', p: 'Branco, vermelho e amarelo para as festas.', c: 'Ver looks →', a: 'bag' },
   };
-  SLIDES.unshift(...temporadasAtivas().filter((s) => BANNER_TEMPORADA[s.id]).map((s) => ({ ...BANNER_TEMPORADA[s.id], show: s.id })));
+  let SLIDES = [];
+  function construirSlides() {
+    const res = resumoBlackFriday(P);
+    const bfAtiva = Boolean(BF?.ativa);
+    const bfTexto = bfAtiva && res.total
+      ? `${num.format(res.total)} ofertas conferidas${res.maiorOff ? ` com até ${res.maiorOff}% OFF` : ''} e ofertas relâmpago trocando a cada hora.`
+      : 'Contagem regressiva, ofertas relâmpago por hora e os produtos que mais baixaram de preço.';
+    const slideBf = {
+      k: bfAtiva ? (BF.fase === 'cyber' ? 'Cyber Monday · Último dia' : 'Black Friday ao vivo') : 'Black Friday',
+      h: bfAtiva ? 'Black Friday CIT Shopping' : 'Black Friday CIT Shopping',
+      p: bfTexto,
+      c: bfAtiva ? 'Abrir Central Black Friday →' : 'Ver ofertas →',
+      a: 'bag', href: '/black-friday', cls: 'slide-bf',
+    };
+    const sazonais = temporadasAtivas().filter((s) => BANNER_TEMPORADA[s.id]).map((s) => ({ ...BANNER_TEMPORADA[s.id], show: s.id }));
+    const fixos = [
+      { k: 'Compre perto', h: 'As lojas da sua cidade estão aqui', p: 'Escolha, chame a loja no WhatsApp e receba rápido.', c: 'Ver lojas →', a: 'shop', show: 'local' },
+      { k: 'Venda na CIT Shopping', h: 'Sua loja na frente das gigantes', p: '30 dias grátis pra testar. Depois, R$ 99,90 por mês.', c: 'Cadastrar minha loja →', a: 'shop', href: '/painel' },
+    ];
+    // Durante a Black Friday, o banner principal abre o carrossel; fora dela, as temporadas sazonais vêm primeiro.
+    SLIDES = bfAtiva ? [slideBf, ...sazonais, ...fixos] : [...sazonais, slideBf, ...fixos];
+  }
   let cur = 0, timer;
   function renderSlides() {
-    $('slides').innerHTML = SLIDES.map((s, i) => `<div class="slide" ${i ? 'hidden' : ''} aria-label="${i + 1} de ${SLIDES.length}">
+    construirSlides();
+    cur = 0;
+    $('slides').innerHTML = SLIDES.map((s, i) => `<div class="slide${s.cls ? ` ${s.cls}` : ''}" ${i ? 'hidden' : ''} aria-label="${i + 1} de ${SLIDES.length}">
       <div><span class="kicker">${s.k}</span><h2>${s.h}</h2><p>${s.p}</p>
       ${s.href ? `<a class="cta" href="${s.href}" ${s.ext ? 'target="_blank" rel="sponsored nofollow noopener"' : ''}>${s.c}</a>` : `<button class="cta" data-show="${s.show}">${s.c}</button>`}</div>
       <div class="art">${svg(s.a)}</div></div>`).join('') +
@@ -198,8 +216,16 @@ import { desenharHistorico } from './historico-preco.js';
     const zap = `/contato/loja/${encodeURIComponent(l.slug)}`;
     const cor = l.cor || '#036271';
     const botaoZap = (texto) => `<a class="btn lv-zap" href="${zap}" target="_blank" rel="noopener">${ICONE_ZAP}${texto}</a>`;
+    const promoPartes = [];
+    if (l.descontoProgressivo?.length) {
+      promoPartes.push(`<b>Desconto progressivo no carrinho:</b> ${l.descontoProgressivo.map((f) => `${f.pct}% OFF acima de ${brl.format(f.acima)}`).join(' · ')}`);
+    }
+    if (l.freteGratisAcima > 0) {
+      promoPartes.push(`<b>Entrega grátis</b> em compras acima de ${brl.format(l.freteGratisAcima)}`);
+    }
+    const promoHtml = promoPartes.length ? `<div class="loja-promo-faixa" style="--loja:${esc(cor)}">${promoPartes.map((t) => `<span>${t}</span>`).join('')}</div>` : '';
     showResults(`Produtos de ${l.nome}`, P.filter((x) => x.lojaSlug === slug),
-      window.CIT.cabecalhoLoja(l, `${l.soPeloSite ? '' : botaoZap('Chamar no WhatsApp')}<button class="btn sec lv-fav" type="button" data-favorito="loja:${esc(l.slug)}" data-rotulos="Loja favorita|Favoritar loja" aria-pressed="false"><span>Favoritar loja</span></button><button class="btn sec lv-share" type="button" data-compartilhar aria-label="Compartilhar loja" title="Compartilhar loja">${ICONE_COMPARTILHAR}</button>`), {
+      window.CIT.cabecalhoLoja(l, `${l.soPeloSite ? '' : botaoZap('Chamar no WhatsApp')}<button class="btn sec lv-fav" type="button" data-favorito="loja:${esc(l.slug)}" data-rotulos="Loja favorita|Favoritar loja" aria-pressed="false"><span>Favoritar loja</span></button><button class="btn sec lv-share" type="button" data-compartilhar aria-label="Compartilhar loja" title="Compartilhar loja">${ICONE_COMPARTILHAR}</button>`) + promoHtml, {
         naLoja: true,
         rodape: l.soPeloSite ? '' : `<aside class="lv-encomenda" style="--loja:${esc(cor)};--loja-ink:${window.CIT.textoSobre(cor)}">
           <p><b>Não achou a cor ou o modelo?</b> Peça sob encomenda direto para a loja.</p>${botaoZap('Falar com a loja')}</aside>`,
@@ -223,30 +249,178 @@ import { desenharHistorico } from './historico-preco.js';
       ${a.texto ? `<p>${esc(a.texto)}</p>` : ''}</li>`).join('')}</ul></section>`);
   }
 
-  // Black Friday: página própria (/black-friday) com contagem regressiva e o que tem desconto ou baixou de preço.
-  const BF_INICIO = Date.parse('2026-11-27T00:00:00-03:00');
-  const BF_FIM = Date.parse('2026-12-01T00:00:00-03:00'); // vai até a Cyber Monday (30/11)
-  let bfTimer;
-  function contagemBF(agora = Date.now()) {
-    if (agora >= BF_FIM) return 'A Black Friday acabou, mas as ofertas continuam por aqui.';
-    if (agora >= BF_INICIO) return 'A Black Friday começou! Ofertas até segunda, 30/11.';
-    const m = Math.floor((BF_INICIO - agora) / 60_000);
-    const d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60), min = m % 60;
-    return `Faltam ${d ? `${d} dia${d > 1 ? 's' : ''}, ` : ''}${h}h${String(min).padStart(2, '0')} pra Black Friday (27/11)`;
+  // Black Friday: Central (/black-friday) com contagem regressiva ao vivo, Ofertas Relâmpago por hora e kits temáticos.
+  const BF_INICIO_FALLBACK = Date.parse('2026-11-27T00:00:00-03:00');
+  const BF_FIM_FALLBACK = Date.parse('2026-12-01T00:00:00-03:00');
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const alvoBF = () => {
+    const ini = BF?.inicio ?? BF_INICIO_FALLBACK;
+    const fim = BF?.fim ?? BF_FIM_FALLBACK;
+    const agora = Date.now();
+    if (agora < ini) return { modo: 'antes', alvo: ini };
+    if (agora < fim) return { modo: BF?.fase === 'cyber' ? 'cyber' : 'ativa', alvo: fim };
+    return { modo: 'encerrada', alvo: fim };
+  };
+  function textoRelampagoTimer(agora = Date.now()) {
+    const ms = proximaRodadaMs(agora);
+    const totalSeg = Math.max(0, Math.floor(ms / 1000));
+    const min = Math.floor(totalSeg / 60), seg = totalSeg % 60;
+    return `Troca em ${pad2(min)}:${pad2(seg)}`;
+  }
+  function textoContagemCurta(agora = Date.now()) {
+    const { modo, alvo } = alvoBF();
+    if (modo === 'encerrada') return '';
+    const t = tempoRestante(alvo, agora);
+    const relogio = `${t.dias ? `${t.dias}d ` : ''}${pad2(t.horas)}h ${pad2(t.minutos)}m ${pad2(t.segundos)}s`;
+    if (modo === 'antes') return `Faltam ${relogio} para a Black Friday`;
+    return modo === 'cyber' ? `CYBER MONDAY · Acaba em ${relogio}` : `BLACK FRIDAY AO VIVO · Termina em ${relogio}`;
+  }
+  let bfTimer = null, bfHoraAtual = -1, bfListaBase = [], bfRelampagoIds = new Set(), bfFiltroAtivo = 'todas';
+  function montarRelampagoHome() {
+    const sec = $('sRelampago');
+    if (!sec) return;
+    if (!BF?.ativa) { sec.hidden = true; return; }
+    const lista = selecionarRelampago(P, Date.now(), 8);
+    sec.hidden = !lista.length;
+    if (!lista.length) return;
+    $('r-relampago').innerHTML = lista.map(card).join('');
+    const r = $('r-relampago').parentElement;
+    if (!r.querySelector('.nav-btn')) {
+      r.insertAdjacentHTML('beforeend', '<button class="nav-btn l" aria-label="Anteriores">‹</button><button class="nav-btn r" aria-label="Próximos">›</button>');
+      r.querySelector('.l').onclick = () => $('r-relampago').scrollBy({ left: -$('r-relampago').clientWidth * 0.8, behavior: 'smooth' });
+      r.querySelector('.r').onclick = () => $('r-relampago').scrollBy({ left: $('r-relampago').clientWidth * 0.8, behavior: 'smooth' });
+    }
+    const tEl = $('bfRelampagoTimer');
+    if (tEl) tEl.textContent = textoRelampagoTimer();
+  }
+  function atualizarRelogiosBF() {
+    const agora = Date.now();
+    const hora = Math.floor(agora / 3_600_000);
+    if (bfHoraAtual !== -1 && hora !== bfHoraAtual) {
+      bfHoraAtual = hora;
+      montarRelampagoHome();
+      const trPg = $('r-bf-relampago');
+      if (trPg && !$('resultsview').hidden && location.pathname === '/black-friday') {
+        const rel = selecionarRelampago(P, agora, 8);
+        bfRelampagoIds = new Set(rel.map((x) => x.id));
+        trPg.innerHTML = rel.map(card).join('');
+      }
+    } else if (bfHoraAtual === -1) {
+      bfHoraAtual = hora;
+    }
+    const timerTxt = textoRelampagoTimer(agora);
+    const tHome = $('bfRelampagoTimer'); if (tHome) tHome.textContent = timerTxt;
+    const tPg = $('bfRelampagoTimerPg'); if (tPg) tPg.textContent = timerTxt;
+    const barra = $('bfBarraTexto'); if (barra && BF?.ativa) barra.textContent = textoContagemCurta(agora);
+    const dEl = $('bfD');
+    if (dEl) {
+      const { modo, alvo } = alvoBF();
+      const t = tempoRestante(alvo, agora);
+      dEl.textContent = pad2(t.dias);
+      $('bfH').textContent = pad2(t.horas);
+      $('bfM').textContent = pad2(t.minutos);
+      $('bfS').textContent = pad2(t.segundos);
+      const rot = $('bfRelogioRotulo');
+      if (rot) rot.textContent = modo === 'antes' ? 'Começa em' : modo === 'encerrada' ? 'Black Friday encerrada' : 'Termina em';
+    }
+  }
+  function iniciarRelogioBF() {
+    if (bfTimer) clearInterval(bfTimer);
+    atualizarRelogiosBF();
+    bfTimer = setInterval(atualizarRelogiosBF, 1000);
+  }
+  function aplicarFiltroBF(filtroId) {
+    bfFiltroAtivo = filtroId;
+    const def = FILTROS_BF.find((f) => f.id === filtroId) ?? FILTROS_BF[0];
+    const filtrada = bfListaBase.filter((p) => def.testar(p, { relampagoIds: bfRelampagoIds }));
+    view.list = filtrada;
+    document.querySelectorAll('.bf-tab').forEach((b) => b.setAttribute('aria-pressed', b.dataset.bfTab === filtroId));
+    renderResults();
+  }
+  async function compartilharBF() {
+    const url = `${location.origin}/black-friday`;
+    const res = resumoBlackFriday(P);
+    const texto = `Black Friday no CIT Shopping: ${res.total} ofertas conferidas${res.maiorOff ? ` com até ${res.maiorOff}% OFF` : ''} e ofertas relâmpago por hora!`;
+    try {
+      if (navigator.share) return await navigator.share({ title: 'Black Friday · CIT Shopping', text: texto, url });
+    } catch { return; }
+    window.open(`https://wa.me/?text=${encodeURIComponent(`${texto} ${url}`)}`, '_blank', 'noopener');
   }
   function blackFriday() {
-    const melhor = (x) => Math.max(off(x), caiu(x));
-    const lista = ordenar([...P].filter((x) => melhor(x) > 0 || x.menor30).sort((a, b) => melhor(b) - melhor(a)));
-    showResults('Black Friday CIT Shopping', lista, `<div class="sellbox" style="margin-bottom:16px"><div><h2 id="bfconta">${contagemBF()}</h2>
-      <p>Produtos com desconto e os que baixaram de preço nos últimos dias.</p></div></div>`);
+    const agora = Date.now();
+    bfListaBase = ordenar([...P].filter(ehOfertaBlack).sort((a, b) => melhorDesconto(b) - melhorDesconto(a)));
+    const relampago = selecionarRelampago(P, agora, 8);
+    bfRelampagoIds = new Set(relampago.map((x) => x.id));
+    const res = resumoBlackFriday(P);
+    const { modo, alvo } = alvoBF();
+    const t = tempoRestante(alvo, agora);
+    const selo = modo === 'cyber' ? 'CYBER MONDAY · ÚLTIMO DIA' : modo === 'ativa' ? 'BLACK FRIDAY AO VIVO' : modo === 'antes' ? 'ESQUENTA BLACK FRIDAY' : 'OFERTAS VERIFICADAS';
+    const tituloHero = modo === 'cyber'
+      ? 'Últimas horas de Black Friday e Cyber Monday'
+      : modo === 'ativa'
+      ? 'Black Friday CIT Shopping'
+      : modo === 'antes'
+      ? 'Contagem regressiva pra Black Friday'
+      : 'A Black Friday passou, mas os descontos continuam';
+    const metricas = [
+      res.total && `<span><b>${num.format(res.total)}</b>ofertas conferidas</span>`,
+      res.maiorOff && `<span><b>Até ${res.maiorOff}% OFF</b>maior desconto real</span>`,
+      res.com40Off && `<span><b>${num.format(res.com40Off)}</b>com 40% OFF ou mais</span>`,
+      res.menor30 && `<span><b>${num.format(res.menor30)}</b>no menor preço em 30 dias</span>`,
+      res.locais && `<span><b>${num.format(res.locais)}</b>das lojas da cidade</span>`,
+    ].filter(Boolean).join('');
+    const tabs = FILTROS_BF.map((f) => {
+      const n = bfListaBase.filter((p) => f.testar(p, { relampagoIds: bfRelampagoIds })).length;
+      if (f.id !== 'todas' && !n) return '';
+      return `<button type="button" class="bf-tab" data-bf-tab="${esc(f.id)}" aria-pressed="${f.id === 'todas'}">${esc(f.rotulo)} <small>${n}</small></button>`;
+    }).join('');
+    const head = `
+      <section class="bf-hero" aria-label="Central da Black Friday">
+        <div class="bf-hero-top">
+          <div class="bf-hero-copy">
+            <span class="bf-pill">${selo}</span>
+            <h2>${tituloHero}</h2>
+            <p>Ofertas com desconto real na Shopee, Mercado Livre, Amazon, SHEIN e lojas da sua cidade — acompanhadas pelo histórico de 30 dias.</p>
+            <div class="bf-acoes">
+              <button type="button" class="btn bf-btn-share" data-bf-share>${ICONE_COMPARTILHAR} Compartilhar ofertas</button>
+              <a class="btn bf-btn-sec" href="/cupons">Cupons do dia</a>
+              <a class="btn bf-btn-zap" href="https://whatsapp.com/channel/0029VbDyNjvIyPtZGJ6HTs3i" target="_blank" rel="noopener">${ICONE_ZAP} Canal VIP</a>
+            </div>
+          </div>
+          ${modo !== 'encerrada' ? `<div class="bf-relogio-wrap" aria-label="Contagem regressiva">
+            <span class="bf-relogio-rotulo" id="bfRelogioRotulo">${modo === 'antes' ? 'Começa em' : 'Termina em'}</span>
+            <div class="bf-relogio">
+              <div><b id="bfD">${pad2(t.dias)}</b><small>dias</small></div>
+              <div><b id="bfH">${pad2(t.horas)}</b><small>horas</small></div>
+              <div><b id="bfM">${pad2(t.minutos)}</b><small>min</small></div>
+              <div><b id="bfS">${pad2(t.segundos)}</b><small>seg</small></div>
+            </div>
+          </div>` : ''}
+        </div>
+        ${metricas ? `<div class="bf-metricas">${metricas}</div>` : ''}
+      </section>
+      ${relampago.length ? `<section class="bf-flash-box" aria-label="Ofertas Relâmpago desta hora">
+        <div class="head bf-head">
+          <div class="bf-head-esq">
+            <span class="bf-tag-relampago">RELÂMPAGO</span>
+            <h3>Ofertas Relâmpago desta hora</h3>
+            <span class="bf-timer-pill" id="bfRelampagoTimerPg">${textoRelampagoTimer(agora)}</span>
+          </div>
+        </div>
+        <div class="rail"><div class="track" id="r-bf-relampago">${relampago.map(card).join('')}</div></div>
+      </section>` : ''}
+      <div class="bf-tabs" role="group" aria-label="Kits e filtros da Black Friday">${tabs}</div>`;
+    bfFiltroAtivo = 'todas';
+    showResults('Black Friday CIT Shopping', bfListaBase, head);
+    const tr = $('r-bf-relampago');
+    if (tr && !tr.parentElement.querySelector('.nav-btn')) {
+      tr.parentElement.insertAdjacentHTML('beforeend', '<button class="nav-btn l" aria-label="Anteriores">‹</button><button class="nav-btn r" aria-label="Próximos">›</button>');
+      tr.parentElement.querySelector('.l').onclick = () => tr.scrollBy({ left: -tr.clientWidth * 0.8, behavior: 'smooth' });
+      tr.parentElement.querySelector('.r').onclick = () => tr.scrollBy({ left: tr.clientWidth * 0.8, behavior: 'smooth' });
+    }
     document.title = 'Black Friday · CIT Shopping';
     if (location.pathname !== '/black-friday') history.pushState(null, '', '/black-friday');
-    clearInterval(bfTimer);
-    bfTimer = setInterval(() => {
-      const el = $('bfconta');
-      if (el && !$('resultsview').hidden) el.textContent = contagemBF();
-      else clearInterval(bfTimer);
-    }, 30_000);
+    iniciarRelogioBF();
   }
 
   // Janela do produto
@@ -388,10 +562,20 @@ import { desenharHistorico } from './historico-preco.js';
   }
   function fecharMega() { $('mega').hidden = true; $('allbtn').setAttribute('aria-expanded', 'false'); }
 
-  // Contagem discreta para a próxima data dupla, com os favoritos salvos neste aparelho.
+  // Contagem no topo: durante a Black Friday destaca o cronômetro ao vivo; nos outros dias, a próxima data dupla.
   function montarContagem() {
-    if (!PROXIMA) return;
     const favoritos = (window.CITFavoritos?.ler() ?? []).filter((id) => !id.startsWith('loja:'));
+    const navBf = $('navBf');
+    if (navBf) navBf.innerHTML = BF?.ativa ? 'Black Friday <span class="bf-live">AO VIVO</span>' : 'Black Friday';
+    if (BF?.ativa) {
+      $('contagem').className = 'wrap contagem contagem-bf';
+      $('contagem').innerHTML = `<span class="contagem-dias" id="bfBarraTexto">${esc(textoContagemCurta())}</span><div class="contagem-acoes"><a class="contagem-bf-cta" href="/black-friday">Ver Central Black Friday →</a><button type="button" id="verFavoritos">Seus favoritos (${favoritos.length})</button></div>`;
+      $('contagem').hidden = false;
+      iniciarRelogioBF();
+      return;
+    }
+    if (!PROXIMA) return;
+    $('contagem').className = 'wrap contagem';
     const quando = PROXIMA.dias === 0 ? `É hoje o ${PROXIMA.nome}!` : `Faltam ${PROXIMA.dias} ${PROXIMA.dias === 1 ? 'dia' : 'dias'} para o ${PROXIMA.nome}`;
     $('contagem').innerHTML = `<span class="contagem-dias">${esc(quando)}</span><button type="button" id="verFavoritos">Seus favoritos (${favoritos.length})</button>`;
     $('contagem').hidden = false;
@@ -421,6 +605,7 @@ import { desenharHistorico } from './historico-preco.js';
       <img src="${esc(c.imagem)}" alt="" loading="lazy" width="320" height="160"><span><b>${esc(c.nome)}</b>${c.fim ? `<small>${terminaEm(c.fim)}</small>` : ''}</span></a>`).join('');
   }
   function montarHome() {
+    montarRelampagoHome();
     montarCampanhas();
     const lojasFav = new Set((window.CITFavoritos?.ler() ?? []).filter((id) => id.startsWith('loja:')).map((id) => id.slice(5)));
     const lojasHome = [...LOJAS.filter((l) => lojasFav.has(l.slug)), ...LOJAS.filter((l) => !lojasFav.has(l.slug))];
@@ -464,6 +649,13 @@ import { desenharHistorico } from './historico-preco.js';
 
   document.addEventListener('click', (e) => {
     const t = e.target;
+    const bfShare = t.closest('[data-bf-share]'); if (bfShare) return compartilharBF();
+    const bfTab = t.closest('[data-bf-tab]'); if (bfTab) return aplicarFiltroBF(bfTab.dataset.bfTab);
+    const bfLink = t.closest('a[href="/black-friday"]');
+    if (bfLink && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && e.button === 0) {
+      e.preventDefault();
+      return blackFriday();
+    }
     const sh = t.closest('[data-compartilhar]'); if (sh) return compartilhar(sh);
     const p = t.closest('[data-p]'); if (p) return openProduct(P.find((x) => x.id === p.dataset.p));
     const sl = t.closest('[data-seller]'); if (sl) { e.preventDefault(); return bySeller(sl.dataset.seller); }
@@ -525,8 +717,8 @@ import { desenharHistorico } from './historico-preco.js';
 
   fetch('/api/vitrine')
     .then((r) => r.json())
-    .then((d) => { P = d.produtos.map((x) => ({ ...x, categoriaNome: D[x.dept]?.n ?? x.dept })); LOJAS = d.lojas; CAMPANHA = d.campanha ?? null; PROXIMA = d.proximaCampanha ?? null; CUPONS = d.cupons ?? []; CAMPANHAS_SHOPEE = d.campanhasShopee ?? []; montarContagem();
-      // Faixa "Especial" só no dia da data dupla (12/12, 1/1...); nos outros dias fica escondida.
+    .then((d) => { P = d.produtos.map((x) => ({ ...x, categoriaNome: D[x.dept]?.n ?? x.dept })); LOJAS = d.lojas; CAMPANHA = d.campanha ?? null; PROXIMA = d.proximaCampanha ?? null; BF = d.blackFriday ?? null; CUPONS = d.cupons ?? []; CAMPANHAS_SHOPEE = d.campanhasShopee ?? []; renderSlides(); start(); montarContagem();
+      // Faixa "Especial" na data dupla (12.12, 1.1...) ou Black Friday; nos outros dias fica escondida.
       if (CAMPANHA) { $('seloCampanha').textContent = `Especial ${CAMPANHA}`; $('seloCampanha').hidden = false; $('faixaCampanha').hidden = false; }
       montarHome(); rota();
       // Link /#sellers (ex.: da /bio): a faixa só existe depois do fetch, então rola até ela aqui.

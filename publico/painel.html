@@ -263,6 +263,23 @@
       <div class="vendas" id="listaCupons"></div>
     </div>
 
+    <div class="box" id="blocoDescontoProg">
+      <h2>Desconto progressivo no carrinho</h2>
+      <p class="note" style="font-size:13px;margin:-4px 0 12px">Ideal para Black Friday: quanto maior o carrinho do cliente na sua loja, maior o desconto automático (até 3 faixas). O cálculo acontece no servidor no fechamento do pedido.</p>
+      <form class="form" id="fDescProg">
+        <div class="faixas" id="dpFaixas"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn sec" id="dpAdd">+ Adicionar faixa</button>
+          <button type="button" class="btn sec" id="dpModeloBf">Usar modelo Black Friday (10% / 15% / 20%)</button>
+        </div>
+        <div class="msg" id="mDescProg" hidden role="status"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn">Salvar desconto progressivo</button>
+          <button type="button" class="btn perigo" id="dpDesativar" hidden>Desativar</button>
+        </div>
+      </form>
+    </div>
+
     <details class="box">
       <summary style="font-weight:800;cursor:pointer;min-height:44px;display:flex;align-items:center">Dados da loja</summary>
       <form class="form" id="fLoja" style="margin-top:12px">

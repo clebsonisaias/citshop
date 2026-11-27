@@ -1,11 +1,18 @@
+import { descontoProgressivo } from './black-friday.js';
+
 // Página /carrinho: itens guardados no aparelho (comprar.js), agrupados por loja. Nome, foto e preço vêm da
-// vitrine atual, e o servidor recalcula tudo ao finalizar. Cada loja finaliza o próprio pedido (data-finalizar).
+// vitrine atual, e o servidor recalcula tudo (incluindo desconto progressivo e frete) ao finalizar.
 (() => {
   const { esc } = window.CIT;
   const { ler, gravar } = window.CITCarrinho;
   const caixa = document.getElementById('carrinho');
   const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
   let produtos = null, sumiu = false;
+
+  function barraProgresso(texto, pct) {
+    const p = Math.min(100, Math.max(0, Math.round(pct)));
+    return `<div class="carrinho-progresso"><span>${texto}</span><div class="barra" aria-hidden="true"><i style="width:${p}%"></i></div></div>`;
+  }
 
   function render() {
     const todos = ler();
@@ -25,11 +32,28 @@
     }
     const aviso = sumiu ? '<p class="note carrinho-aviso">Alguns produtos não estão mais disponíveis e saíram do carrinho.</p>' : '';
     caixa.innerHTML = aviso + [...lojas.entries()].map(([lojaId, { p: l, itens: doLoja }]) => {
-      const total = doLoja.reduce((s, i) => s + i.p.preco * i.q, 0);
+      const subtotal = doLoja.reduce((s, i) => s + i.p.preco * i.q, 0);
       const unidades = doLoja.reduce((s, i) => s + i.q, 0);
+      const desc = descontoProgressivo(subtotal, l.descontoProgressivo);
+      const blocosPromo = [];
+      if (desc.faixas.length) {
+        if (desc.proximaFaixa) {
+          const base = desc.faixaAplicada ? `Desconto de <b>${desc.pct}% OFF</b> ativo! ` : '';
+          blocosPromo.push(barraProgresso(`${base}Faltam <b>${brl.format(desc.falta)}</b> para ganhar <b>${desc.proximaFaixa.pct}% OFF</b>`, (subtotal / desc.proximaFaixa.acima) * 100));
+        } else if (desc.faixaAplicada) {
+          blocosPromo.push(barraProgresso(`Desconto máximo da loja liberado: <b>${desc.pct}% OFF</b>`, 100));
+        }
+      }
+      if (l.freteGratisAcima > 0) {
+        const faltaFrete = Math.max(0, Math.round((l.freteGratisAcima - desc.totalComDesconto) * 100) / 100);
+        blocosPromo.push(faltaFrete > 0
+          ? barraProgresso(`Faltam <b>${brl.format(faltaFrete)}</b> para <b>entrega grátis</b> nesta loja`, (desc.totalComDesconto / l.freteGratisAcima) * 100)
+          : barraProgresso('<b>Entrega grátis</b> liberada nesta loja (dentro da área atendida)', 100));
+      }
       const fim = `data-finalizar="${esc(lojaId)}" data-entrega="${esc(l.entrega ?? '')}"`;
       return `<section class="carrinho-loja" aria-label="Pedido para ${esc(l.lojaNome)}">
         <div class="carrinho-loja-topo"><h2><a href="/${esc(l.lojaSlug)}">${esc(l.lojaNome)}</a></h2><small>${esc(l.cidade ?? '')}</small></div>
+        ${blocosPromo.join('')}
         <ul>${doLoja.map((i) => {
           const chave = esc(JSON.stringify([i.id, i.obs]));
           return `<li class="carrinho-item">
@@ -47,7 +71,8 @@
             <button type="button" class="carrinho-remover" data-remover data-item="${chave}">Remover</button>
           </li>`;
         }).join('')}</ul>
-        <p class="carrinho-total"><span>${unidades} ${unidades === 1 ? 'item' : 'itens'}</span><b>${brl.format(total)}</b></p>
+        ${desc.valor > 0 ? `<p class="carrinho-desc"><span>Desconto progressivo (${desc.pct}% OFF)</span><b>− ${brl.format(desc.valor)}</b></p>` : ''}
+        <p class="carrinho-total"><span>${unidades} ${unidades === 1 ? 'item' : 'itens'}</span><b>${brl.format(desc.totalComDesconto)}</b></p>
         ${l.compraOnline
           ? `<button type="button" class="buybtn" ${fim} data-modo="site">Pagar com Pix ou cartão</button>
              <p class="note">Pagamento pelo Mercado Pago. A loja combina a entrega com você pelo WhatsApp.</p>`

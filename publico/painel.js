@@ -125,6 +125,48 @@
     try { mostrar(await api(`/api/painel/cupons/${encodeURIComponent(b.dataset.apagarCupom)}`, { metodo: 'DELETE' })); }
     catch (err) { mostrarMsg($('mCupom'), err.message); }
   });
+  // ---------- desconto progressivo no carrinho (até 3 faixas) ----------
+  function linhaDescProg(f = {}) {
+    const div = document.createElement('div');
+    div.className = 'faixa';
+    div.innerHTML = `<label>Acima de (R$)<input name="acima" inputmode="decimal" placeholder="100,00" value="${f.acima != null ? String(f.acima).replace('.', ',') : ''}"></label>
+      <label>Desconto (%)<input name="pct" type="number" min="1" max="70" inputmode="numeric" placeholder="10" value="${f.pct ?? ''}"></label>
+      <button type="button" class="faixa-rm" aria-label="Remover faixa">✕</button>`;
+    div.querySelector('.faixa-rm').onclick = () => div.remove();
+    return div;
+  }
+  function pintarDescProg(faixas = []) {
+    $('dpFaixas').innerHTML = '';
+    for (const f of faixas) $('dpFaixas').append(linhaDescProg(f));
+    $('dpDesativar').hidden = !faixas.length;
+  }
+  $('dpAdd').onclick = () => {
+    if ($('dpFaixas').children.length >= 3) return mostrarMsg($('mDescProg'), 'Use no máximo 3 faixas.');
+    $('dpFaixas').append(linhaDescProg());
+  };
+  $('dpModeloBf').onclick = () => {
+    pintarDescProg([{ acima: 100, pct: 10 }, { acima: 200, pct: 15 }, { acima: 350, pct: 20 }]);
+    mostrarMsg($('mDescProg'), 'Modelo preenchido. Ajuste os valores se quiser e clique em Salvar.', 'ok');
+  };
+  $('fDescProg').addEventListener('submit', (e) => {
+    e.preventDefault();
+    enviando(e.submitter, async () => {
+      const faixas = [...$('dpFaixas').querySelectorAll('.faixa')].map((el) => ({
+        acima: el.querySelector('[name="acima"]').value,
+        pct: el.querySelector('[name="pct"]').value,
+      })).filter((f) => String(f.acima).trim() !== '' || String(f.pct).trim() !== '');
+      try {
+        mostrar(await api('/api/painel/desconto-progressivo', { metodo: 'PUT', json: { faixas } }));
+        mostrarMsg($('mDescProg'), faixas.length ? 'Desconto progressivo salvo!' : 'Desconto progressivo desativado.', 'ok');
+      } catch (err) { mostrarMsg($('mDescProg'), err.message); }
+    });
+  });
+  $('dpDesativar').onclick = async () => {
+    try {
+      mostrar(await api('/api/painel/desconto-progressivo', { metodo: 'PUT', json: { faixas: [] } }));
+      mostrarMsg($('mDescProg'), 'Desconto progressivo desativado.', 'ok');
+    } catch (err) { mostrarMsg($('mDescProg'), err.message); }
+  };
   $('pedidos').addEventListener('change', async (e) => {
     const sel = e.target.closest('select[data-pedido], select[data-envio]');
     if (!sel) return;
@@ -351,6 +393,7 @@
     irPara();
     $('listaCupons').innerHTML = (s.cupons ?? []).map((c) => `<div class="venda"><b>${esc(c.codigo)}</b><span>${esc(c.descricao)}</span>
       <div class="venda-rodape"><small>Válido até ${new Date(`${c.validoAte}T12:00:00`).toLocaleDateString('pt-BR')}</small><button class="btn sec" type="button" data-apagar-cupom="${esc(c.id)}">Apagar</button></div></div>`).join('');
+    pintarDescProg(s.loja.descontoProgressivo ?? []);
     $('vCor').value = s.loja.cor || '#036271';
     $('vSobre').value = s.loja.sobre ?? '';
     $('tirarLogo').hidden = !s.loja.logo;
