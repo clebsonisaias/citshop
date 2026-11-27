@@ -1,5 +1,5 @@
 /**
- * Campanhas sazonais e datas duplas (1.1, 2.2, ..., 12.12 + Black Friday até Cyber Monday).
+ * Campanhas sazonais e datas duplas (1.1, 2.2, ..., 12.12) e a Black Friday, que vale só na sexta-feira.
  * Tudo calculado em horário de Brasília (UTC-3, sem horário de verão).
  * Usado na home (faixa Especial / selo Super Oferta), no radar (WhatsApp/Telegram) e em /black-friday.
  */
@@ -7,8 +7,8 @@ const BRT_MS = 3 * 60 * 60 * 1000;
 const DIA_MS = 86_400_000;
 
 /**
- * Janela oficial da Black Friday de um ano: 4ª sexta-feira de novembro (00:00 BRT)
- * até o fim da Cyber Monday (segunda seguinte às 23:59:59 BRT, ou seja, fim exclusivo = terça 00:00 BRT).
+ * Janela da Black Friday de um ano: só a 4ª sexta-feira de novembro, de 00:00 a 23:59:59 BRT
+ * (fim exclusivo = sábado 00:00 BRT). No sábado o site, o radar e o Instagram voltam ao normal.
  */
 export function janelaBlackFriday(ano) {
   // Dia da semana de 1º de novembro (0 = domingo ... 5 = sexta)
@@ -17,9 +17,8 @@ export function janelaBlackFriday(ano) {
   const quartaSexta = primeiraSexta + 21; // 4ª sexta de novembro (em 2026: dia 27)
   // 00:00 BRT = 03:00 UTC
   const inicio = Date.UTC(ano, 10, quartaSexta, 3, 0, 0);
-  const cyberInicio = inicio + 3 * DIA_MS; // segunda-feira 00:00 BRT
-  const fim = inicio + 4 * DIA_MS; // terça-feira 00:00 BRT (fim da Cyber Monday)
-  return { ano, diaInicio: quartaSexta, inicio, cyberInicio, fim };
+  const fim = inicio + DIA_MS; // sábado 00:00 BRT
+  return { ano, diaInicio: quartaSexta, inicio, fim };
 }
 
 /** Estado atual da Black Friday em `agora` (ms). */
@@ -28,21 +27,17 @@ export function estadoBlackFriday(agora = Date.now()) {
   const ano = b.getUTCFullYear();
   const j = janelaBlackFriday(ano);
   if (agora < j.inicio) return { ativa: false, fase: "antes", ...j };
-  if (agora < j.cyberInicio) return { ativa: true, fase: "ativa", ...j };
-  if (agora < j.fim) return { ativa: true, fase: "cyber", ...j };
+  if (agora < j.fim) return { ativa: true, fase: "ativa", ...j };
   return { ativa: false, fase: "encerrada", ...j };
 }
 
-/** O dia da Black Friday em si: só a sexta-feira, de 00:00 a 23:59 de Brasília. No sábado já não vale. */
-export function ehDiaDaBlackFriday(agora = Date.now()) {
-  const { inicio } = janelaBlackFriday(new Date(agora - BRT_MS).getUTCFullYear());
-  return agora >= inicio && agora < inicio + DIA_MS;
-}
+/** É a sexta-feira da Black Friday? (00:00 a 23:59 de Brasília) */
+export const ehDiaDaBlackFriday = (agora = Date.now()) => estadoBlackFriday(agora).ativa;
 
 /**
  * Campanha especial ativa no dia (horário de Brasília):
  * - Data dupla (1.1, 2.2, ..., 12.12): só no próprio dia, de 00:00 a 23:59 BRT.
- * - Black Friday / Cyber Monday: da 4ª sexta de novembro até segunda 23:59 BRT.
+ * - Black Friday: só na 4ª sexta-feira de novembro, de 00:00 a 23:59 BRT.
  */
 export function campanhaAtual(agora = Date.now()) {
   const brasilia = new Date(agora - BRT_MS);

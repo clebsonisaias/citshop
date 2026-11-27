@@ -103,8 +103,8 @@ import { FILTROS_BF, ehOfertaBlack, melhorDesconto, proximaRodadaMs, resumoBlack
       ? `${num.format(res.total)} ofertas conferidas${res.maiorOff ? ` com até ${res.maiorOff}% OFF` : ''} e ofertas relâmpago trocando a cada hora.`
       : 'Contagem regressiva, ofertas relâmpago por hora e os produtos que mais baixaram de preço.';
     const slideBf = {
-      k: bfAtiva ? (BF.fase === 'cyber' ? 'Cyber Monday · Último dia' : 'Black Friday ao vivo') : 'Black Friday',
-      h: bfAtiva ? 'Black Friday CIT Shopping' : 'Black Friday CIT Shopping',
+      k: bfAtiva ? 'Black Friday · só hoje' : 'Black Friday',
+      h: 'Black Friday CIT Shopping',
       p: bfTexto,
       c: bfAtiva ? 'Abrir Central Black Friday →' : 'Ver ofertas →',
       a: 'bag', href: '/black-friday', cls: 'slide-bf',
@@ -114,8 +114,8 @@ import { FILTROS_BF, ehOfertaBlack, melhorDesconto, proximaRodadaMs, resumoBlack
       { k: 'Compre perto', h: 'As lojas da sua cidade estão aqui', p: 'Escolha, chame a loja no WhatsApp e receba rápido.', c: 'Ver lojas →', a: 'shop', show: 'local' },
       { k: 'Venda na CIT Shopping', h: 'Sua loja na frente das gigantes', p: '30 dias grátis pra testar. Depois, R$ 99,90 por mês.', c: 'Cadastrar minha loja →', a: 'shop', href: '/painel' },
     ];
-    // Durante a Black Friday, o banner principal abre o carrossel; fora dela, as temporadas sazonais vêm primeiro.
-    SLIDES = bfAtiva ? [slideBf, ...sazonais, ...fixos] : [...sazonais, slideBf, ...fixos];
+    // Na sexta da Black Friday o banner abre o carrossel; antes dela vem depois das temporadas; passada a data, sai.
+    SLIDES = bfAtiva ? [slideBf, ...sazonais, ...fixos] : BF?.fase === 'encerrada' ? [...sazonais, ...fixos] : [...sazonais, slideBf, ...fixos];
   }
   let cur = 0, timer;
   function renderSlides() {
@@ -251,14 +251,14 @@ import { FILTROS_BF, ehOfertaBlack, melhorDesconto, proximaRodadaMs, resumoBlack
 
   // Black Friday: Central (/black-friday) com contagem regressiva ao vivo, Ofertas Relâmpago por hora e kits temáticos.
   const BF_INICIO_FALLBACK = Date.parse('2026-11-27T00:00:00-03:00');
-  const BF_FIM_FALLBACK = Date.parse('2026-12-01T00:00:00-03:00');
+  const BF_FIM_FALLBACK = Date.parse('2026-11-28T00:00:00-03:00');
   const pad2 = (n) => String(n).padStart(2, '0');
   const alvoBF = () => {
     const ini = BF?.inicio ?? BF_INICIO_FALLBACK;
     const fim = BF?.fim ?? BF_FIM_FALLBACK;
     const agora = Date.now();
     if (agora < ini) return { modo: 'antes', alvo: ini };
-    if (agora < fim) return { modo: BF?.fase === 'cyber' ? 'cyber' : 'ativa', alvo: fim };
+    if (agora < fim) return { modo: 'ativa', alvo: fim };
     return { modo: 'encerrada', alvo: fim };
   };
   function textoRelampagoTimer(agora = Date.now()) {
@@ -273,7 +273,7 @@ import { FILTROS_BF, ehOfertaBlack, melhorDesconto, proximaRodadaMs, resumoBlack
     const t = tempoRestante(alvo, agora);
     const relogio = `${t.dias ? `${t.dias}d ` : ''}${pad2(t.horas)}h ${pad2(t.minutos)}m ${pad2(t.segundos)}s`;
     if (modo === 'antes') return `Faltam ${relogio} para a Black Friday`;
-    return modo === 'cyber' ? `CYBER MONDAY · Acaba em ${relogio}` : `BLACK FRIDAY AO VIVO · Termina em ${relogio}`;
+    return `BLACK FRIDAY SÓ HOJE · Termina em ${relogio}`;
   }
   let bfTimer = null, bfHoraAtual = -1, bfListaBase = [], bfRelampagoIds = new Set(), bfFiltroAtivo = 'todas';
   function montarRelampagoHome() {
@@ -354,10 +354,8 @@ import { FILTROS_BF, ehOfertaBlack, melhorDesconto, proximaRodadaMs, resumoBlack
     const res = resumoBlackFriday(P);
     const { modo, alvo } = alvoBF();
     const t = tempoRestante(alvo, agora);
-    const selo = modo === 'cyber' ? 'CYBER MONDAY · ÚLTIMO DIA' : modo === 'ativa' ? 'BLACK FRIDAY AO VIVO' : modo === 'antes' ? 'ESQUENTA BLACK FRIDAY' : 'OFERTAS VERIFICADAS';
-    const tituloHero = modo === 'cyber'
-      ? 'Últimas horas de Black Friday e Cyber Monday'
-      : modo === 'ativa'
+    const selo = modo === 'ativa' ? 'BLACK FRIDAY · SÓ HOJE' : modo === 'antes' ? 'ESQUENTA BLACK FRIDAY' : 'OFERTAS VERIFICADAS';
+    const tituloHero = modo === 'ativa'
       ? 'Black Friday CIT Shopping'
       : modo === 'antes'
       ? 'Contagem regressiva pra Black Friday'
@@ -566,7 +564,7 @@ import { FILTROS_BF, ehOfertaBlack, melhorDesconto, proximaRodadaMs, resumoBlack
   function montarContagem() {
     const favoritos = (window.CITFavoritos?.ler() ?? []).filter((id) => !id.startsWith('loja:'));
     const navBf = $('navBf');
-    if (navBf) navBf.innerHTML = BF?.ativa ? 'Black Friday <span class="bf-live">AO VIVO</span>' : 'Black Friday';
+    if (navBf) { navBf.hidden = BF?.fase === 'encerrada'; navBf.innerHTML = BF?.ativa ? 'Black Friday <span class="bf-live">SÓ HOJE</span>' : 'Black Friday'; }
     if (BF?.ativa) {
       $('contagem').className = 'wrap contagem contagem-bf';
       $('contagem').innerHTML = `<span class="contagem-dias" id="bfBarraTexto">${esc(textoContagemCurta())}</span><div class="contagem-acoes"><a class="contagem-bf-cta" href="/black-friday">Ver Central Black Friday →</a><button type="button" id="verFavoritos">Seus favoritos (${favoritos.length})</button></div>`;

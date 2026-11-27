@@ -2,7 +2,7 @@
 
 ## Black Friday (27/11/2026)
 
-- **Campanha Black Friday automática (`servidor/campanha.js`)**: reconhece a janela da 4ª sexta de novembro até Cyber Monday (horário de Brasília), ativando selos `Especial Black Friday`, radar WhatsApp/Telegram e banner principal na home.
+- **Campanha Black Friday automática (`servidor/campanha.js`)**: vale só na 4ª sexta-feira de novembro, de 00:00 a 23:59 (horário de Brasília); no sábado o site, o radar e o Instagram voltam ao normal, ativando selos `Especial Black Friday`, radar WhatsApp/Telegram e banner principal na home.
 - **Ofertas Relâmpago por hora (`publico/black-friday.js`)**: seleção determinística por hora (Brasília) com contagem regressiva até a próxima rodada, exibida na home e em `/black-friday`.
 - **Central `/black-friday` remodelada**: contagem regressiva em tempo real (dias/horas/min/seg), métricas reais do catálogo, compartilhamento no WhatsApp, faixa de Ofertas Relâmpago e filtros/kits rápidos (40%+ OFF, Menor preço 30d, Lojas da cidade, Frete grátis, Até R$ 50/100, Kits Casa, Tech, Moda e Presentes), além de SEO/OpenGraph próprios no servidor.
 - **Desconto progressivo no carrinho para lojas locais**: configuração de até 3 faixas no `/painel` (`PUT /api/painel/desconto-progressivo`), barra de progresso no `/carrinho` e página da loja, e recálculo seguro no servidor em `/api/pedidos/whatsapp`, `/api/pagamento/split` e `/api/frete`.
